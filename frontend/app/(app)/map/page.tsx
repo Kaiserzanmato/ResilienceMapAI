@@ -52,7 +52,7 @@ export default function MapPage() {
         className="pointer-events-none absolute left-3 z-20 hidden flex-col gap-3 md:flex overflow-y-auto"
         style={{
           top: "calc(var(--banner-h) + var(--nav-h) + 36px)",
-          maxHeight: "calc(100vh - var(--banner-h) - var(--nav-h) - var(--footer-h) - 320px)",
+          maxHeight: "calc(100vh - var(--banner-h) - var(--nav-h) - var(--footer-h) - 260px)",
         }}
       >
         <div className="pointer-events-auto shrink-0">
