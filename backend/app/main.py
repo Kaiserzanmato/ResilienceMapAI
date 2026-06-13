@@ -125,10 +125,28 @@ async def ai_report(req: AIReportRequest):
 
 @app.post("/api/agent/query")
 async def agent_query(req: AgentQueryRequest):
+    import json as _json
     risk = None
     if req.lat is not None and req.lng is not None:
         risk = score_location(req.lat, req.lng, req.location_name)
-    result = await generate_insight("agent", risk, req.message, req.persona, req.provider)
+    # If frontend sent a serialized risk_context, use it to enrich the message
+    # (the deterministic backend score takes precedence — this is supplemental)
+    enriched_message = req.message
+    if req.risk_context:
+        try:
+            ctx = _json.loads(req.risk_context)
+            enriched_message = (
+                f"{req.message}\n\n"
+                f"[Frontend risk context for {req.location_name or 'selected location'}:\n"
+                f"Overall: {ctx.get('overall', {}).get('score')}/100 "
+                f"({ctx.get('overall', {}).get('level')})\n"
+                f"Main drivers: {', '.join(ctx.get('main_drivers') or [])}\n"
+                f"Confidence: {ctx.get('confidence')}\n"
+                f"Data coverage: {ctx.get('data_coverage')}]"
+            )
+        except (ValueError, TypeError):
+            pass
+    result = await generate_insight("agent", risk, enriched_message, req.persona, req.provider)
     return {"risk": risk, **result}
 
 

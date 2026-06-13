@@ -37,18 +37,24 @@ export default function MapPage() {
 
   return (
     <div className="fixed inset-0 top-0">
-      {/* Map fills the viewport beneath the floating nav */}
+      {/* Map fills the entire viewport beneath all overlays */}
       <RiskMap />
 
-      {/* Floating search — top center, below nav */}
-      <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--nav-h)+24px)] z-30 flex justify-center px-3">
+      {/* Floating search — top center, below banner + nav */}
+      <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--banner-h)+var(--nav-h)+36px)] z-30 flex justify-center px-3">
         <div className="pointer-events-auto w-full max-w-md">
           <SearchBar />
         </div>
       </div>
 
-      {/* Left widget stack (desktop/tablet) — flex-col with max-height to prevent overlap */}
-      <div className="pointer-events-none absolute left-3 top-[calc(var(--nav-h)+24px)] z-20 hidden flex-col gap-3 md:flex max-h-[calc(100vh-var(--nav-h)-200px)] overflow-y-auto">
+      {/* Left widget stack (desktop/tablet) */}
+      <div
+        className="pointer-events-none absolute left-3 z-20 hidden flex-col gap-3 md:flex overflow-y-auto"
+        style={{
+          top: "calc(var(--banner-h) + var(--nav-h) + 36px)",
+          maxHeight: "calc(100vh - var(--banner-h) - var(--nav-h) - var(--footer-h) - 80px)",
+        }}
+      >
         <div className="pointer-events-auto shrink-0">
           <LayerControlWidget />
         </div>
@@ -60,22 +66,46 @@ export default function MapPage() {
         </div>
       </div>
 
-      {/* Legend — positioned to avoid overlap with left widgets */}
-      <div className="pointer-events-none fixed bottom-3 left-3 z-20 hidden md:block">
+      {/* Legend — above footer, bottom-left */}
+      <div
+        className="pointer-events-none fixed left-3 z-20 hidden md:block"
+        style={{ bottom: "calc(var(--footer-h) + 12px)" }}
+      >
         <div className="pointer-events-auto">
           <RiskLegend />
         </div>
       </div>
 
-      {/* Risk summary — desktop: top right; mobile: bottom sheet */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-3 pb-3 md:inset-x-auto md:right-3 md:top-[calc(var(--nav-h)+24px)] md:bottom-auto md:px-0 md:pb-0">
+      {/* Risk summary — desktop: top right; mobile: above footer */}
+      <div
+        className="pointer-events-none absolute inset-x-0 z-20 px-3 md:inset-x-auto md:right-3 md:px-0"
+        style={{
+          bottom: "calc(var(--footer-h) + 8px)",
+          top: "auto",
+        }}
+      >
+        <div
+          className="md:hidden pointer-events-auto"
+          style={{ paddingBottom: "0" }}
+        >
+          <RiskSummaryWidget />
+        </div>
+      </div>
+      {/* Risk summary desktop — top right */}
+      <div
+        className="pointer-events-none absolute right-3 z-20 hidden md:block"
+        style={{ top: "calc(var(--banner-h) + var(--nav-h) + 36px)" }}
+      >
         <div className="pointer-events-auto">
           <RiskSummaryWidget />
         </div>
       </div>
 
       {/* Mobile: compact layer controls */}
-      <div className="pointer-events-none absolute left-3 top-[calc(var(--nav-h)+84px)] z-20 md:hidden">
+      <div
+        className="pointer-events-none absolute left-3 z-20 md:hidden"
+        style={{ top: "calc(var(--banner-h) + var(--nav-h) + 96px)" }}
+      >
         <div className="pointer-events-auto">
           <LayerControlWidget />
         </div>

@@ -30,7 +30,7 @@ export function TopNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 px-3 pt-3 sm:px-4">
+    <header className="fixed inset-x-0 top-[var(--banner-h)] z-40 px-3 pt-3 sm:px-4">
       <nav
         aria-label="Primary"
         className="glass-strong mx-auto flex h-[var(--nav-h)] max-w-[1800px] items-center gap-2 rounded-2xl px-3 sm:px-4"

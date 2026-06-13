@@ -69,6 +69,7 @@ export const api = {
     lat?: number;
     lng?: number;
     location_name?: string;
+    risk_context?: string;
   }) =>
     request<AIResponse>("/api/agent/query", {
       method: "POST",

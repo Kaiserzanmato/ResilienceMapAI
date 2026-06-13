@@ -5,7 +5,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <TopNav />
-      <main id="main" className="pt-[calc(var(--nav-h)+20px)]">
+      <main id="main" className="pt-[calc(var(--banner-h)+var(--nav-h)+20px)]">
         {children}
       </main>
       <AIAgentPanel />
