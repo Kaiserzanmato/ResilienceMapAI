@@ -103,9 +103,11 @@ export default function AgentsPage() {
         meta: { model: res.model, sources: res.sources, confidence: res.confidence, disclaimer: res.disclaimer },
       });
     } catch (e) {
+      const errorMessage = (e as any)?.message || (e as any)?.detail || String(e) || "Unknown error";
       addMessage({
-        id: crypto.randomUUID(), role: "assistant",
-        content: `Something went wrong: ${(e as Error).message}`,
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: `Something went wrong: ${errorMessage}`,
       });
     } finally {
       setLoading(false);
@@ -157,10 +159,11 @@ export default function AgentsPage() {
         },
       });
     } catch (e) {
+      const errorMessage = (e as any)?.message || (e as any)?.detail || String(e) || "Unknown error";
       addMessage({
         id: crypto.randomUUID(),
         role: "assistant",
-        content: `Could not generate insights: ${(e as Error).message}. Ensure data is synced.`,
+        content: `Could not generate insights: ${errorMessage}. Ensure data is synced and try again.`,
       });
     } finally {
       setInsightsLoading(false);
@@ -170,7 +173,7 @@ export default function AgentsPage() {
   return (
     <div className="mx-auto grid h-[calc(100dvh-var(--banner-h)-var(--nav-h)-var(--footer-h)-32px)] max-w-[1500px] gap-3 px-4 pb-4 lg:grid-cols-[320px_1fr]">
       {/* Left: context + personas */}
-      <div className="hidden flex-col gap-3 overflow-y-auto lg:flex">
+      <div className="hidden flex-col gap-3 overflow-y-auto lg:flex pb-2" style={{ scrollBehavior: "smooth" }}>
         <GlassCard className="p-4">
           <h2 className="mb-2 flex items-center gap-2 text-[13px] font-semibold">
             <MapPin size={14} className="text-[var(--accent)]" aria-hidden="true" />
