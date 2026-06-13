@@ -2,6 +2,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { useState } from "react";
+import { DocypherHeader } from "./DocypherHeader";
 import { DocypherFooter } from "./DocypherFooter";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -22,6 +23,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem
     >
       <QueryClientProvider client={queryClient}>
+        <DocypherHeader />
         {children}
         <DocypherFooter />
       </QueryClientProvider>
