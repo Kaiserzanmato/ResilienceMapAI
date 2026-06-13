@@ -1,0 +1,197 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant hc (&:where(.high-contrast, .high-contrast *));
+
+/* ---------- Design tokens ---------- */
+:root {
+  /* Light: clean, public-friendly, Apple-like */
+  --bg: #f6f8fb;
+  --bg-deep: #eef1f6;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-solid: #ffffff;
+  --surface-border: rgba(15, 23, 42, 0.08);
+  --fg: #0f172a;
+  --fg-muted: #5b6b82;
+  --accent: #2563eb;
+  --accent-2: #7c3aed;
+  --accent-glow: rgba(37, 99, 235, 0.25);
+  --ring: rgba(37, 99, 235, 0.5);
+  --glass-blur: 18px;
+  --nav-h: 60px;
+
+  /* Risk colors are fixed across themes (icon + text always accompany color) */
+  --risk-low: #16a34a;
+  --risk-medium: #d97706;
+  --risk-high: #dc2626;
+  --risk-nodata: #94a3b8;
+
+  --chart-1: #2563eb;
+  --chart-2: #7c3aed;
+  --chart-3: #0891b2;
+  --chart-4: #db2777;
+  --chart-5: #d97706;
+}
+
+.dark {
+  /* Dark: intelligence command center */
+  --bg: #060a14;
+  --bg-deep: #03060d;
+  --surface: rgba(13, 20, 38, 0.66);
+  --surface-solid: #0d1426;
+  --surface-border: rgba(148, 184, 255, 0.12);
+  --fg: #e6edf8;
+  --fg-muted: #8294b0;
+  --accent: #38bdf8;
+  --accent-2: #a78bfa;
+  --accent-glow: rgba(56, 189, 248, 0.28);
+  --ring: rgba(56, 189, 248, 0.6);
+
+  --risk-low: #22c55e;
+  --risk-medium: #eab308;
+  --risk-high: #ef4444;
+  --risk-nodata: #64748b;
+
+  --chart-1: #38bdf8;
+  --chart-2: #a78bfa;
+  --chart-3: #2dd4bf;
+  --chart-4: #f472b6;
+  --chart-5: #fbbf24;
+}
+
+.high-contrast {
+  --bg: #000000;
+  --bg-deep: #000000;
+  --surface: #0a0a0a;
+  --surface-solid: #0a0a0a;
+  --surface-border: rgba(255, 255, 255, 0.55);
+  --fg: #ffffff;
+  --fg-muted: #d4d4d4;
+  --accent: #ffd700;
+  --accent-2: #00e5ff;
+  --accent-glow: rgba(255, 215, 0, 0.35);
+  --ring: #ffd700;
+  --glass-blur: 0px;
+
+  --risk-low: #00e676;
+  --risk-medium: #ffd600;
+  --risk-high: #ff5252;
+  --risk-nodata: #bdbdbd;
+
+  --chart-1: #ffd700;
+  --chart-2: #00e5ff;
+  --chart-3: #00e676;
+  --chart-4: #ff80ab;
+  --chart-5: #ff9100;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-deep: var(--bg-deep);
+  --color-surface: var(--surface-solid);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-line: var(--surface-border);
+  --color-risk-low: var(--risk-low);
+  --color-risk-medium: var(--risk-medium);
+  --color-risk-high: var(--risk-high);
+  --color-risk-nodata: var(--risk-nodata);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --breakpoint-3xl: 1920px;
+}
+
+/* ---------- Base ---------- */
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-size: clamp(14px, 0.5vw + 12px, 16px); /* fluid typography */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ambient gradient backdrop */
+.app-backdrop {
+  position: fixed; inset: 0; z-index: -10; pointer-events: none;
+  background:
+    radial-gradient(1100px 600px at 85% -10%, var(--accent-glow), transparent 60%),
+    radial-gradient(900px 540px at -10% 110%, color-mix(in srgb, var(--accent-2) 18%, transparent), transparent 60%),
+    var(--bg);
+}
+.high-contrast .app-backdrop { background: #000; }
+
+/* ---------- Glassmorphism ---------- */
+.glass {
+  background: var(--surface);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+  border: 1px solid var(--surface-border);
+  box-shadow: 0 8px 32px rgba(2, 8, 23, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.dark .glass { box-shadow: 0 8px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05); }
+.high-contrast .glass { box-shadow: none; }
+
+.glass-strong {
+  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+  backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(1.4);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(1.4);
+  border: 1px solid var(--surface-border);
+  box-shadow: 0 16px 48px rgba(2, 8, 23, 0.18);
+}
+
+/* ---------- Utility classes ---------- */
+.text-gradient {
+  background: linear-gradient(110deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.high-contrast .text-gradient { background: none; color: var(--accent); }
+
+.glow-ring { box-shadow: 0 0 0 1px var(--surface-border), 0 0 24px var(--accent-glow); }
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Scrollbars */
+* { scrollbar-width: thin; scrollbar-color: var(--fg-muted) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--fg-muted) 40%, transparent); border-radius: 8px; }
+
+/* MapLibre theming */
+.maplibregl-popup-content {
+  background: var(--surface-solid) !important;
+  color: var(--fg) !important;
+  border-radius: 14px !important;
+  border: 1px solid var(--surface-border);
+  box-shadow: 0 12px 40px rgba(2, 8, 23, 0.3) !important;
+  padding: 12px 14px !important;
+  font-family: var(--font-geist-sans), system-ui, sans-serif !important;
+}
+.maplibregl-popup-tip { border-top-color: var(--surface-solid) !important; border-bottom-color: var(--surface-solid) !important; }
+.maplibregl-ctrl-attrib {
+  background: color-mix(in srgb, var(--surface-solid) 70%, transparent) !important;
+  color: var(--fg-muted) !important; font-size: 10px !important;
+}
+.maplibregl-ctrl-attrib a { color: var(--fg-muted) !important; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  html { scroll-behavior: auto; }
+}
+
+/* Minimum tap targets on touch devices */
+@media (pointer: coarse) {
+  button, a, [role="button"], input, select { min-height: 44px; }
+}
