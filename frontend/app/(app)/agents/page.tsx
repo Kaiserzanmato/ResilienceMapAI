@@ -77,6 +77,20 @@ export default function AgentsPage() {
   async function ask(question: string) {
     const q = question.trim();
     if (!q || loading) return;
+
+    // Validate coordinates if location is selected
+    if (selected && (
+      selected.lat < -90 || selected.lat > 90 ||
+      selected.lng < -180 || selected.lng > 180
+    )) {
+      addMessage({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: `Invalid location coordinates: (${selected.lat}, ${selected.lng}). Latitude must be -90 to 90, longitude must be -180 to 180. Please select a valid location on the map.`,
+      });
+      return;
+    }
+
     setInput("");
     addMessage({ id: crypto.randomUUID(), role: "user", content: q });
     setLoading(true);
@@ -116,6 +130,16 @@ export default function AgentsPage() {
 
   async function generateInsights() {
     if (!selected || !risk || insightsLoading || loading) return;
+
+    // Validate coordinates
+    if (selected.lat < -90 || selected.lat > 90 || selected.lng < -180 || selected.lng > 180) {
+      addMessage({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: `Invalid location coordinates: (${selected.lat}, ${selected.lng}). Latitude must be -90 to 90, longitude must be -180 to 180.`,
+      });
+      return;
+    }
 
     setInsightsLoading(true);
     try {
