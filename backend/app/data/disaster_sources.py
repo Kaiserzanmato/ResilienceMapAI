@@ -276,8 +276,21 @@ def list_sources(filter_scope: Optional[str] = None) -> List[dict]:
 
 
 def get_sources_for_hazard(hazard_type: str, is_philippines: bool = False) -> List[dict]:
-    """Get approved sources for a specific hazard type."""
-    sources = [s for s in DISASTER_SOURCES.values() if hazard_type.lower() in [h.lower() for h in s["hazards"]]]
+    """Get approved sources for a specific hazard type.
+
+    Hazard types may use underscores (e.g. 'tropical_cyclone') or spaces
+    (e.g. 'tropical cyclone'). This function normalizes and matches both.
+    """
+    # Normalize input: convert underscores to spaces for matching
+    normalized_hazard = hazard_type.lower().replace("_", " ")
+
+    sources = []
+    for s in DISASTER_SOURCES.values():
+        # Check if the normalized hazard matches any of the source's hazards
+        source_hazards = [h.lower() for h in s["hazards"]]
+        if any(normalized_hazard in h or h in normalized_hazard for h in source_hazards):
+            sources.append(s)
+
     if is_philippines:
         # Sort by priority: sources in PHILIPPINES_SOURCE_PRIORITY first
         ph_sources = [s for s in sources if s in [DISASTER_SOURCES.get(sid) for sid in PHILIPPINES_SOURCE_PRIORITY]]

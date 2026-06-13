@@ -71,9 +71,14 @@ async def generate_insights(
     """
 
     # Extract primary hazards from risk data
-    primary_hazards = risk_data.get("hazards", [])
-    if isinstance(primary_hazards, dict):
-        primary_hazards = [h["name"] for h in primary_hazards.values() if isinstance(h, dict)]
+    primary_hazards = []
+    hazards_data = risk_data.get("hazards", {})
+    if isinstance(hazards_data, dict):
+        # Hazards dict has keys like "flood", "earthquake", "tropical_cyclone" with score/level/label values
+        primary_hazards = [
+            key for key, h in hazards_data.items()
+            if isinstance(h, dict) and h.get("score") is not None and h.get("score") > 25
+        ]
 
     # Get approved sources for these hazards
     is_philippines = "philippines" in location_name.lower() if location_name else False
