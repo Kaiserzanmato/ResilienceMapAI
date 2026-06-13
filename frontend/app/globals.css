@@ -112,6 +112,7 @@ body {
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   font-size: clamp(14px, 0.5vw + 12px, 16px); /* fluid typography */
   -webkit-font-smoothing: antialiased;
+  padding-bottom: 60px; /* footer height */
 }
 
 /* Ambient gradient backdrop */

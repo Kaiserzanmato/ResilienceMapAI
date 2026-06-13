@@ -2,6 +2,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { useState } from "react";
+import { DocypherFooter } from "./DocypherFooter";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -20,7 +21,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       themes={["light", "dark", "high-contrast"]}
       enableSystem
     >
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        {children}
+        <DocypherFooter />
+      </QueryClientProvider>
     </ThemeProvider>
   );
 }
