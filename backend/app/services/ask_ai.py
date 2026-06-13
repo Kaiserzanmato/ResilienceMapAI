@@ -11,6 +11,7 @@ from typing import Literal, Optional, List
 
 from ..data.disaster_sources import DISASTER_SOURCES, get_sources_for_hazard
 from .ai_router import generate_insight
+from .risk_scoring import score_location
 
 # Scope classification patterns
 IN_SCOPE_PATTERNS = [
@@ -113,11 +114,19 @@ async def ask_ai_guardrailed(
     # Remove duplicates
     applicable_sources = list({s.get("source_name"): s for s in applicable_sources if s}.values())
 
-    # 3. Call the AI router with attribution context
+    # 3. Score the selected location if coordinates are provided
+    risk = None
+    if lat is not None and lng is not None:
+        try:
+            risk = score_location(lat, lng, location_name)
+        except Exception:
+            pass
+
+    # 4. Call the AI router with full risk context + attribution
     try:
         result = await generate_insight(
             "agent",
-            None,  # No location risk in this context
+            risk,
             query,
             persona,
             provider,

@@ -496,39 +496,51 @@ async def generate_insight(task: str, risk: Optional[Dict], user_message: str,
                        if h["score"] is not None and h["score"] > 25]
     sources = grounding_sources(hazard_keys)
 
+    # Detect if the user's query explicitly mentions a known location
+    query_lower = (sanitized["text"] or "").lower()
+    query_mentioned_history = None
+    for key, data in LOCATION_HISTORY.items():
+        if key in query_lower or any(
+            word in query_lower for word in key.split() if len(word) > 4
+        ):
+            query_mentioned_history = data
+            break
+
     if provider.name == "local-insight":
-        if risk:
+        if query_mentioned_history and (
+            not risk
+            or query_mentioned_history["full_name"].split(",")[0].lower()
+            not in risk["location_name"].lower()
+        ):
+            # User asked about a specific known location that isn't the selected one
+            score_note = ""
+            if risk:
+                score_note = (
+                    f"\n\n_Note: Your map currently shows **{risk['location_name']}** "
+                    f"(overall risk: {risk['overall']['score']}/100 — {risk['overall']['level']}). "
+                    "Select that location on the map and click Generate Insights for its full profile._"
+                )
+            answer = (
+                f"## {query_mentioned_history['full_name']} — Risk Intelligence Summary\n\n"
+                + _format_history_block(query_mentioned_history)
+                + score_note
+                + "\n\n_To see live risk scores for this exact location, click it on "
+                "the ResilienceMap and use the Generate Insights button._"
+            )
+        elif risk:
             answer = local_insight(risk, persona)
         else:
-            # No location selected — try to answer from the knowledge base
-            # by matching the user's query to a known location
-            matched_history = None
-            query_lower = (sanitized["text"] or "").lower()
-            for key, data in LOCATION_HISTORY.items():
-                if key in query_lower or any(
-                    word in query_lower for word in key.split() if len(word) > 4
-                ):
-                    matched_history = data
-                    break
-
-            if matched_history:
-                answer = (
-                    f"## {matched_history['full_name']} — Risk Intelligence Summary\n\n"
-                    + _format_history_block(matched_history)
-                    + "\n\n_To see live risk scores for this exact location, click it on "
-                    "the ResilienceMap and use the Generate Insights button._"
-                )
-            else:
-                answer = (
-                    "I can help you interpret the calculated risk data shown on the map and dashboard. "
-                    "**Select a location on the map** to get a grounded summary of its hazard scores, "
-                    "main risk drivers, and persona-specific recommendations based on official data.\n\n"
-                    "I can also answer questions about these profiled high-risk areas: "
-                    + ", ".join(d["full_name"].split(",")[0] for d in LOCATION_HISTORY.values())
-                    + ".\n\n"
-                    "_Note: No external AI provider is configured — running in deterministic local mode. "
-                    "To enable DeepSeek AI responses, configure DEEPSEEK_API_KEY in the Vercel environment variables._"
-                )
+            # No location selected and no known location mentioned
+            answer = (
+                "I can help you interpret the calculated risk data shown on the map and dashboard. "
+                "**Select a location on the map** to get a grounded summary of its hazard scores, "
+                "main risk drivers, and persona-specific recommendations based on official data.\n\n"
+                "I can answer questions about these profiled high-risk areas: "
+                + ", ".join(d["full_name"].split(",")[0] for d in LOCATION_HISTORY.values())
+                + ".\n\n"
+                "_Note: No external AI provider is configured — running in deterministic local mode. "
+                "To enable DeepSeek AI responses, configure DEEPSEEK_API_KEY in Vercel environment variables._"
+            )
         model_used = "local-insight (deterministic)"
     else:
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -536,8 +548,20 @@ async def generate_insight(task: str, risk: Optional[Dict], user_message: str,
         if risk:
             context_parts.append("Structured risk context (sole source of truth):\n"
                                  + _risk_context_block(risk))
-        else:
-            # No location selected — include full knowledge base for general queries
+        # If user asked about a specific location different from the selected one,
+        # also inject that location's historical knowledge
+        if query_mentioned_history and (
+            not risk
+            or query_mentioned_history["full_name"].split(",")[0].lower()
+            not in risk["location_name"].lower()
+        ):
+            context_parts.append(
+                "User's query references this specific location "
+                "(use this as the primary answer context):\n"
+                + _format_history_block(query_mentioned_history)
+            )
+        if not risk and not query_mentioned_history:
+            # No location selected and no known location mentioned
             context_parts.append(_build_general_knowledge_block())
         context_parts.append("Grounding datasets: " + "; ".join(
             f"{s['name']} ({s['agency']}, updated {s['updated']}, {s['confidence']} confidence)"

@@ -167,7 +167,8 @@ export function AIAgentPanel() {
               "glass-strong fixed z-40 flex flex-col overflow-hidden",
               // mobile: bottom sheet; desktop: right panel (resizable)
               "inset-x-0 bottom-0 top-auto h-[72dvh] rounded-t-3xl",
-              "md:inset-x-auto md:bottom-3 md:right-3 md:top-[calc(var(--nav-h)+22px)] md:h-auto md:w-[var(--ai-w)] md:rounded-2xl"
+              "md:inset-x-auto md:right-3 md:h-auto md:w-[var(--ai-w)] md:rounded-2xl",
+              "md:top-[calc(var(--banner-h)+var(--nav-h)+22px)] md:bottom-[calc(var(--footer-h)+8px)]"
             )}
           >
             {/* Resize handle (desktop only) */}
