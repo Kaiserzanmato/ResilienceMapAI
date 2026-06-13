@@ -54,7 +54,7 @@ export function IntelligenceMarkersWidget() {
       </button>
 
       {open && (
-        <div className="space-y-3 px-4 pb-4">
+        <div className="space-y-3 px-4 pb-4 max-h-[50vh] overflow-y-auto">
           <div>
             <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-[var(--fg-muted)]">
               Prioritized high-risk areas
