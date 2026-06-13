@@ -47,12 +47,12 @@ export default function MapPage() {
         </div>
       </div>
 
-      {/* Left widget stack (desktop/tablet) */}
+      {/* Left widget stack (desktop/tablet) — constrained to avoid legend overlap */}
       <div
         className="pointer-events-none absolute left-3 z-20 hidden flex-col gap-3 md:flex overflow-y-auto"
         style={{
           top: "calc(var(--banner-h) + var(--nav-h) + 36px)",
-          maxHeight: "calc(100vh - var(--banner-h) - var(--nav-h) - var(--footer-h) - 80px)",
+          maxHeight: "calc(100vh - var(--banner-h) - var(--nav-h) - var(--footer-h) - 320px)",
         }}
       >
         <div className="pointer-events-auto shrink-0">
