@@ -1,23 +1,63 @@
 "use client";
-import { Eraser, Loader2, MapPin, Send, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertCircle, Eraser, Loader2, MapPin, Send, ShieldCheck, Sparkles, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Markdown } from "@/components/ai/Markdown";
 import { SourceGroundingCard } from "@/components/ai/SourceGroundingCard";
 import { SearchBar } from "@/components/map/SearchBar";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { api } from "@/lib/api";
+import { api, API_BASE } from "@/lib/api";
 import { getPersona, PERSONAS } from "@/lib/personas";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
+interface AIProviderInfo {
+  provider: string;
+  model: string;
+  provider_display: string;
+  model_display: string;
+}
+
+interface DataStatus {
+  data_type: string;
+  is_fresh: boolean;
+  message: string;
+}
+
 export default function AgentsPage() {
   const {
-    messages, addMessage, clearMessages, persona, setPersona, selected,
+    messages, addMessage, clearMessages, persona, setPersona, selected, risk,
   } = useAppStore();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [aiProvider, setAiProvider] = useState<AIProviderInfo | null>(null);
+  const [dataStatus, setDataStatus] = useState<DataStatus | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const active = getPersona(persona);
+
+  useEffect(() => {
+    // Fetch AI provider info and data status on mount
+    (async () => {
+      try {
+        const providerRes = await fetch(`${API_BASE}/api/ai-provider-info`);
+        if (providerRes.ok) {
+          const data = await providerRes.json();
+          setAiProvider(data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch AI provider info:", e);
+      }
+      try {
+        const statusRes = await fetch(`${API_BASE}/api/data-status`);
+        if (statusRes.ok) {
+          const data = await statusRes.json();
+          setDataStatus(data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch data status:", e);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -45,6 +85,61 @@ export default function AgentsPage() {
       });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function generateInsights() {
+    if (!selected || !risk || insightsLoading || loading) return;
+
+    setInsightsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        lat: String(selected.lat),
+        lng: String(selected.lng),
+        name: selected.name || "",
+        hazard_layer: "overall",
+        persona,
+      });
+
+      const res = await fetch(`${API_BASE}/api/generate-insights?${params}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) throw new Error(`Generate insights failed (${res.status})`);
+      const data = await res.json();
+      const insight = data.insight;
+      const sourcesList = (insight.sources || [])
+        .map((s: any) => `${s.source_name} (${s.confidence_category})`)
+        .join(" · ");
+
+      const answer = `## ${insight.title}\n\n${insight.summary}\n\n**Data Status:** ${insight.notice || "Recently synced"}\n**Sources:** ${sourcesList || "Official registry"}`;
+
+      addMessage({
+        id: crypto.randomUUID(),
+        role: "user",
+        content: `Generate insights for ${selected.name}`,
+      });
+
+      addMessage({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: answer,
+        meta: {
+          model: aiProvider?.model_display || "DeepSeek",
+          sources: insight.sources,
+          confidence: insight.confidence_category,
+          disclaimer: "Insights grounded in official disaster sources. Not an official advisory.",
+        },
+      });
+    } catch (e) {
+      addMessage({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: `Could not generate insights: ${(e as Error).message}. Ensure data is synced.`,
+      });
+    } finally {
+      setInsightsLoading(false);
     }
   }
 
@@ -97,11 +192,20 @@ export default function AgentsPage() {
             <Sparkles size={16} className="text-white" aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1">
-            <h1 className="text-[15px] font-semibold leading-tight">AI Research Agent</h1>
-            <p className="flex items-center gap-1.5 text-[11px] text-[var(--fg-muted)]">
-              <ShieldCheck size={11} className="text-[var(--risk-low)]" aria-hidden="true" />
-              Source-grounded · {active.emoji} {active.label} persona
-            </p>
+            <h1 className="text-[15px] font-semibold leading-tight">
+              AI Research Agent — Powered by DeepSeek
+            </h1>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {aiProvider && (
+                <span className="rounded-full bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] px-2 py-0.5 text-[10.5px] font-medium text-[var(--accent)]">
+                  Model: {aiProvider.model_display}
+                </span>
+              )}
+              <p className="flex items-center gap-1.5 text-[11px] text-[var(--fg-muted)]">
+                <ShieldCheck size={11} className="text-[var(--risk-low)]" aria-hidden="true" />
+                Source-grounded · {active.emoji} {active.label}
+              </p>
+            </div>
           </div>
           <button
             onClick={clearMessages}
@@ -123,7 +227,36 @@ export default function AgentsPage() {
                 I explain calculated risk scores from official datasets. I never predict
                 disasters or replace official advisories.
               </p>
+
+              {dataStatus && !dataStatus.is_fresh && (
+                <div className="mt-4 flex gap-2 rounded-xl border border-[var(--surface-border)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] p-3 text-left">
+                  <AlertCircle size={16} className="mt-0.5 shrink-0 text-[var(--accent)]" aria-hidden="true" />
+                  <p className="text-[12px] text-[var(--fg-muted)]">
+                    This insight may be limited because the current dataset is not live or recently synced.
+                  </p>
+                </div>
+              )}
+
               <div className="mt-6 grid gap-2 sm:grid-cols-1">
+                {selected && risk && (
+                  <button
+                    onClick={generateInsights}
+                    disabled={insightsLoading || loading}
+                    className="focus-ring glass flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] px-4 py-3 font-medium text-[var(--accent)] transition-all hover:border-[var(--accent)] hover:brightness-110 disabled:opacity-50"
+                  >
+                    {insightsLoading ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Zap size={16} aria-hidden="true" />
+                        Generate Insights
+                      </>
+                    )}
+                  </button>
+                )}
                 {active.suggestedQueries.map((q) => (
                   <button
                     key={q}

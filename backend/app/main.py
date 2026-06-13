@@ -46,6 +46,17 @@ def health():
             "time": datetime.now(timezone.utc).isoformat()}
 
 
+@app.get("/api/ai-provider-info")
+def ai_provider_info():
+    """Return configured AI provider and model information (non-secret)."""
+    return {
+        "provider": "deepseek",
+        "model": settings.deepseek_model,
+        "provider_display": "DeepSeek",
+        "model_display": f"DeepSeek {settings.deepseek_model.replace('deepseek-', '').title()}",
+    }
+
+
 # ---------------------------------------------------------------- risk
 @app.get("/api/location-risk")
 def location_risk(lat: float = Query(..., ge=-90, le=90),
