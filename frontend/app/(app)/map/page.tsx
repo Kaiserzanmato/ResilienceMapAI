@@ -47,21 +47,21 @@ export default function MapPage() {
         </div>
       </div>
 
-      {/* Left widget stack (desktop/tablet) */}
-      <div className="pointer-events-none absolute left-3 top-[calc(var(--nav-h)+24px)] z-20 hidden flex-col gap-3 md:flex">
-        <div className="pointer-events-auto">
+      {/* Left widget stack (desktop/tablet) — flex-col with max-height to prevent overlap */}
+      <div className="pointer-events-none absolute left-3 top-[calc(var(--nav-h)+24px)] z-20 hidden flex-col gap-3 md:flex max-h-[calc(100vh-var(--nav-h)-200px)] overflow-y-auto">
+        <div className="pointer-events-auto shrink-0">
           <LayerControlWidget />
         </div>
-        <div className="pointer-events-auto">
+        <div className="pointer-events-auto shrink-0">
           <IntelligenceMarkersWidget />
         </div>
-        <div className="pointer-events-auto">
+        <div className="pointer-events-auto shrink-0">
           <DataSourceWidget />
         </div>
       </div>
 
-      {/* Legend — bottom left */}
-      <div className="pointer-events-none absolute bottom-6 left-3 z-20 hidden md:block">
+      {/* Legend — positioned to avoid overlap with left widgets */}
+      <div className="pointer-events-none fixed bottom-3 left-3 z-20 hidden md:block">
         <div className="pointer-events-auto">
           <RiskLegend />
         </div>
