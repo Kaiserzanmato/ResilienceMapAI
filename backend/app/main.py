@@ -11,10 +11,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
 from .data.sample_hazards import ACTIVE_ALERTS, DATASETS, HAZARD_EVENTS
 from .schemas import (AgentQueryRequest, AIReportRequest, AISummaryRequest,
-                      CompareRequest, DatasetUpload, ExportCSVRequest,
+                      AskAIRequest, CompareRequest, DatasetUpload, ExportCSVRequest,
                       ExportPDFRequest, ShareLinkRequest)
 from .security import AuditLogMiddleware, RateLimitMiddleware, require_permission
 from .services import geospatial_query as geo
+from .services.ask_ai import ask_ai_guardrailed
 from .services.dashboard import dashboard_stats
 from .services.ai_router import DISCLAIMER, generate_insight
 from .services.exporters import (build_pdf_report, get_report, list_reports,
@@ -116,6 +117,25 @@ async def agent_query(req: AgentQueryRequest):
         risk = score_location(req.lat, req.lng, req.location_name)
     result = await generate_insight("agent", risk, req.message, req.persona, req.provider)
     return {"risk": risk, **result}
+
+
+@app.post("/api/ask-ai")
+async def ask_ai(req: AskAIRequest):
+    """Ask AI with disaster intelligence guardrails.
+
+    Enforces scope checking (disaster/hazard/resilience only), source attribution,
+    and approved source usage. Returns grounded answers with citations or scope
+    refusal message if query is unrelated to disasters/hazards.
+    """
+    result = await ask_ai_guardrailed(
+        query=req.query,
+        lat=req.lat,
+        lng=req.lng,
+        location_name=req.location_name,
+        persona=req.persona,
+        provider=req.provider,
+    )
+    return result
 
 
 # ---------------------------------------------------------------- export

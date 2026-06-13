@@ -55,30 +55,65 @@ export function AIAgentPanel() {
     addMessage({ id: crypto.randomUUID(), role: "user", content: q });
     setLoading(true);
     try {
-      const res = await api.agentQuery({
-        message: q,
+      const res = await api.post<any>("/api/ask-ai", {
+        query: q,
         persona,
         lat: selected?.lat,
         lng: selected?.lng,
         location_name: selected?.name,
       });
+
+      // Handle out-of-scope queries
+      if (res.status === "out_of_scope") {
+        addMessage({
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: res.message,
+          meta: {
+            model: "Resilience Map AI",
+            sources: [],
+            confidence: "out_of_scope",
+            disclaimer: "This question is outside the scope of Resilience Map AI. I can only answer questions related to disaster intelligence, hazard monitoring, and resilience mapping.",
+          },
+        });
+        return;
+      }
+
+      // In-scope response
       addMessage({
         id: crypto.randomUUID(),
         role: "assistant",
-        content: res.answer,
+        content: res.answer || res.message || "Query processed.",
         meta: {
-          model: res.model,
-          sources: res.sources,
-          confidence: res.confidence,
+          model: "Resilience Map AI",
+          sources: res.sources || [],
+          confidence: res.confidence_category || "model_response",
           disclaimer: res.disclaimer,
         },
       });
     } catch (e) {
-      addMessage({
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: `Something went wrong reaching the AI service: ${(e as Error).message}. Please try again.`,
-      });
+      const error = e as any;
+      // Handle rate limiting with user-friendly message
+      if (error.status === 429) {
+        const retryAfter = error.response?.retry_after_seconds || error.response?.window_seconds || 60;
+        addMessage({
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: error.response?.detail || `Rate limit reached. Please wait ${retryAfter} seconds before trying again.`,
+          meta: {
+            model: "Rate Limiter",
+            sources: [],
+            confidence: "rate_limited",
+            disclaimer: "This is a rate limit to ensure fair access for all users. You can try again shortly.",
+          },
+        });
+      } else {
+        addMessage({
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: `Something went wrong: ${(e as Error).message}. Please try again.`,
+        });
+      }
     } finally {
       setLoading(false);
     }

@@ -70,6 +70,21 @@ class ShareLinkRequest(BaseModel):
     persona: str = Field("citizen", max_length=32)
 
 
+class AskAIRequest(BaseModel):
+    """Ask AI query with optional location context."""
+    query: str = Field(..., min_length=1, max_length=2000)
+    persona: str = Field("citizen", max_length=32)
+    provider: Optional[str] = Field(None, max_length=24)
+    lat: Optional[float] = Field(None, ge=-90, le=90)
+    lng: Optional[float] = Field(None, ge=-180, le=180)
+    location_name: Optional[str] = Field(None, max_length=120)
+
+    @field_validator("persona")
+    @classmethod
+    def persona_safe(cls, v: str) -> str:
+        return "".join(c for c in v if c.isalnum() or c == "_")[:32] or "citizen"
+
+
 class DatasetUpload(BaseModel):
     """Dataset metadata validation for the admin upload flow."""
     name: str = Field(..., min_length=3, max_length=120)

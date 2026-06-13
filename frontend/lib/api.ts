@@ -3,6 +3,16 @@ import type { AIResponse, Dataset, GeocodeResult, RiskAssessment } from "./types
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+class APIError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public response: any
+  ) {
+    super(message);
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -10,12 +20,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const detail = await res.json().catch(() => null);
-    throw new Error(detail?.detail ?? `Request failed (${res.status})`);
+    throw new APIError(
+      detail?.detail ?? `Request failed (${res.status})`,
+      res.status,
+      detail
+    );
   }
   return res.json();
 }
 
 export const api = {
+  post: <T,>(path: string, body: any) =>
+    request<T>(path, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
   locationRisk: (lat: number, lng: number, name?: string) =>
     request<RiskAssessment>(
       `/api/location-risk?lat=${lat}&lng=${lng}${name ? `&name=${encodeURIComponent(name)}` : ""}`

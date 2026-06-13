@@ -71,9 +71,25 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             audit_logger.info("RATE_LIMITED ip=%s path=%s", ip, request.url.path)
             # Return directly: HTTPException raised inside BaseHTTPMiddleware
             # bypasses FastAPI's handlers and would surface as a 500.
+
+            # User-friendly message for Ask AI with explanation
+            if is_ai:
+                message = (
+                    f"You've reached the Ask AI rate limit ({limit} queries per {window} seconds). "
+                    f"Please wait {window} seconds before trying again. This limit helps ensure fair "
+                    f"access for all users and maintains service stability."
+                )
+            else:
+                message = "Rate limit exceeded. Try again shortly."
+
             return JSONResponse(
                 status_code=429,
-                content={"detail": "Rate limit exceeded. Try again shortly."},
+                content={
+                    "detail": message,
+                    "retry_after_seconds": window,
+                    "limit": limit,
+                    "window_seconds": window,
+                },
                 headers={"Retry-After": str(window)},
             )
         bucket.append(now)
