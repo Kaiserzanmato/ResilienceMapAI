@@ -51,4 +51,13 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+
+    # Startup validation: ensure DeepSeek is configured for production
+    if settings.environment == "production" and not settings.deepseek_api_key:
+        raise ValueError(
+            "FATAL: DeepSeek API key is required in production. "
+            "Set DEEPSEEK_API_KEY environment variable and restart."
+        )
+
+    return settings
