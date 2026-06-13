@@ -47,12 +47,13 @@ export default function MapPage() {
         </div>
       </div>
 
-      {/* Left widget stack (desktop/tablet) — constrained to avoid legend overlap */}
+      {/* Left widget stack (desktop/tablet) — scrollable with padding-bottom for legend */}
       <div
-        className="pointer-events-none absolute left-3 z-20 hidden flex-col gap-3 md:flex overflow-y-auto"
+        className="pointer-events-none absolute left-3 z-20 hidden flex-col gap-3 md:flex overflow-y-auto pr-2"
         style={{
           top: "calc(var(--banner-h) + var(--nav-h) + 36px)",
-          maxHeight: "calc(100vh - var(--banner-h) - var(--nav-h) - var(--footer-h) - 260px)",
+          maxHeight: "calc(100vh - var(--banner-h) - var(--nav-h) - var(--footer-h) - 180px)",
+          paddingBottom: "12px",
         }}
       >
         <div className="pointer-events-auto shrink-0">
