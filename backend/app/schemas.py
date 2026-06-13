@@ -85,6 +85,16 @@ class AskAIRequest(BaseModel):
         return "".join(c for c in v if c.isalnum() or c == "_")[:32] or "citizen"
 
 
+class DataStatusResponse(BaseModel):
+    """Current data freshness and sync status."""
+    data_type: str  # "real-time", "synced", "static", "mock"
+    last_sync_timestamp: Optional[str] = None
+    sources_status: Dict[str, str] = Field(default_factory=dict)  # {source_id: "synced"/"failed"/"manual"}
+    sync_method: str  # "api", "scheduled", "manual", "static-file"
+    is_fresh: bool  # True if data is < 24 hours old
+    message: str
+
+
 class DatasetUpload(BaseModel):
     """Dataset metadata validation for the admin upload flow."""
     name: str = Field(..., min_length=3, max_length=120)

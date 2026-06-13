@@ -11,16 +11,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
 from .data.sample_hazards import ACTIVE_ALERTS, DATASETS, HAZARD_EVENTS
 from .schemas import (AgentQueryRequest, AIReportRequest, AISummaryRequest,
-                      AskAIRequest, CompareRequest, DatasetUpload, ExportCSVRequest,
-                      ExportPDFRequest, ShareLinkRequest)
+                      AskAIRequest, CompareRequest, DatasetUpload, DataStatusResponse,
+                      ExportCSVRequest, ExportPDFRequest, ShareLinkRequest)
 from .security import AuditLogMiddleware, RateLimitMiddleware, require_permission
 from .services import geospatial_query as geo
 from .services.ask_ai import ask_ai_guardrailed
 from .services.dashboard import dashboard_stats
+from .services.insights_generator import generate_insights
 from .services.ai_router import DISCLAIMER, generate_insight
 from .services.exporters import (build_pdf_report, get_report, list_reports,
                                  risks_to_csv, store_report)
 from .services.risk_scoring import compare_locations, score_location
+from .services.providers import build_providers
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version=settings.version)
@@ -136,6 +138,99 @@ async def ask_ai(req: AskAIRequest):
         provider=req.provider,
     )
     return result
+
+
+@app.post("/api/generate-insights")
+async def generate_insights_endpoint(
+    lat: float = Query(..., ge=-90, le=90),
+    lng: float = Query(..., ge=-180, le=180),
+    name: str = Query(None, max_length=120),
+    hazard_layer: str = Query("overall", max_length=32),
+    persona: str = Query("citizen", max_length=32),
+):
+    """Generate grounded risk intelligence insights for a location.
+
+    Insights are strictly grounded in:
+    - Approved disaster source registry
+    - Deterministic risk scores
+    - Official datasets
+    - User's selected hazard layer and persona
+
+    All sources are cited. Unsupported claims are blocked.
+    """
+    risk = score_location(lat, lng, name)
+    providers = build_providers()
+    insight = await generate_insights(
+        risk_data=risk,
+        hazard_layer=hazard_layer,
+        persona=persona,
+        providers=providers,
+        location_name=name or f"{lat}, {lng}",
+    )
+    return {"risk": risk, "insight": insight.to_dict()}
+
+
+# ---------------------------------------------------------------- data sync & status
+_last_sync_timestamp = None
+_sync_status = {}
+
+
+@app.get("/api/data-status")
+def data_status():
+    """Report current data freshness and sync status.
+
+    Returns whether displayed data is real-time, synced, stale, or static/mock.
+    """
+    global _last_sync_timestamp, _sync_status
+
+    # MVP: using static sample data, not real-time APIs
+    is_fresh = _last_sync_timestamp is not None
+    return DataStatusResponse(
+        data_type="static",  # MVP uses sample_hazards.py
+        last_sync_timestamp=_last_sync_timestamp,
+        sources_status=_sync_status or {"sample-data": "manual"},
+        sync_method="static-file",
+        is_fresh=is_fresh,
+        message="MVP uses curated sample data. To enable real-time sync, configure source APIs (PAGASA, PHIVOLCS, NASA FIRMS, etc.).",
+    )
+
+
+@app.post("/api/data-sync")
+def data_sync(request: Request):
+    """Manually trigger data sync from approved official sources.
+
+    In production, this would fetch from:
+    - PHIVOLCS Latest Earthquake Information
+    - PAGASA Severe Weather Bulletin
+    - NASA FIRMS Active Fire Data
+    - USGS Earthquake GeoJSON
+    - And other approved sources
+
+    For MVP: returns status message.
+    """
+    global _last_sync_timestamp, _sync_status
+    require_permission(request, "manage_datasets")
+
+    _last_sync_timestamp = datetime.now(timezone.utc).isoformat()
+    _sync_status = {
+        "sample-data": "synced",
+        "phivolcs": "pending (api-key required)",
+        "pagasa": "pending (api-key required)",
+        "nasa-firms": "pending (api-key required)",
+    }
+
+    return {
+        "message": "Data sync triggered (MVP: sample data only)",
+        "sync_timestamp": _last_sync_timestamp,
+        "status": _sync_status,
+        "sources_available": [
+            "PHIVOLCS Latest Earthquake Information",
+            "PAGASA Severe Weather Bulletin",
+            "NASA FIRMS Active Fire Data",
+            "USGS Earthquake GeoJSON",
+        ],
+        "next_steps": "Configure source API keys in environment variables to enable live data.",
+    }
 
 
 # ---------------------------------------------------------------- export

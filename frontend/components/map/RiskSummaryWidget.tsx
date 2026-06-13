@@ -1,7 +1,7 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  FileDown, FileSpreadsheet, Link2, Loader2, Sparkles, X,
+  FileDown, FileSpreadsheet, Link2, Loader2, Sparkles, Zap, X,
 } from "lucide-react";
 import { useState } from "react";
 import { api, downloadExport } from "@/lib/api";
@@ -67,7 +67,20 @@ export function RiskSummaryWidget() {
     }
   }
 
+  async function generateInsights() {
+    if (!risk) return;
+    setBusy("insights");
+    try {
+      // TODO: Call /api/generate-insights endpoint and display results
+      // For now, show a notification that this is coming soon
+      console.log("Generate Insights feature coming soon");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const actions = [
+    { key: "insights", label: "Insights", icon: Zap, onClick: generateInsights },
     { key: "ai", label: "Ask AI", icon: Sparkles, onClick: () => setAiOpen(true) },
     { key: "pdf", label: "PDF", icon: FileDown, onClick: exportPdf },
     { key: "csv", label: "CSV", icon: FileSpreadsheet, onClick: exportCsv },
@@ -150,13 +163,13 @@ export function RiskSummaryWidget() {
             </p>
           )}
 
-          <div className="mt-3.5 grid grid-cols-4 gap-1.5">
+          <div className="mt-3.5 flex flex-wrap gap-1.5">
             {actions.map((a) => (
               <button
                 key={a.key}
                 onClick={a.onClick}
                 disabled={busy !== null}
-                className="focus-ring glass flex cursor-pointer flex-col items-center gap-1 rounded-xl px-1 py-2.5 text-[11px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50"
+                className="focus-ring glass flex cursor-pointer flex-col items-center gap-1 rounded-xl px-1 py-2.5 text-[11px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50 flex-1 min-w-[60px]"
               >
                 {busy === a.key ? (
                   <Loader2 size={15} className="animate-spin" aria-hidden="true" />
