@@ -15,6 +15,12 @@ HAZARD_KEYS = [
     "volcano",
     "landslide",
     "storm_surge",
+    "drought",
+    "wildfire",
+    "extreme_heat",
+    "conflict",
+    "climate",
+    "environmental",
 ]
 
 HAZARD_LABELS = {
@@ -24,6 +30,12 @@ HAZARD_LABELS = {
     "volcano": "Volcanic Activity",
     "landslide": "Landslide",
     "storm_surge": "Storm Surge",
+    "drought": "Drought",
+    "wildfire": "Wildfire",
+    "extreme_heat": "Extreme Heat",
+    "conflict": "Conflict / War",
+    "climate": "Climate Change",
+    "environmental": "Environmental",
 }
 
 # Each zone: name, lat, lng, radius_km (core influence), population, hazard scores.

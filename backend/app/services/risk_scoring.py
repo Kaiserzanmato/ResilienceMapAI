@@ -21,6 +21,34 @@ RISK_LEVELS = [
 ]
 
 
+def _expand_baseline(base: Dict) -> Dict:
+    """Expand a baseline to include all HAZARD_KEYS with intelligent defaults.
+
+    For missing categories, estimate based on existing data and geography patterns.
+    """
+    expanded = base.copy()
+
+    # Intelligent defaults for missing categories based on existing scores
+    avg_score = sum(base.values()) / len(base) if base else 30
+    max_score = max(base.values()) if base else 50
+
+    # Provide sensible defaults for new categories if not present
+    defaults = {
+        "drought": max(0, int(avg_score * 0.8)),  # Usually less severe than floods
+        "wildfire": max(0, int(max_score * 0.6)),  # Related to climate/heat
+        "extreme_heat": max(0, int(avg_score * 0.9)),  # Increasingly common globally
+        "conflict": 15,  # Most countries have low conflict risk
+        "climate": max(0, int(avg_score * 1.1)),  # Affects most countries
+        "environmental": max(0, int(avg_score * 0.7)),  # General environmental hazards
+    }
+
+    for key, default in defaults.items():
+        if key not in expanded:
+            expanded[key] = min(100, default)
+
+    return expanded
+
+
 def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     r = 6371.0
     p1, p2 = math.radians(lat1), math.radians(lat2)
@@ -212,18 +240,32 @@ def score_location(lat: float, lng: float, name: Optional[str] = None, country_c
     # If no zone data and country code provided, use country-level fallback
     country_baseline = None
     if not has_data and country_code:
-        country_baseline = COUNTRY_RISK_BASELINE.get(country_code.upper())
+        base = COUNTRY_RISK_BASELINE.get(country_code.upper())
+        if base:
+            country_baseline = _expand_baseline(base)
 
     # If country not in explicit baseline, use conservative defaults
     if not has_data and not country_baseline:
-        country_baseline = COUNTRY_RISK_BASELINE.get("XX")
+        base = COUNTRY_RISK_BASELINE.get("XX")
+        country_baseline = _expand_baseline(base) if base else {}
 
     hazards = {}
     for key in HAZARD_KEYS:
         if has_data:
             # Max-weighted contribution: the dominant zone drives the hazard.
-            score = max(c["zone"]["hazards"][key] * c["weight"] for c in contributions)
-            score = round(score)
+            # For zones without this hazard category, use country baseline as fallback
+            zone_scores = []
+            for c in contributions:
+                if key in c["zone"]["hazards"]:
+                    zone_scores.append(c["zone"]["hazards"][key] * c["weight"])
+                elif country_baseline and key in country_baseline:
+                    zone_scores.append(country_baseline[key] * c["weight"])
+
+            if zone_scores:
+                score = max(zone_scores)
+                score = round(score)
+            else:
+                score = country_baseline.get(key, 0) if country_baseline else 0
         else:
             # Use country-level fallback (always available now with XX default)
             score = country_baseline.get(key, 0) if country_baseline else 0
