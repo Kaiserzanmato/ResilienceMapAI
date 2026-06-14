@@ -261,4 +261,12 @@ GAZETTEER = [
     {"name": "São Paulo", "country": "Brazil", "lat": -23.5505, "lng": -46.6333},
     {"name": "Mumbai", "country": "India", "lat": 19.0760, "lng": 72.8777},
     {"name": "Delhi", "country": "India", "lat": 28.7041, "lng": 77.1025},
+    {"name": "Lagos", "country": "Nigeria", "lat": 6.5244, "lng": 3.3792},
+    {"name": "Nairobi", "country": "Kenya", "lat": -1.2864, "lng": 36.8172},
+    {"name": "Johannesburg", "country": "South Africa", "lat": -26.2023, "lng": 28.0436},
+    {"name": "Addis Ababa", "country": "Ethiopia", "lat": 9.0320, "lng": 38.7469},
+    {"name": "Casablanca", "country": "Morocco", "lat": 33.5731, "lng": -7.5898},
+    {"name": "Accra", "country": "Ghana", "lat": 5.6037, "lng": -0.1870},
+    {"name": "Kinshasa", "country": "Democratic Republic of the Congo", "lat": -4.3276, "lng": 15.3136},
+    {"name": "Cape Town", "country": "South Africa", "lat": -33.9249, "lng": 18.4241},
 ]
