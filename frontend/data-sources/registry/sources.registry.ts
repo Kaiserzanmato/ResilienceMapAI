@@ -35,8 +35,19 @@ export type AccessType =
   | "manual";
 
 export type SyncStatus = "success" | "failed" | "partial" | "disabled";
-export type Coverage = "global" | "regional" | "country";
+export type Coverage = "global" | "regional" | "country-specific";
 export type TrustLevel = 1 | 2 | 3 | 4 | 5;
+
+export type Region =
+  | "africa"
+  | "americas"
+  | "asia"
+  | "europe"
+  | "oceania"
+  | "southeast_asia"
+  | "south_asia"
+  | "east_asia"
+  | "middle_east";
 
 export interface RiskSource {
   id: string;
@@ -46,7 +57,7 @@ export interface RiskSource {
   docsUrl?: string;
   accessType: AccessType;
   coverage: Coverage;
-  countries?: string[];
+  countrySpecific?: string[];
   regions?: string[];
   domains: RiskDomain[];
   trustLevel: TrustLevel;
@@ -192,7 +203,7 @@ export const SOURCE_REGISTRY: RiskSource[] = [
     url: "https://www.weather.gov/documentation/services-web-api",
     accessType: "api",
     coverage: "global",
-    countries: ["US"],
+    countrySpecific: ["US"],
     domains: ["natural_hazards", "climate"],
     trustLevel: 1,
     confidenceCategory: "official_warning",
@@ -524,7 +535,7 @@ export const SOURCE_REGISTRY: RiskSource[] = [
     docsUrl: "https://www.faa.gov/data_research",
     accessType: "portal",
     coverage: "regional",
-    countries: ["US"],
+    countrySpecific: ["US"],
     domains: ["aviation"],
     trustLevel: 4,
     confidenceCategory: "aviation_advisory",
@@ -623,8 +634,8 @@ export const SOURCE_REGISTRY: RiskSource[] = [
     url: "https://www.pagasa.dost.gov.ph",
     docsUrl: "https://www.pagasa.dost.gov.ph/tropical-cyclone/severe-weather-bulletin",
     accessType: "portal",
-    coverage: "country",
-    countries: ["PH"],
+    coverage: "country-specific",
+    countrySpecific: ["PH"],
     domains: ["natural_hazards", "climate"],
     trustLevel: 1,
     confidenceCategory: "official_warning",
@@ -638,8 +649,8 @@ export const SOURCE_REGISTRY: RiskSource[] = [
     organization: "Philippine Atmospheric, Geophysical and Astronomical Services Administration",
     url: "https://www.pagasa.dost.gov.ph/climate/climate-data",
     accessType: "portal",
-    coverage: "country",
-    countries: ["PH"],
+    coverage: "country-specific",
+    countrySpecific: ["PH"],
     domains: ["climate"],
     trustLevel: 1,
     confidenceCategory: "official_observation",
@@ -652,8 +663,8 @@ export const SOURCE_REGISTRY: RiskSource[] = [
     organization: "Philippine Institute of Volcanology and Seismology",
     url: "https://www.phivolcs.dost.gov.ph",
     accessType: "portal",
-    coverage: "country",
-    countries: ["PH"],
+    coverage: "country-specific",
+    countrySpecific: ["PH"],
     domains: ["natural_hazards"],
     trustLevel: 1,
     confidenceCategory: "official_warning",
@@ -667,8 +678,8 @@ export const SOURCE_REGISTRY: RiskSource[] = [
     organization: "National Disaster Risk Reduction and Management Council",
     url: "https://ndrrmc.gov.ph",
     accessType: "portal",
-    coverage: "country",
-    countries: ["PH"],
+    coverage: "country-specific",
+    countrySpecific: ["PH"],
     domains: ["natural_hazards", "humanitarian"],
     trustLevel: 1,
     confidenceCategory: "official_warning",
@@ -681,8 +692,8 @@ export const SOURCE_REGISTRY: RiskSource[] = [
     organization: "PHIVOLCS / MGB",
     url: "https://www.georisk.gov.ph",
     accessType: "portal",
-    coverage: "country",
-    countries: ["PH"],
+    coverage: "country-specific",
+    countrySpecific: ["PH"],
     domains: ["natural_hazards"],
     trustLevel: 1,
     confidenceCategory: "official_observation",
@@ -695,8 +706,8 @@ export const SOURCE_REGISTRY: RiskSource[] = [
     organization: "PHIVOLCS / MGB",
     url: "https://hazardhunter.georisk.gov.ph/map",
     accessType: "portal",
-    coverage: "country",
-    countries: ["PH"],
+    coverage: "country-specific",
+    countrySpecific: ["PH"],
     domains: ["natural_hazards"],
     trustLevel: 1,
     confidenceCategory: "official_observation",
@@ -709,8 +720,8 @@ export const SOURCE_REGISTRY: RiskSource[] = [
     organization: "University of the Philippines",
     url: "https://noah.up.edu.ph",
     accessType: "portal",
-    coverage: "country",
-    countries: ["PH"],
+    coverage: "country-specific",
+    countrySpecific: ["PH"],
     domains: ["natural_hazards"],
     trustLevel: 1,
     confidenceCategory: "model_forecast",
@@ -729,7 +740,7 @@ export function getSourcesForContext(
     const domainMatch = !domain || s.domains.includes(domain);
     const coverageMatch =
       s.coverage === "global" ||
-      (s.coverage === "country" && !!country && s.countries?.includes(country)) ||
+      (s.coverage === "country-specific" && !!country && s.countrySpecific?.includes(country)) ||
       s.coverage === "regional";
     return domainMatch && coverageMatch;
   });

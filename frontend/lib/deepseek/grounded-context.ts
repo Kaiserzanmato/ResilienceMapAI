@@ -5,10 +5,15 @@ import {
   type RiskSource,
 } from "@/data-sources/registry/sources.registry";
 import { isDataStale } from "@/data-sources/validators/validate-source-response";
+import { getCountryByAlpha2 } from "@/lib/locations/country-search";
+import { selectSourcesForCountry } from "@/data-sources/registry/country-source-routing";
 
 export interface GroundedContext {
   location?: string;
   country?: string;
+  countryAlpha2?: string;
+  countryAlpha3?: string;
+  countryOfficialName?: string;
   domain?: RiskDomain;
   approvedSources: RiskSourceContext[];
   staleSources: string[];
@@ -34,13 +39,23 @@ export interface RiskSourceContext {
  * Build the grounded context object that is passed to the AI layer.
  * Only enabled, approved sources are included.
  * Stale sources are flagged — the AI must disclose when data is stale.
+ * Country codes (alpha2, alpha3) are resolved if provided.
  */
 export function buildGroundedContext(opts: {
   location?: string;
   country?: string;
+  countryAlpha2?: string;
   domain?: RiskDomain;
 }): GroundedContext {
-  const prioritized = getPrioritizedSources(opts.country, opts.domain);
+  // Resolve country metadata
+  let countryAlpha2 = opts.countryAlpha2;
+  let countryData = countryAlpha2 ? getCountryByAlpha2(countryAlpha2) : undefined;
+
+  // Select sources: use country-aware routing if alpha2 provided, else generic prioritization
+  let prioritized = opts.domain && countryAlpha2
+    ? selectSourcesForCountry(countryAlpha2, opts.domain)
+    : getPrioritizedSources(opts.country, opts.domain);
+
   const approvedSources: RiskSourceContext[] = [];
   const staleSources: string[] = [];
   const unavailableSources: string[] = [];
@@ -74,7 +89,10 @@ export function buildGroundedContext(opts: {
 
   return {
     location: opts.location,
-    country: opts.country,
+    country: opts.country || countryData?.name,
+    countryAlpha2: countryAlpha2 || countryData?.alpha2,
+    countryAlpha3: countryData?.alpha3,
+    countryOfficialName: countryData?.officialName,
     domain: opts.domain,
     approvedSources,
     staleSources,
@@ -148,11 +166,11 @@ Risk scores are computed by the deterministic backend risk engine, never by the 
 export function getSourceRegistryForDisplay(): {
   global: RiskSource[];
   regional: RiskSource[];
-  country: RiskSource[];
+  countrySpecific: RiskSource[];
 } {
   return {
     global: SOURCE_REGISTRY.filter((s) => s.coverage === "global" && s.enabled),
     regional: SOURCE_REGISTRY.filter((s) => s.coverage === "regional" && s.enabled),
-    country: SOURCE_REGISTRY.filter((s) => s.coverage === "country" && s.enabled),
+    countrySpecific: SOURCE_REGISTRY.filter((s) => s.coverage === "country-specific" && s.enabled),
   };
 }
