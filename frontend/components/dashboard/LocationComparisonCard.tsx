@@ -33,18 +33,19 @@ export function LocationComparisonCard({
   index?: number;
   className?: string;
 }) {
-  const [active, setActive] = useState<string[]>([
-    "Metro Manila", "Cebu City", "Tacloban City", "Davao City",
-  ]);
+  const [active, setActive] = useState<string[]>([]); // Start empty to defer API call
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   const selected = PRESETS.filter((p) => active.includes(p.name));
+  // Only fetch after user interaction
   const { data } = useQuery({
     queryKey: ["compare", ...active],
     queryFn: () => api.compare(selected),
-    enabled: selected.length >= 2,
+    enabled: selected.length >= 2 && hasInteracted,
   });
 
   function toggle(name: string) {
+    setHasInteracted(true);
     setActive((prev) => {
       if (prev.includes(name)) {
         return prev.length > 2 ? prev.filter((n) => n !== name) : prev;
@@ -59,6 +60,36 @@ export function LocationComparisonCard({
     score: r.overall.score ?? 0,
     color: r.overall.color,
   }));
+
+  // Show placeholder if no locations selected
+  if (!hasInteracted || active.length === 0) {
+    return (
+      <ChartCard
+        title="Location Comparison"
+        sub="Compare overall and per-hazard scores across areas (2–4 locations)"
+        index={index}
+        className={className}
+      >
+        <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Locations to compare">
+          {PRESETS.map((p) => (
+            <button
+              key={p.name}
+              aria-pressed={false}
+              onClick={() => toggle(p.name)}
+              className="focus-ring cursor-pointer rounded-full border border-[var(--surface-border)] px-3 py-1.5 text-[12px] font-medium text-[var(--fg-muted)] transition-all hover:text-[var(--fg)]"
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center justify-center py-12 text-center">
+          <p className="text-[13px] text-[var(--fg-muted)]">
+            Select 2–4 locations above to compare
+          </p>
+        </div>
+      </ChartCard>
+    );
+  }
 
   return (
     <ChartCard
