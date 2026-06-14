@@ -27,7 +27,7 @@ export default function MapPage() {
   // Fetch risk whenever a location is selected (click or search)
   const { data: risk } = useQuery({
     queryKey: ["risk", selected?.lat, selected?.lng, selected?.name],
-    queryFn: () => api.locationRisk(selected!.lat, selected!.lng, selected?.name),
+    queryFn: () => api.locationRisk(selected!.lat, selected!.lng, selected?.name, selected?.countryCode),
     enabled: !!selected,
   });
 

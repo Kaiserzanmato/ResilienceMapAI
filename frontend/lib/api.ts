@@ -36,9 +36,9 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  locationRisk: (lat: number, lng: number, name?: string) =>
+  locationRisk: (lat: number, lng: number, name?: string, countryCode?: string) =>
     request<RiskAssessment>(
-      `/api/location-risk?lat=${lat}&lng=${lng}${name ? `&name=${encodeURIComponent(name)}` : ""}`
+      `/api/location-risk?lat=${lat}&lng=${lng}${name ? `&name=${encodeURIComponent(name)}` : ""}${countryCode ? `&country_code=${countryCode}` : ""}`
     ),
 
   compare: (locations: { lat: number; lng: number; name?: string }[]) =>

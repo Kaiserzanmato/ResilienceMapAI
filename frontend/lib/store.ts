@@ -7,6 +7,7 @@ export interface SelectedLocation {
   lat: number;
   lng: number;
   name?: string;
+  countryCode?: string;
 }
 
 interface AppState {

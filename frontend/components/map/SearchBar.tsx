@@ -4,6 +4,7 @@ import { Loader2, MapPin, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
+import { geocodeLocation, parseCoordinates, getLocationCountryAlpha2 } from "@/lib/locations/geocoding";
 
 export function SearchBar() {
   const [query, setQuery] = useState("");
@@ -18,9 +19,22 @@ export function SearchBar() {
     return () => clearTimeout(t);
   }, [query]);
 
+  // Try parsing as coordinates first, then fall back to global geocoding
   const { data, isFetching } = useQuery({
     queryKey: ["geocode", debounced],
-    queryFn: () => api.geocode(debounced),
+    queryFn: async () => {
+      if (!debounced.trim()) return { results: [] };
+
+      // Try parsing as coordinates
+      const coordMatch = parseCoordinates(debounced);
+      if (coordMatch) {
+        return { results: [coordMatch] };
+      }
+
+      // Fall back to global geocoding
+      const results = await geocodeLocation(debounced, 8);
+      return { results };
+    },
     enabled: debounced.trim().length >= 2,
   });
 
@@ -71,7 +85,8 @@ export function SearchBar() {
                 role="option"
                 aria-selected="false"
                 onClick={() => {
-                  setSelected({ lat: r.lat, lng: r.lng, name: r.name });
+                  const countryCode = getLocationCountryAlpha2(r);
+                  setSelected({ lat: r.lat, lng: r.lng, name: r.name, countryCode });
                   setQuery(r.name);
                   setOpen(false);
                 }}

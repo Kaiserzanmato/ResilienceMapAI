@@ -61,8 +61,9 @@ def ai_provider_info():
 @app.get("/api/location-risk")
 def location_risk(lat: float = Query(..., ge=-90, le=90),
                   lng: float = Query(..., ge=-180, le=180),
-                  name: str = Query(None, max_length=120)):
-    return score_location(lat, lng, name)
+                  name: str = Query(None, max_length=120),
+                  country_code: str = Query(None, max_length=2)):
+    return score_location(lat, lng, name, country_code)
 
 
 @app.post("/api/compare-locations")
