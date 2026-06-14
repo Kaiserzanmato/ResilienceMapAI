@@ -15,7 +15,7 @@ import { axisProps, ChartCard, tooltipStyle } from "@/components/dashboard/Chart
 import { KPICard } from "@/components/dashboard/KPICard";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { API_BASE } from "@/lib/api";
-import { riskColor } from "@/lib/utils";
+import { formatNumber, riskColor } from "@/lib/utils";
 
 // Lazy load below-the-fold charts
 const DeferredCharts = dynamic(
