@@ -23,7 +23,7 @@ export interface RiskAssessment {
     schools: number;
     hospitals: number;
   } | null;
-  data_coverage: "covered" | "limited";
+  data_coverage: "covered" | "regional" | "limited";
   confidence: "High" | "Medium" | "Low";
   generated_at: string;
   methodology: string;
