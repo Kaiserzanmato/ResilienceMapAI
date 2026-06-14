@@ -131,9 +131,18 @@ export default function DatasetsPage() {
           {FLAGS.SOURCE_HEALTH_MONITORING && (
             <button
               onClick={() => qc.invalidateQueries({ queryKey: ["sync-health"] })}
-              className="focus-ring glass flex h-10 cursor-pointer items-center gap-2 rounded-xl px-4 text-[13px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              disabled={syncLoading}
+              className="focus-ring glass flex h-10 cursor-pointer items-center gap-2 rounded-xl px-4 text-[13px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <RefreshCw size={14} aria-hidden="true" /> Refresh
+              {syncLoading ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" aria-hidden="true" /> Refreshing
+                </>
+              ) : (
+                <>
+                  <RefreshCw size={14} aria-hidden="true" /> Refresh
+                </>
+              )}
             </button>
           )}
           <button
