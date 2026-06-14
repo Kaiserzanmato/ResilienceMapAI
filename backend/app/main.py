@@ -127,11 +127,68 @@ async def ai_report(req: AIReportRequest):
 @app.post("/api/agent/query")
 async def agent_query(req: AgentQueryRequest):
     import json as _json
+    from .services.query_processor import (
+        classify_query, QueryIntent, get_top_risk_locations,
+        get_conflict_high_risk_areas, compare_locations,
+        format_ranking_response, format_comparison_response, format_conflict_response,
+    )
+
     risk = None
     if req.lat is not None and req.lng is not None:
         risk = score_location(req.lat, req.lng, req.location_name)
-    # If frontend sent a serialized risk_context, use it to enrich the message
-    # (the deterministic backend score takes precedence — this is supplemental)
+
+    # Classify the user's query intent
+    intent, params = classify_query(req.message)
+
+    # Route to appropriate handler based on query intent
+    if intent == QueryIntent.RANKING and not (req.lat and req.lng):
+        # Global ranking query - use structured data instead of generate_insight
+        hazard = params.get("hazard")
+        locations = get_top_risk_locations(hazard=hazard, limit=8)
+        answer = format_ranking_response(intent, hazard, locations)
+        return {
+            "risk": risk,
+            "answer": answer,
+            "model": "query-processor (deterministic)",
+            "persona": req.persona,
+            "sources": [],
+            "confidence": "Medium",
+            "flagged_input": False,
+            "disclaimer": "Rankings based on ResilienceMap curated hazard zones and global country-level risk baselines. Not an official advisory.",
+        }
+
+    elif intent == QueryIntent.COMPARISON and "locations" in params:
+        # Comparison query
+        locs = params.get("locations", [])
+        comparison_data = compare_locations(locs)
+        answer = format_comparison_response(comparison_data.get("locations", []))
+        return {
+            "risk": risk,
+            "answer": answer,
+            "model": "query-processor (deterministic)",
+            "persona": req.persona,
+            "sources": [],
+            "confidence": "Medium",
+            "flagged_input": False,
+            "disclaimer": "Comparison based on ResilienceMap curated hazard data. Not an official advisory.",
+        }
+
+    elif intent == QueryIntent.CONFLICT:
+        # Conflict query
+        areas = get_conflict_high_risk_areas()
+        answer = format_conflict_response(areas)
+        return {
+            "risk": risk,
+            "answer": answer,
+            "model": "query-processor (deterministic)",
+            "persona": req.persona,
+            "sources": [],
+            "confidence": "Medium",
+            "flagged_input": False,
+            "disclaimer": "Conflict risk is indicative. Consult official sources for current geopolitical status.",
+        }
+
+    # For location, source, and general queries - use generate_insight with context
     enriched_message = req.message
     if req.risk_context:
         try:
@@ -147,6 +204,7 @@ async def agent_query(req: AgentQueryRequest):
             )
         except (ValueError, TypeError):
             pass
+
     result = await generate_insight("agent", risk, enriched_message, req.persona, req.provider)
     return {"risk": risk, **result}
 
