@@ -30,6 +30,7 @@ export async function geocodeLocation(query: string, limit: number = 8): Promise
       format: "json",
       limit: limit.toString(),
       "accept-language": "en",
+      addressdetails: "1",
     });
 
     const res = await fetch(`${NOMINATIM_API}?${params}`, {
@@ -81,6 +82,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Geocoded
       lon: lng.toString(),
       format: "json",
       "accept-language": "en",
+      addressdetails: "1",
     });
 
     const res = await fetch(`${REVERSE_API}?${params}`, {
