@@ -78,75 +78,67 @@ export function InsightsPanel({
 
         {insight && !isLoading && !error && (
           <div className="space-y-6">
-            {/* Executive Summary */}
+            {/* Summary */}
             {insight.summary && (
               <section>
-                <h3 className="text-lg font-semibold mb-2">Executive Summary</h3>
-                <p className="text-[var(--fg-muted)] leading-relaxed">{insight.summary}</p>
+                <h3 className="text-lg font-semibold mb-2">Intelligence Summary</h3>
+                <p className="text-[var(--fg-muted)] leading-relaxed whitespace-pre-wrap">
+                  {insight.summary.split("\n\n")[0]}
+                </p>
               </section>
             )}
 
-            {/* Risk Drivers */}
-            {insight.risk_drivers && insight.risk_drivers.length > 0 && (
+            {/* Notice */}
+            {insight.notice && (
+              <section className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm text-[var(--fg-muted)]">
+                {insight.notice}
+              </section>
+            )}
+
+            {/* Hazard Types */}
+            {insight.hazard_type && (
               <section>
-                <h3 className="text-lg font-semibold mb-3">Primary Risk Drivers</h3>
-                <ul className="space-y-2">
-                  {insight.risk_drivers.map((driver: string, idx: number) => (
-                    <li key={idx} className="flex gap-2 text-sm">
-                      <span className="text-[var(--accent)] font-bold">•</span>
-                      <span>{driver}</span>
-                    </li>
+                <h3 className="text-lg font-semibold mb-2">Hazard Assessment</h3>
+                <p className="text-[var(--fg-muted)] text-sm">
+                  <span className="font-semibold">Type:</span> {insight.hazard_type}
+                </p>
+              </section>
+            )}
+
+            {/* Sources */}
+            {insight.sources && insight.sources.length > 0 && (
+              <section>
+                <h3 className="text-lg font-semibold mb-3">Official Sources</h3>
+                <div className="space-y-2">
+                  {insight.sources.map((source: any, idx: number) => (
+                    <a
+                      key={idx}
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block p-2 rounded-lg bg-[color-mix(in_srgb,var(--fg)_5%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] transition-colors"
+                    >
+                      <div className="font-medium text-sm">{source.source_name}</div>
+                      <div className="text-xs text-[var(--fg-muted)]">{source.agency}</div>
+                      {source.verified && (
+                        <div className="text-xs text-green-500 mt-1">✓ Official Source</div>
+                      )}
+                    </a>
                   ))}
-                </ul>
-              </section>
-            )}
-
-            {/* Historical Context */}
-            {insight.historical_context && (
-              <section>
-                <h3 className="text-lg font-semibold mb-2">Historical Context</h3>
-                <p className="text-[var(--fg-muted)] leading-relaxed">{insight.historical_context}</p>
-              </section>
-            )}
-
-            {/* Exposure Analysis */}
-            {insight.exposure && (
-              <section>
-                <h3 className="text-lg font-semibold mb-2">Population & Infrastructure Exposure</h3>
-                <p className="text-[var(--fg-muted)] leading-relaxed">{insight.exposure}</p>
-              </section>
-            )}
-
-            {/* Preparedness */}
-            {insight.preparedness && insight.preparedness.length > 0 && (
-              <section>
-                <h3 className="text-lg font-semibold mb-3">Preparedness Considerations</h3>
-                <ul className="space-y-2">
-                  {insight.preparedness.map((item: string, idx: number) => (
-                    <li key={idx} className="flex gap-2 text-sm">
-                      <span className="text-[var(--accent)] font-bold">→</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
+                </div>
               </section>
             )}
 
             {/* Metadata */}
             <div className="pt-4 border-t border-[var(--fg)]/10 space-y-2 text-xs text-[var(--fg-muted)]">
-              {insight.confidence && (
+              {insight.confidence_category && (
                 <div>
-                  <span className="font-semibold">Confidence:</span> {insight.confidence}
+                  <span className="font-semibold">Confidence:</span> {insight.confidence_category.replace(/_/g, " ")}
                 </div>
               )}
-              {insight.sources && insight.sources.length > 0 && (
+              {insight.timestamp && (
                 <div>
-                  <span className="font-semibold">Sources:</span> {insight.sources.join(", ")}
-                </div>
-              )}
-              {insight.last_updated && (
-                <div>
-                  <span className="font-semibold">Last Updated:</span> {new Date(insight.last_updated).toLocaleDateString()}
+                  <span className="font-semibold">Generated:</span> {new Date(insight.timestamp).toLocaleString()}
                 </div>
               )}
             </div>

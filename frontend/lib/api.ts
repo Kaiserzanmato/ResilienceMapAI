@@ -64,7 +64,10 @@ export const api = {
     }),
 
   generateInsights: (lat: number, lng: number, name?: string, hazardLayer: string = "overall", persona: string = "citizen") =>
-    request<{ risk: RiskAssessment; insight: any }>(`/api/generate-insights?lat=${lat}&lng=${lng}${name ? `&name=${encodeURIComponent(name)}` : ""}&hazard_layer=${hazardLayer}&persona=${persona}`),
+    request<{ risk: RiskAssessment; insight: any }>(
+      `/api/generate-insights?lat=${lat}&lng=${lng}${name ? `&name=${encodeURIComponent(name)}` : ""}&hazard_layer=${hazardLayer}&persona=${persona}`,
+      { method: "POST" }
+    ),
 
   agentQuery: (body: {
     message: string;
