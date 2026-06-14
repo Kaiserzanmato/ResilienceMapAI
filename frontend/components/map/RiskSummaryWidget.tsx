@@ -9,11 +9,16 @@ import { useAppStore } from "@/lib/store";
 import { captureMapSnapshot, formatNumber, riskColor } from "@/lib/utils";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { RiskBadge } from "@/components/ui/RiskBadge";
+import { InsightsPanel } from "./InsightsPanel";
 
 export function RiskSummaryWidget() {
   const { risk, selected, setSelected, setRisk, persona, setAiOpen } = useAppStore();
   const [busy, setBusy] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
+  const [insightsData, setInsightsData] = useState<any>(null);
 
   if (!selected || !risk) return null;
 
@@ -68,13 +73,26 @@ export function RiskSummaryWidget() {
   }
 
   async function generateInsights() {
-    if (!risk) return;
+    if (!risk || !selected) return;
+    setInsightsLoading(true);
+    setInsightsError(null);
     setBusy("insights");
     try {
-      // TODO: Call /api/generate-insights endpoint and display results
-      // For now, show a notification that this is coming soon
-      console.log("Generate Insights feature coming soon");
+      const result = await api.generateInsights(
+        selected.lat,
+        selected.lng,
+        risk.location_name,
+        "overall",
+        persona
+      );
+      setInsightsData(result.insight);
+      setInsightsOpen(true);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to generate insights";
+      setInsightsError(message);
+      setInsightsOpen(true);
     } finally {
+      setInsightsLoading(false);
       setBusy(null);
     }
   }
@@ -187,6 +205,19 @@ export function RiskSummaryWidget() {
           </p>
         </GlassCard>
       </motion.div>
+
+      <InsightsPanel
+        isOpen={insightsOpen}
+        isLoading={insightsLoading}
+        error={insightsError}
+        insight={insightsData}
+        locationName={risk.location_name}
+        onClose={() => {
+          setInsightsOpen(false);
+          setInsightsData(null);
+          setInsightsError(null);
+        }}
+      />
     </AnimatePresence>
   );
 }

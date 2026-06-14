@@ -63,6 +63,9 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  generateInsights: (lat: number, lng: number, name?: string, hazardLayer: string = "overall", persona: string = "citizen") =>
+    request<{ risk: RiskAssessment; insight: any }>(`/api/generate-insights?lat=${lat}&lng=${lng}${name ? `&name=${encodeURIComponent(name)}` : ""}&hazard_layer=${hazardLayer}&persona=${persona}`),
+
   agentQuery: (body: {
     message: string;
     persona: string;
