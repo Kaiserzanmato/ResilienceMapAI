@@ -12,8 +12,15 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { FLAGS } from "@/lib/feature-flags";
+
+const GlobeLoader = FLAGS.HOME_GLOBE_LOADER
+  ? dynamic(() => import("@/components/globe/GlobeLoader"), { ssr: false, loading: () => null })
+  : null;
 
 const fadeUp = {
   initial: { opacity: 0, y: 28 },
@@ -61,6 +68,18 @@ const PERSONA_CHIPS = [
 ];
 
 export default function LandingPage() {
+  const [isBooting, setIsBooting] = useState(FLAGS.HOME_GLOBE_LOADER);
+
+  useEffect(() => {
+    if (!FLAGS.HOME_GLOBE_LOADER) return;
+    const t = window.setTimeout(() => setIsBooting(false), 1400);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  if (isBooting && GlobeLoader) {
+    return <GlobeLoader />;
+  }
+
   return (
     <div className="relative overflow-x-clip">
       {/* Minimal landing nav */}

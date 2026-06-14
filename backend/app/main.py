@@ -314,6 +314,28 @@ def report_detail(report_id: str):
     return report
 
 
+# ---------------------------------------------------------------- source registry & sync health
+@app.get("/api/source-registry")
+def source_registry_endpoint():
+    """Return the global approved source registry."""
+    from .data_sources.registry.sources_registry import get_registry_summary
+    return {"sources": get_registry_summary()}
+
+
+@app.get("/api/sync-health")
+def sync_health_endpoint():
+    """Return sync health status for all registered sources."""
+    from .data_sources.sync.source_sync_health import get_sync_health_report
+    return {"sync_health": get_sync_health_report()}
+
+
+@app.get("/api/sync-audit-log")
+def sync_audit_log_endpoint(source_id: str = Query(None), limit: int = Query(50, le=200)):
+    """Return the sync audit log."""
+    from .data_sources.sync.sync_audit_log import get_audit_log
+    return {"audit_log": get_audit_log(source_id=source_id, limit=limit)}
+
+
 # ---------------------------------------------------------------- datasets
 @app.get("/api/datasets")
 def datasets():

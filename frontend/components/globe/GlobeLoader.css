@@ -1,0 +1,92 @@
+.globe-loader-page {
+  min-height: 100vh;
+  width: 100%;
+  background: #f7f4ec;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.globe-loader-wrap {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.globe-loader-svg {
+  position: relative;
+  z-index: 2;
+  display: block;
+}
+
+.globe-loader__sphere {
+  fill: transparent;
+  stroke: #111111;
+  stroke-width: 1.2;
+}
+
+.globe-loader__countries path,
+.globe-loader__countries {
+  fill: none;
+  stroke: #111111;
+  stroke-width: 0.45;
+  vector-effect: non-scaling-stroke;
+}
+
+.globe-loader-whirl {
+  position: absolute;
+  inset: 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  border-top-color: rgba(17, 17, 17, 0.35);
+  border-right-color: rgba(17, 17, 17, 0.16);
+  animation: globeWhirl 1.8s linear infinite;
+  z-index: 1;
+}
+
+.globe-loader-whirl--two {
+  inset: 18px;
+  animation-duration: 2.7s;
+  animation-direction: reverse;
+  opacity: 0.65;
+}
+
+.globe-loader-fallback {
+  width: 200px;
+  height: 200px;
+  border-radius: 999px;
+  border: 1px solid rgba(17, 17, 17, 0.18);
+  border-top-color: #111111;
+  animation: globeWhirl 1.2s linear infinite;
+}
+
+@keyframes globeWhirl {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .globe-loader-page {
+    background: #0b1020;
+  }
+
+  .globe-loader__sphere {
+    stroke: #f7f4ec;
+  }
+
+  .globe-loader__countries path,
+  .globe-loader__countries {
+    stroke: #f7f4ec;
+  }
+
+  .globe-loader-whirl {
+    border-top-color: rgba(247, 244, 236, 0.45);
+    border-right-color: rgba(247, 244, 236, 0.16);
+  }
+
+  .globe-loader-fallback {
+    border-color: rgba(247, 244, 236, 0.18);
+    border-top-color: #f7f4ec;
+  }
+}
