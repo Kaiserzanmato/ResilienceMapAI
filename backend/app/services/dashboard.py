@@ -21,7 +21,7 @@ def dashboard_stats() -> Dict:
     medium_zones = [z for z in HAZARD_ZONES if levels[z["id"]] == "Medium"]
 
     hazard_avgs = {
-        k: round(sum(z["hazards"][k] for z in HAZARD_ZONES) / len(HAZARD_ZONES))
+        k: round(sum(z["hazards"].get(k, 0) for z in HAZARD_ZONES) / len(HAZARD_ZONES))
         for k in HAZARD_KEYS
     }
     top_driver_key = max(hazard_avgs, key=lambda k: hazard_avgs[k])
@@ -75,7 +75,7 @@ def dashboard_stats() -> Dict:
         ],
         "hazard_breakdown": [
             {"hazard": HAZARD_LABELS[k], "average": hazard_avgs[k],
-             "max": max(z["hazards"][k] for z in HAZARD_ZONES)}
+             "max": max(z["hazards"].get(k, 0) for z in HAZARD_ZONES)}
             for k in HAZARD_KEYS
         ],
         "events_by_year": year_series,
