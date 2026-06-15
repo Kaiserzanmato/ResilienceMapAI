@@ -8,6 +8,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { api, API_BASE } from "@/lib/api";
 import { getPersona, PERSONAS } from "@/lib/personas";
 import { useAppStore } from "@/lib/store";
+import { formatMapTargetForPrompt } from "@/lib/map-target-builder";
 import { cn } from "@/lib/utils";
 
 interface AIProviderInfo {
@@ -36,7 +37,7 @@ function SyncIndicator({ label, synced }: { label: string; synced: boolean }) {
 
 export default function AgentsPage() {
   const {
-    messages, addMessage, clearMessages, persona, setPersona, selected, risk,
+    messages, addMessage, clearMessages, persona, setPersona, selected, risk, activeTarget,
   } = useAppStore();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -111,6 +112,7 @@ export default function AgentsPage() {
         lng: selected?.lng,
         location_name: selected?.name,
         risk_context: riskContext,
+        mapTargetContext: activeTarget ? formatMapTargetForPrompt(activeTarget) : undefined,
       });
       addMessage({
         id: crypto.randomUUID(), role: "assistant", content: res.answer,

@@ -10,6 +10,7 @@ import { RiskSummaryWidget } from "@/components/map/RiskSummaryWidget";
 import { SearchBar } from "@/components/map/SearchBar";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
+import { buildMapTarget, getOfficialSourcesByCountry } from "@/lib/map-target-builder";
 
 // Lazy-load the map (heaviest bundle) per performance requirements
 const RiskMap = dynamic(() => import("@/components/map/RiskMap"), {
@@ -22,7 +23,7 @@ const RiskMap = dynamic(() => import("@/components/map/RiskMap"), {
 });
 
 export default function MapPage() {
-  const { selected, setRisk } = useAppStore();
+  const { selected, setRisk, setActiveTarget } = useAppStore();
 
   // Fetch risk whenever a location is selected (click or search)
   const { data: risk } = useQuery({
@@ -32,8 +33,16 @@ export default function MapPage() {
   });
 
   useEffect(() => {
-    if (risk) setRisk(risk);
-  }, [risk, setRisk]);
+    if (risk && selected) {
+      // Store risk data in state
+      setRisk(risk);
+
+      // Build and store MapTarget for AI agent alignment (architecture: resilience_map_architecture.pdf)
+      const officialSources = getOfficialSourcesByCountry(selected.countryCode || "XX");
+      const mapTarget = buildMapTarget(selected, risk, officialSources);
+      setActiveTarget(mapTarget);
+    }
+  }, [risk, selected, setRisk, setActiveTarget]);
 
   return (
     <div className="fixed inset-0 top-0">

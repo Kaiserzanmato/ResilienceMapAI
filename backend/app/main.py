@@ -205,7 +205,7 @@ async def agent_query(req: AgentQueryRequest):
         except (ValueError, TypeError):
             pass
 
-    result = await generate_insight("agent", risk, enriched_message, req.persona, req.provider)
+    result = await generate_insight("agent", risk, enriched_message, req.persona, req.provider, req.mapTargetContext)
     return {"risk": risk, **result}
 
 

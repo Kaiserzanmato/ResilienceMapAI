@@ -35,6 +35,7 @@ class AgentQueryRequest(BaseModel):
     lng: Optional[float] = Field(None, ge=-180, le=180)
     location_name: Optional[str] = Field(None, max_length=120)
     risk_context: Optional[str] = Field(None, max_length=8000)
+    mapTargetContext: Optional[str] = Field(None, max_length=4000)
 
 
 class AIReportRequest(BaseModel):

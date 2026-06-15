@@ -482,7 +482,8 @@ def _build_general_knowledge_block() -> str:
 
 async def generate_insight(task: str, risk: Optional[Dict], user_message: str,
                            persona: str = "citizen",
-                           preferred_provider: Optional[str] = None) -> Dict:
+                           preferred_provider: Optional[str] = None,
+                           map_target_context: Optional[str] = None) -> Dict:
     """Main entry: builds the grounded prompt, routes to a provider, applies
     output validation, and returns the response with grounding metadata."""
     providers = build_providers()
@@ -545,6 +546,11 @@ async def generate_insight(task: str, risk: Optional[Dict], user_message: str,
     else:
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         context_parts = [f"User persona: {persona_desc}."]
+
+        # Inject active map target context for geographic grounding (from frontend MapTarget state)
+        if map_target_context:
+            context_parts.append(map_target_context)
+
         if risk:
             context_parts.append("Structured risk context (sole source of truth):\n"
                                  + _risk_context_block(risk))
