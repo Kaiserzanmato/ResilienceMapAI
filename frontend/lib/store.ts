@@ -10,6 +10,20 @@ export interface SelectedLocation {
   countryCode?: string;
 }
 
+/**
+ * MapTarget: Unified state for map selection + AI agent context injection.
+ * Aligns with global data routing architecture per resilience_map_architecture.pdf.
+ */
+export interface MapTarget {
+  latitude: number;
+  longitude: number;
+  cityName: string;
+  countryCode: string;
+  hazardScores: number[]; // Compressed array format: [0:Flood, 1:EQ, 2:TC, ...]
+  officialSources: string[]; // Routed sources for this location
+  timestamp: number; // For cache invalidation
+}
+
 interface AppState {
   persona: string;
   setPersona: (p: string) => void;
@@ -19,6 +33,10 @@ interface AppState {
 
   risk: RiskAssessment | null;
   setRisk: (r: RiskAssessment | null) => void;
+
+  // Unified MapTarget for AI agent alignment (architecture: resilience_map_architecture.pdf)
+  activeTarget: MapTarget | null;
+  setActiveTarget: (target: MapTarget | null) => void;
 
   // AI panel
   aiOpen: boolean;
@@ -56,6 +74,9 @@ export const useAppStore = create<AppState>()(
       risk: null,
       setRisk: (risk) => set({ risk }),
 
+      activeTarget: null,
+      setActiveTarget: (activeTarget) => set({ activeTarget }),
+
       aiOpen: false,
       aiPinned: false,
       setAiOpen: (aiOpen) => set({ aiOpen }),
@@ -85,6 +106,7 @@ export const useAppStore = create<AppState>()(
         activeLayer: s.activeLayer,
         aiPinned: s.aiPinned,
         selected: s.selected,
+        activeTarget: s.activeTarget,
       }),
     }
   )
