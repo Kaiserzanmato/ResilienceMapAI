@@ -2,8 +2,15 @@
 no API keys are ever shipped to the frontend."""
 import os
 from functools import lru_cache
+from pathlib import Path
 
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
+
+# Load environment variables from .env.local file if it exists
+env_file = Path(__file__).parent.parent / ".env.local"
+if env_file.exists():
+    load_dotenv(env_file)
 
 
 class Settings(BaseSettings):
