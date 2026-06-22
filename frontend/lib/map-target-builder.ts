@@ -6,6 +6,7 @@
 import type { MapTarget, SelectedLocation } from "./store";
 import type { RiskAssessment } from "./types";
 import { compressHazardScores } from "./hazard-utils";
+import { getRiskReference, formatReferenceForPrompt } from "./risk-reference";
 
 /**
  * Build MapTarget from location and risk assessment.
@@ -36,60 +37,43 @@ export function buildMapTarget(
 
 /**
  * Get official sources for a location based on country code.
- * Implements dynamic source routing per Section 2 of architecture.
+ * Pulls from risk-reference.json dataset first, falls back to globals.
  */
 export function getOfficialSourcesByCountry(countryCode: string): string[] {
-  // Country-specific source routing (to be expanded with all 249 countries)
-  const countrySourcesMap: Record<string, string[]> = {
-    // Philippines
-    PH: [
-      "https://www.pagasa.dost.gov.ph (Tropical Cyclone & Weather)",
-      "https://www.phivolcs.dost.gov.ph (Seismic & Volcanic)",
-      "https://georisk.gov.ph (Geohazard Mapping)",
-    ],
-    // United States
-    US: [
-      "https://api.weather.gov (NOAA Weather)",
-      "https://www.nhc.noaa.gov (Hurricane Center)",
-      "https://earthquake.usgs.gov (Earthquake Hazards)",
-      "https://www.fema.gov (Disaster Management)",
-    ],
-    // Japan
-    JP: [
-      "https://www.jma.go.jp (JMA Typhoon/Earthquake)",
-      "https://www.data.jma.go.jp (Japan Meteorological Data)",
-    ],
-    // Indonesia
-    ID: [
-      "https://www.bmkg.go.id (BMKG Weather & Volcano)",
-      "https://www.bnpb.go.id (National Disaster Management)",
-    ],
-    // Default global fallback
-    XX: [
-      "https://www.gdacs.org (Global Disaster Alert System)",
-      "https://data.humdata.org (Humanitarian Data Exchange)",
-      "https://www.acleddata.com (Conflict Events)",
-    ],
-  };
+  const ref = getRiskReference(countryCode);
+  if (ref?.sources?.length) return ref.sources;
 
-  return countrySourcesMap[countryCode] || countrySourcesMap.XX;
+  // Global fallback
+  return [
+    "https://www.gdacs.org (Global Disaster Alert System)",
+    "https://data.humdata.org (Humanitarian Data Exchange)",
+    "https://www.acleddata.com (Conflict Events)",
+  ];
 }
 
 /**
  * Format MapTarget context for AI agent system prompt injection.
+ * Includes research reference data if available for the country.
  * Per Section 7.1 of architecture.
  */
 export function formatMapTargetForPrompt(target: MapTarget): string {
   const sourcesList = target.officialSources.join("; ");
+  const ref = getRiskReference(target.countryCode);
+  const referenceBlock = ref ? formatReferenceForPrompt(ref) : null;
 
-  return `[ACTIVE GEOPOLITICAL VIEWPORT]
-Country: ${target.countryCode}
-Region/City: ${target.cityName}
-Coordinates: ${target.latitude}, ${target.longitude}
-
-[INJECTED SYSTEM TELEMETRY DATA]
-Hazard Metrics: ${JSON.stringify(target.hazardScores)}
-
-[AUTHORIZED GROUNDING SOURCE SITES]
-${sourcesList || "(No sources configured)"}`;
+  return [
+    `[ACTIVE GEOPOLITICAL VIEWPORT]`,
+    `Country: ${target.countryCode}`,
+    `Region/City: ${target.cityName}`,
+    `Coordinates: ${target.latitude}, ${target.longitude}`,
+    ``,
+    `[INJECTED SYSTEM TELEMETRY DATA]`,
+    `Hazard Metrics: ${JSON.stringify(target.hazardScores)}`,
+    ``,
+    `[AUTHORIZED GROUNDING SOURCE SITES]`,
+    sourcesList || "(No sources configured)",
+    referenceBlock ? `\n${referenceBlock}` : "",
+  ]
+    .join("\n")
+    .trim();
 }

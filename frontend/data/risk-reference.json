@@ -1,0 +1,869 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "compiled": "June 2026",
+    "sources": [
+      "WorldRiskReport / IFHV Ruhr University Bochum (WRI 2022)",
+      "EU JRC INFORM Risk Index (2024)",
+      "Notre Dame ND-GAIN Country Index (2023)",
+      "USGS Global Seismic Hazard Map",
+      "UNESCO/IOC Tsunami Warning Centers",
+      "Smithsonian Global Volcanism Program",
+      "WMO / NOAA National Hurricane Center",
+      "Institute for Economics & Peace (GPI 2025)",
+      "Fund for Peace Fragile States Index (2024)",
+      "World Resources Institute Aqueduct",
+      "IPCC AR6 / NASA Sea Level Portal",
+      "Global Wildfire Information System (GWIS)"
+    ]
+  },
+  "countries": [
+    {
+      "country": "Philippines",
+      "countryCode": "PH",
+      "worldRiskIndex": 46.82,
+      "naturalRiskLevel": "EXTREME",
+      "politicalRiskLevel": "MEDIUM",
+      "climateRiskLevel": "VERY HIGH",
+      "overallRisk": "CRITICAL",
+      "hazardBreakdown": {
+        "earthquake": "EXTREME",
+        "tsunami": "VERY HIGH",
+        "volcanic": "VERY HIGH",
+        "cyclone": "EXTREME",
+        "drought": "MEDIUM",
+        "flood": "EXTREME",
+        "seaLevelRise": "VERY HIGH",
+        "wildfire": "LOW"
+      },
+      "historicalEvents": [
+        "Super Typhoon Haiyan (2013) — 6,300+ deaths, costliest Philippine disaster",
+        "Mount Pinatubo eruption (1991) — 800 deaths, 200,000 displaced",
+        "Typhoon Bopha/Pablo (2012) — 1,900+ deaths",
+        "Taal Volcano eruption (2020) — 376,000 evacuated",
+        "1990 Luzon Earthquake M7.8 — 1,621 deaths"
+      ],
+      "sources": [
+        "PAGASA — https://www.pagasa.dost.gov.ph",
+        "PHIVOLCS — https://www.phivolcs.dost.gov.ph",
+        "NDRRMC — https://ndrrmc.gov.ph",
+        "DOST — https://www.dost.gov.ph",
+        "NAMRIA — https://www.namria.gov.ph"
+      ]
+    },
+    {
+      "country": "India",
+      "countryCode": "IN",
+      "worldRiskIndex": 42.31,
+      "naturalRiskLevel": "EXTREME",
+      "politicalRiskLevel": "MEDIUM",
+      "climateRiskLevel": "VERY HIGH",
+      "overallRisk": "CRITICAL",
+      "hazardBreakdown": {
+        "earthquake": "HIGH",
+        "tsunami": "MEDIUM",
+        "volcanic": "LOW",
+        "cyclone": "HIGH",
+        "drought": "VERY HIGH",
+        "flood": "VERY HIGH",
+        "seaLevelRise": "HIGH",
+        "wildfire": "MEDIUM"
+      },
+      "historicalEvents": [
+        "2004 Indian Ocean Tsunami — 10,749 deaths in India",
+        "2001 Gujarat Earthquake M7.7 — 20,000+ deaths",
+        "Cyclone Amphan (2020) — 100+ deaths, $13B damage",
+        "2013 Uttarakhand floods — 5,700+ deaths",
+        "Maharashtra drought crisis (recurring)"
+      ],
+      "sources": [
+        "India Meteorological Department — https://mausam.imd.gov.in",
+        "National Disaster Management Authority — https://ndma.gov.in",
+        "Geological Survey of India — https://www.gsi.gov.in"
+      ]
+    },
+    {
+      "country": "Indonesia",
+      "countryCode": "ID",
+      "worldRiskIndex": 41.46,
+      "naturalRiskLevel": "EXTREME",
+      "politicalRiskLevel": "MEDIUM",
+      "climateRiskLevel": "HIGH",
+      "overallRisk": "VERY HIGH",
+      "hazardBreakdown": {
+        "earthquake": "EXTREME",
+        "tsunami": "EXTREME",
+        "volcanic": "EXTREME",
+        "cyclone": "LOW",
+        "drought": "HIGH",
+        "flood": "VERY HIGH",
+        "seaLevelRise": "VERY HIGH",
+        "wildfire": "EXTREME"
+      },
+      "historicalEvents": [
+        "2004 Indian Ocean Tsunami — 167,000 deaths in Aceh",
+        "2018 Palu Earthquake & Tsunami — 4,340 deaths",
+        "Mount Merapi eruption (2010) — 353 deaths",
+        "Jakarta New Year floods (2020) — 66 deaths",
+        "2006 Yogyakarta Earthquake M6.3 — 5,700 deaths"
+      ],
+      "sources": [
+        "BMKG — https://www.bmkg.go.id",
+        "BNPB (National Disaster Management) — https://www.bnpb.go.id",
+        "Pusat Vulkanologi PVMBG — https://vsi.esdm.go.id"
+      ]
+    },
+    {
+      "country": "Colombia",
+      "countryCode": "CO",
+      "worldRiskIndex": 38.37,
+      "naturalRiskLevel": "EXTREME",
+      "politicalRiskLevel": "HIGH",
+      "climateRiskLevel": "HIGH",
+      "overallRisk": "VERY HIGH",
+      "hazardBreakdown": {
+        "earthquake": "HIGH",
+        "tsunami": "MEDIUM",
+        "volcanic": "HIGH",
+        "cyclone": "LOW",
+        "drought": "HIGH",
+        "flood": "VERY HIGH",
+        "seaLevelRise": "MEDIUM",
+        "wildfire": "HIGH"
+      },
+      "historicalEvents": [
+        "Nevado del Ruiz eruption (1985) — 23,000 deaths (Armero tragedy)",
+        "1999 Armenia Earthquake M6.2 — 1,900 deaths",
+        "Recurring FARC/ELN conflict — ongoing humanitarian impact",
+        "2010–2011 La Niña floods — 2M+ affected"
+      ],
+      "sources": [
+        "UNGRD — https://www.gestiondelriesgo.gov.co",
+        "SGC Servicio Geológico — https://www.sgc.gov.co",
+        "IDEAM — https://www.ideam.gov.co"
+      ]
+    },
+    {
+      "country": "Mexico",
+      "countryCode": "MX",
+      "worldRiskIndex": 37.55,
+      "naturalRiskLevel": "EXTREME",
+      "politicalRiskLevel": "HIGH",
+      "climateRiskLevel": "HIGH",
+      "overallRisk": "VERY HIGH",
+      "hazardBreakdown": {
+        "earthquake": "HIGH",
+        "tsunami": "MEDIUM",
+        "volcanic": "HIGH",
+        "cyclone": "HIGH",
+        "drought": "HIGH",
+        "flood": "HIGH",
+        "seaLevelRise": "MEDIUM",
+        "wildfire": "HIGH"
+      },
+      "historicalEvents": [
+        "1985 Mexico City Earthquake M8.1 — 10,000+ deaths",
+        "2017 Mexico City Earthquake M7.1 — 370 deaths",
+        "Hurricane Patricia (2015) — Category 5 landfall",
+        "Popocatépetl recurring eruptions (active monitoring)"
+      ],
+      "sources": [
+        "CENAPRED — https://www.cenapred.unam.mx",
+        "SSN Seismological Service — http://www.ssn.unam.mx",
+        "CONAGUA — https://www.gob.mx/conagua"
+      ]
+    },
+    {
+      "country": "Myanmar",
+      "countryCode": "MM",
+      "worldRiskIndex": 35.49,
+      "naturalRiskLevel": "HIGH",
+      "politicalRiskLevel": "EXTREME",
+      "climateRiskLevel": "HIGH",
+      "overallRisk": "CRITICAL",
+      "hazardBreakdown": {
+        "earthquake": "HIGH",
+        "tsunami": "MEDIUM",
+        "volcanic": "LOW",
+        "cyclone": "VERY HIGH",
+        "drought": "MEDIUM",
+        "flood": "VERY HIGH",
+        "seaLevelRise": "MEDIUM",
+        "wildfire": "MEDIUM"
+      },
+      "historicalEvents": [
+        "Cyclone Nargis (2008) — 138,000 deaths",
+        "2021 Military Coup — 2M+ internally displaced",
+        "2023 civil war escalation — ongoing armed conflict",
+        "Recurring annual flooding in Irrawaddy Delta"
+      ],
+      "sources": [
+        "DMH Myanmar Meteorology — https://www.moezala.gov.mm",
+        "OCHA Myanmar — https://www.unocha.org/myanmar",
+        "ACLED Conflict Data — https://www.acleddata.com"
+      ]
+    },
+    {
+      "country": "Mozambique",
+      "countryCode": "MZ",
+      "worldRiskIndex": 34.37,
+      "naturalRiskLevel": "HIGH",
+      "politicalRiskLevel": "MEDIUM",
+      "climateRiskLevel": "VERY HIGH",
+      "overallRisk": "HIGH",
+      "hazardBreakdown": {
+        "earthquake": "LOW",
+        "tsunami": "LOW",
+        "volcanic": "LOW",
+        "cyclone": "HIGH",
+        "drought": "VERY HIGH",
+        "flood": "VERY HIGH",
+        "seaLevelRise": "VERY HIGH",
+        "wildfire": "MEDIUM"
+      },
+      "historicalEvents": [
+        "Cyclone Idai (2019) — 1,300 deaths, $2B damage",
+        "Cyclone Kenneth (2019) — second Category 4 same year",
+        "2000 Mozambique floods — 800 deaths, 1M displaced",
+        "Recurring southern drought affecting food security"
+      ],
+      "sources": [
+        "INAM Mozambique — https://www.inam.gov.mz",
+        "INGD Disaster Management — https://www.ingd.gov.mz",
+        "ReliefWeb Mozambique — https://reliefweb.int/country/moz"
+      ]
+    },
+    {
+      "country": "Bangladesh",
+      "countryCode": "BD",
+      "worldRiskIndex": 27.90,
+      "naturalRiskLevel": "VERY HIGH",
+      "politicalRiskLevel": "HIGH",
+      "climateRiskLevel": "EXTREME",
+      "overallRisk": "CRITICAL",
+      "hazardBreakdown": {
+        "earthquake": "MEDIUM",
+        "tsunami": "MEDIUM",
+        "volcanic": "VERY LOW",
+        "cyclone": "EXTREME",
+        "drought": "MEDIUM",
+        "flood": "EXTREME",
+        "seaLevelRise": "EXTREME",
+        "wildfire": "LOW"
+      },
+      "historicalEvents": [
+        "1970 Bhola Cyclone — 300,000–500,000 deaths",
+        "1991 Bangladesh Cyclone — 138,000 deaths",
+        "Cyclone Sidr (2007) — 3,400 deaths",
+        "Annual monsoon flooding affects 25–30% of land area",
+        "Padma/Meghna delta erosion — existential climate threat"
+      ],
+      "sources": [
+        "Bangladesh Meteorological Department — https://www.bmd.gov.bd",
+        "BWDB Water Development Board — http://www.bwdb.gov.bd",
+        "DDM Disaster Management — https://ddm.gov.bd"
+      ]
+    },
+    {
+      "country": "Pakistan",
+      "countryCode": "PK",
+      "worldRiskIndex": 26.75,
+      "naturalRiskLevel": "VERY HIGH",
+      "politicalRiskLevel": "HIGH",
+      "climateRiskLevel": "VERY HIGH",
+      "overallRisk": "CRITICAL",
+      "hazardBreakdown": {
+        "earthquake": "VERY HIGH",
+        "tsunami": "LOW",
+        "volcanic": "LOW",
+        "cyclone": "MEDIUM",
+        "drought": "VERY HIGH",
+        "flood": "VERY HIGH",
+        "seaLevelRise": "MEDIUM",
+        "wildfire": "MEDIUM"
+      },
+      "historicalEvents": [
+        "2005 Kashmir Earthquake M7.6 — 80,000 deaths",
+        "2010 Pakistan floods — 2,000 deaths, 20M affected",
+        "2022 Pakistan floods — 1,700 deaths, $30B damage",
+        "Balochistan earthquake (2013) M7.7 — 800+ deaths"
+      ],
+      "sources": [
+        "PMD Pakistan Meteorological — https://www.pmd.gov.pk",
+        "NDMA Pakistan — https://ndma.gov.pk",
+        "SUPARCO — https://www.suparco.gov.pk"
+      ]
+    },
+    {
+      "country": "China",
+      "countryCode": "CN",
+      "worldRiskIndex": 28.70,
+      "naturalRiskLevel": "HIGH",
+      "politicalRiskLevel": "EXTREME",
+      "climateRiskLevel": "HIGH",
+      "overallRisk": "HIGH",
+      "hazardBreakdown": {
+        "earthquake": "VERY HIGH",
+        "tsunami": "LOW",
+        "volcanic": "LOW",
+        "cyclone": "HIGH",
+        "drought": "HIGH",
+        "flood": "VERY HIGH",
+        "seaLevelRise": "HIGH",
+        "wildfire": "MEDIUM"
+      },
+      "historicalEvents": [
+        "2008 Sichuan Earthquake M8.0 — 87,000 deaths",
+        "1976 Tangshan Earthquake — 242,000 deaths",
+        "1931 China floods — deadliest flood in history (1–4M deaths)",
+        "2021 Zhengzhou floods — 380 deaths",
+        "Recurring Yangtze River basin flooding"
+      ],
+      "sources": [
+        "China Meteorological Administration — http://www.cma.gov.cn",
+        "CEA China Earthquake Administration — http://www.cea.gov.cn",
+        "MEM Emergency Management — https://www.mem.gov.cn"
+      ]
+    },
+    {
+      "country": "Japan",
+      "countryCode": "JP",
+      "worldRiskIndex": 15.32,
+      "naturalRiskLevel": "EXTREME",
+      "politicalRiskLevel": "VERY LOW",
+      "climateRiskLevel": "HIGH",
+      "overallRisk": "HIGH",
+      "hazardBreakdown": {
+        "earthquake": "EXTREME",
+        "tsunami": "EXTREME",
+        "volcanic": "EXTREME",
+        "cyclone": "HIGH",
+        "drought": "LOW",
+        "flood": "HIGH",
+        "seaLevelRise": "HIGH",
+        "wildfire": "LOW"
+      },
+      "historicalEvents": [
+        "2011 Tōhoku Earthquake M9.0 & Tsunami — 19,747 deaths, Fukushima nuclear disaster",
+        "1995 Great Hanshin Earthquake — 6,434 deaths",
+        "2016 Kumamoto Earthquakes — 228 deaths",
+        "Mount Ontake eruption (2014) — 63 deaths",
+        "Typhoon Hagibis (2019) — 86 deaths, $15B damage"
+      ],
+      "sources": [
+        "JMA Japan Meteorological Agency — https://www.jma.go.jp",
+        "Cabinet Office Disaster Management — https://www.bousai.go.jp",
+        "GSI Geospatial Information Authority — https://www.gsi.go.jp"
+      ]
+    },
+    {
+      "country": "Yemen",
+      "countryCode": "YE",
+      "worldRiskIndex": null,
+      "informScore": 8.8,
+      "naturalRiskLevel": "MEDIUM",
+      "politicalRiskLevel": "EXTREME",
+      "climateRiskLevel": "EXTREME",
+      "overallRisk": "CRITICAL",
+      "hazardBreakdown": {
+        "earthquake": "LOW",
+        "tsunami": "LOW",
+        "volcanic": "LOW",
+        "cyclone": "MEDIUM",
+        "drought": "EXTREME",
+        "flood": "MEDIUM",
+        "seaLevelRise": "LOW",
+        "wildfire": "LOW"
+      },
+      "historicalEvents": [
+        "Civil war since 2014 — 377,000 deaths (direct + indirect)",
+        "Cholera outbreak (2016–2019) — 2.5M+ cases",
+        "Saudi-led coalition airstrikes (2015–present)",
+        "Houthi takeover of Sanaa (2014)",
+        "World's worst humanitarian crisis as of 2024 (UN)"
+      ],
+      "sources": [
+        "UN OCHA Yemen — https://www.unocha.org/yemen",
+        "ACLED Yemen — https://www.acleddata.com",
+        "ReliefWeb Yemen — https://reliefweb.int/country/yem",
+        "UNHCR Yemen — https://www.unhcr.org/countries/yemen"
+      ]
+    },
+    {
+      "country": "Somalia",
+      "countryCode": "SO",
+      "worldRiskIndex": null,
+      "informScore": 9.0,
+      "naturalRiskLevel": "LOW",
+      "politicalRiskLevel": "EXTREME",
+      "climateRiskLevel": "EXTREME",
+      "overallRisk": "CRITICAL",
+      "hazardBreakdown": {
+        "earthquake": "LOW",
+        "tsunami": "LOW",
+        "volcanic": "LOW",
+        "cyclone": "MEDIUM",
+        "drought": "EXTREME",
+        "flood": "HIGH",
+        "seaLevelRise": "MEDIUM",
+        "wildfire": "LOW"
+      },
+      "historicalEvents": [
+        "1991 state collapse — ongoing civil war 30+ years",
+        "2011 East African famine — 260,000 deaths",
+        "Al-Shabaab insurgency (2006–present)",
+        "2023 drought & flooding — 1M+ displaced",
+        "Recurring Indian Ocean piracy activity"
+      ],
+      "sources": [
+        "UN OCHA Somalia — https://www.unocha.org/somalia",
+        "FSNAU Food Security — https://fsnau.org",
+        "ACLED Somalia — https://www.acleddata.com"
+      ]
+    },
+    {
+      "country": "South Sudan",
+      "countryCode": "SS",
+      "worldRiskIndex": null,
+      "informScore": 8.9,
+      "naturalRiskLevel": "LOW",
+      "politicalRiskLevel": "EXTREME",
+      "climateRiskLevel": "EXTREME",
+      "overallRisk": "CRITICAL",
+      "hazardBreakdown": {
+        "earthquake": "LOW",
+        "tsunami": "VERY LOW",
+        "volcanic": "VERY LOW",
+        "cyclone": "LOW",
+        "drought": "EXTREME",
+        "flood": "VERY HIGH",
+        "seaLevelRise": "LOW",
+        "wildfire": "MEDIUM"
+      },
+      "historicalEvents": [
+        "Civil war (2013–2018) — 400,000 deaths",
+        "Resumed fighting (2016) — 4M+ displaced",
+        "Annual Nile flooding displaces hundreds of thousands",
+        "Famine declared (2017) — world's only famine declaration that year"
+      ],
+      "sources": [
+        "OCHA South Sudan — https://www.unocha.org/south-sudan",
+        "IPC Food Security — https://www.ipcinfo.org",
+        "ACLED South Sudan — https://www.acleddata.com"
+      ]
+    },
+    {
+      "country": "Afghanistan",
+      "countryCode": "AF",
+      "worldRiskIndex": null,
+      "informScore": 8.7,
+      "naturalRiskLevel": "HIGH",
+      "politicalRiskLevel": "EXTREME",
+      "climateRiskLevel": "HIGH",
+      "overallRisk": "CRITICAL",
+      "hazardBreakdown": {
+        "earthquake": "HIGH",
+        "tsunami": "VERY LOW",
+        "volcanic": "VERY LOW",
+        "cyclone": "LOW",
+        "drought": "HIGH",
+        "flood": "HIGH",
+        "seaLevelRise": "VERY LOW",
+        "wildfire": "MEDIUM"
+      },
+      "historicalEvents": [
+        "2001–2021 US-NATO war — 176,000+ deaths",
+        "Taliban takeover (August 2021)",
+        "2002 Hindu Kush Earthquake — 1,800 deaths",
+        "2023 Herat Earthquake M6.3 — 1,400 deaths",
+        "Recurring severe drought (2018, 2021–2023)"
+      ],
+      "sources": [
+        "OCHA Afghanistan — https://www.unocha.org/afghanistan",
+        "USGS Earthquakes — https://earthquake.usgs.gov",
+        "ReliefWeb Afghanistan — https://reliefweb.int/country/afg"
+      ]
+    },
+    {
+      "country": "Sudan",
+      "countryCode": "SD",
+      "worldRiskIndex": null,
+      "informScore": 7.8,
+      "naturalRiskLevel": "MEDIUM",
+      "politicalRiskLevel": "EXTREME",
+      "climateRiskLevel": "EXTREME",
+      "overallRisk": "CRITICAL",
+      "hazardBreakdown": {
+        "earthquake": "LOW",
+        "tsunami": "LOW",
+        "volcanic": "LOW",
+        "cyclone": "LOW",
+        "drought": "EXTREME",
+        "flood": "VERY HIGH",
+        "seaLevelRise": "LOW",
+        "wildfire": "LOW"
+      },
+      "historicalEvents": [
+        "Darfur genocide (2003–2020) — 300,000+ deaths",
+        "SAF vs RSF civil war (April 2023–present) — 8M+ displaced",
+        "2024 Khartoum siege — mass civilian displacement",
+        "Recurring Nile/Blue Nile flooding",
+        "2023 cholera outbreak amid conflict"
+      ],
+      "sources": [
+        "OCHA Sudan — https://www.unocha.org/sudan",
+        "ACLED Sudan — https://www.acleddata.com",
+        "ReliefWeb Sudan — https://reliefweb.int/country/sdn"
+      ]
+    },
+    {
+      "country": "Ukraine",
+      "countryCode": "UA",
+      "worldRiskIndex": null,
+      "naturalRiskLevel": "LOW",
+      "politicalRiskLevel": "EXTREME",
+      "climateRiskLevel": "MEDIUM",
+      "overallRisk": "CRITICAL",
+      "hazardBreakdown": {
+        "earthquake": "LOW",
+        "tsunami": "VERY LOW",
+        "volcanic": "VERY LOW",
+        "cyclone": "LOW",
+        "drought": "MEDIUM",
+        "flood": "MEDIUM",
+        "seaLevelRise": "LOW",
+        "wildfire": "LOW"
+      },
+      "historicalEvents": [
+        "Russia-Ukraine war (February 2022–present)",
+        "Kakhovka Dam destruction (June 2023) — catastrophic flooding",
+        "Zaporizhzhia nuclear plant under military occupation",
+        "8M+ Ukrainians displaced externally",
+        "Mariupol siege (2022) — city destruction"
+      ],
+      "sources": [
+        "OCHA Ukraine — https://www.unocha.org/ukraine",
+        "ACLED Ukraine — https://www.acleddata.com",
+        "Reliefweb Ukraine — https://reliefweb.int/country/ukr",
+        "UNHCR Ukraine — https://www.unhcr.org/countries/ukraine"
+      ]
+    },
+    {
+      "country": "Haiti",
+      "countryCode": "HT",
+      "worldRiskIndex": null,
+      "naturalRiskLevel": "HIGH",
+      "politicalRiskLevel": "VERY HIGH",
+      "climateRiskLevel": "VERY HIGH",
+      "overallRisk": "CRITICAL",
+      "hazardBreakdown": {
+        "earthquake": "VERY HIGH",
+        "tsunami": "MEDIUM",
+        "volcanic": "LOW",
+        "cyclone": "HIGH",
+        "drought": "HIGH",
+        "flood": "HIGH",
+        "seaLevelRise": "MEDIUM",
+        "wildfire": "LOW"
+      },
+      "historicalEvents": [
+        "2010 Haiti Earthquake M7.0 — 220,000 deaths",
+        "Hurricane Matthew (2016) — 546 deaths",
+        "2021 Haiti Earthquake M7.2 — 2,200 deaths",
+        "Gang violence (2022–2024) — state collapse in Port-au-Prince",
+        "Cholera outbreaks (2010–2019, 2022–present)"
+      ],
+      "sources": [
+        "OCHA Haiti — https://www.unocha.org/haiti",
+        "USGS Earthquakes — https://earthquake.usgs.gov",
+        "ACLED Haiti — https://www.acleddata.com"
+      ]
+    },
+    {
+      "country": "DR Congo",
+      "countryCode": "CD",
+      "worldRiskIndex": null,
+      "informScore": 8.4,
+      "naturalRiskLevel": "MEDIUM",
+      "politicalRiskLevel": "VERY HIGH",
+      "climateRiskLevel": "HIGH",
+      "overallRisk": "VERY HIGH",
+      "hazardBreakdown": {
+        "earthquake": "MEDIUM",
+        "tsunami": "LOW",
+        "volcanic": "MEDIUM",
+        "cyclone": "LOW",
+        "drought": "MEDIUM",
+        "flood": "VERY HIGH",
+        "seaLevelRise": "LOW",
+        "wildfire": "MEDIUM"
+      },
+      "historicalEvents": [
+        "First Congo War (1996–1997) / Second Congo War (1998–2003) — 5M+ deaths",
+        "M23 rebellion eastern DRC (2012–2013, 2022–present)",
+        "Nyiragongo volcano eruption (2021) — 15 deaths, 400,000 evacuated",
+        "Ebola outbreaks (2018–2020) — 2,280 deaths",
+        "Annual flooding affecting millions"
+      ],
+      "sources": [
+        "OCHA DRC — https://www.unocha.org/democratic-republic-congo",
+        "ACLED DRC — https://www.acleddata.com",
+        "OVG Goma Volcano Observatory — https://www.observatoire-volcanologique-goma.cd"
+      ]
+    },
+    {
+      "country": "Australia",
+      "countryCode": "AU",
+      "worldRiskIndex": 5.21,
+      "naturalRiskLevel": "HIGH",
+      "politicalRiskLevel": "VERY LOW",
+      "climateRiskLevel": "HIGH",
+      "overallRisk": "MEDIUM",
+      "hazardBreakdown": {
+        "earthquake": "LOW",
+        "tsunami": "LOW",
+        "volcanic": "VERY LOW",
+        "cyclone": "HIGH",
+        "drought": "VERY HIGH",
+        "flood": "HIGH",
+        "seaLevelRise": "HIGH",
+        "wildfire": "EXTREME"
+      },
+      "historicalEvents": [
+        "2019–2020 Black Summer wildfires — 34 deaths, 18.6M hectares burned",
+        "Cyclone Tracy (1974) — devastated Darwin",
+        "2010–2011 Queensland floods — 33 deaths, $2.38B damage",
+        "Recurring El Niño droughts affecting agriculture",
+        "2022 East Coast floods — 22 deaths, $5.9B damage"
+      ],
+      "sources": [
+        "Bureau of Meteorology — http://www.bom.gov.au",
+        "Geoscience Australia — https://www.ga.gov.au",
+        "AFAC Australasian Fire — https://www.afac.com.au"
+      ]
+    },
+    {
+      "country": "United States",
+      "countryCode": "US",
+      "worldRiskIndex": 5.60,
+      "naturalRiskLevel": "MEDIUM",
+      "politicalRiskLevel": "LOW",
+      "climateRiskLevel": "HIGH",
+      "overallRisk": "MEDIUM",
+      "hazardBreakdown": {
+        "earthquake": "HIGH",
+        "tsunami": "HIGH",
+        "volcanic": "MEDIUM",
+        "cyclone": "HIGH",
+        "drought": "HIGH",
+        "flood": "HIGH",
+        "seaLevelRise": "HIGH",
+        "wildfire": "EXTREME"
+      },
+      "historicalEvents": [
+        "Hurricane Katrina (2005) — 1,833 deaths, $125B damage",
+        "Hurricane Harvey (2017) — 107 deaths, $125B damage",
+        "Northridge Earthquake (1994) M6.7 — 57 deaths, $50B damage",
+        "Camp Fire California (2018) — 85 deaths, deadliest wildfire",
+        "2023 Hawaii Lahaina wildfire — 97 deaths"
+      ],
+      "sources": [
+        "NOAA — https://www.noaa.gov",
+        "FEMA — https://www.fema.gov",
+        "USGS — https://www.usgs.gov",
+        "NHC National Hurricane Center — https://www.nhc.noaa.gov",
+        "CDC Emergency Preparedness — https://emergency.cdc.gov"
+      ]
+    },
+    {
+      "country": "Norway",
+      "countryCode": "NO",
+      "ndGainScore": 75.5,
+      "naturalRiskLevel": "LOW",
+      "politicalRiskLevel": "VERY LOW",
+      "climateRiskLevel": "LOW",
+      "overallRisk": "SAFEST",
+      "hazardBreakdown": {
+        "earthquake": "LOW",
+        "tsunami": "LOW",
+        "volcanic": "VERY LOW",
+        "cyclone": "VERY LOW",
+        "drought": "LOW",
+        "flood": "LOW",
+        "seaLevelRise": "LOW",
+        "wildfire": "LOW"
+      },
+      "historicalEvents": [
+        "Occasional landslides in fjord regions",
+        "Minor seismic activity",
+        "2011 Utøya island attack (political violence, not natural disaster)"
+      ],
+      "sources": [
+        "Norwegian Meteorological Institute — https://www.met.no",
+        "NVE Norwegian Water Resources — https://www.nve.no",
+        "DSB Norwegian Directorate — https://www.dsb.no"
+      ]
+    },
+    {
+      "country": "Finland",
+      "countryCode": "FI",
+      "ndGainScore": 73.3,
+      "naturalRiskLevel": "LOW",
+      "politicalRiskLevel": "VERY LOW",
+      "climateRiskLevel": "LOW",
+      "overallRisk": "SAFEST",
+      "hazardBreakdown": {
+        "earthquake": "VERY LOW",
+        "tsunami": "VERY LOW",
+        "volcanic": "VERY LOW",
+        "cyclone": "VERY LOW",
+        "drought": "LOW",
+        "flood": "LOW",
+        "seaLevelRise": "LOW",
+        "wildfire": "LOW"
+      },
+      "historicalEvents": [
+        "Occasional winter storms",
+        "Minor river flooding in spring thaw"
+      ],
+      "sources": [
+        "Finnish Meteorological Institute — https://en.ilmatieteenlaitos.fi",
+        "SYKE Finnish Environment Institute — https://www.syke.fi"
+      ]
+    },
+    {
+      "country": "Singapore",
+      "countryCode": "SG",
+      "worldRiskIndex": 0.81,
+      "ndGainScore": 70.6,
+      "naturalRiskLevel": "VERY LOW",
+      "politicalRiskLevel": "VERY LOW",
+      "climateRiskLevel": "MEDIUM",
+      "overallRisk": "SAFEST",
+      "hazardBreakdown": {
+        "earthquake": "VERY LOW",
+        "tsunami": "LOW",
+        "volcanic": "VERY LOW",
+        "cyclone": "VERY LOW",
+        "drought": "LOW",
+        "flood": "LOW",
+        "seaLevelRise": "MEDIUM",
+        "wildfire": "VERY LOW"
+      },
+      "historicalEvents": [
+        "Urban flooding in low-lying areas",
+        "Transboundary haze from Indonesian peat fires (2015 — worst episode)",
+        "Sea level rise — city-state under review for coastal defenses"
+      ],
+      "sources": [
+        "Meteorological Service Singapore — https://www.weather.gov.sg",
+        "National Environment Agency — https://www.nea.gov.sg",
+        "Building & Construction Authority — https://www.bca.gov.sg"
+      ]
+    },
+    {
+      "country": "New Zealand",
+      "countryCode": "NZ",
+      "worldRiskIndex": 3.71,
+      "ndGainScore": 69.3,
+      "naturalRiskLevel": "MEDIUM",
+      "politicalRiskLevel": "VERY LOW",
+      "climateRiskLevel": "LOW",
+      "overallRisk": "SAFE",
+      "hazardBreakdown": {
+        "earthquake": "HIGH",
+        "tsunami": "HIGH",
+        "volcanic": "HIGH",
+        "cyclone": "LOW",
+        "drought": "MEDIUM",
+        "flood": "MEDIUM",
+        "seaLevelRise": "MEDIUM",
+        "wildfire": "MEDIUM"
+      },
+      "historicalEvents": [
+        "2011 Christchurch Earthquake M6.3 — 185 deaths",
+        "2016 Kaikōura Earthquake M7.8",
+        "White Island/Whakaari eruption (2019) — 22 deaths",
+        "2023 Cyclone Gabrielle — 11 deaths, $13.5B damage"
+      ],
+      "sources": [
+        "GNS Science — https://www.gns.cri.nz",
+        "MetService New Zealand — https://www.metservice.com",
+        "NEMA Emergency Management — https://www.civildefence.govt.nz"
+      ]
+    },
+    {
+      "country": "United Kingdom",
+      "countryCode": "GB",
+      "worldRiskIndex": 2.85,
+      "ndGainScore": 69.7,
+      "naturalRiskLevel": "LOW",
+      "politicalRiskLevel": "VERY LOW",
+      "climateRiskLevel": "MEDIUM",
+      "overallRisk": "SAFE",
+      "hazardBreakdown": {
+        "earthquake": "LOW",
+        "tsunami": "VERY LOW",
+        "volcanic": "VERY LOW",
+        "cyclone": "VERY LOW",
+        "drought": "LOW",
+        "flood": "HIGH",
+        "seaLevelRise": "MEDIUM",
+        "wildfire": "LOW"
+      },
+      "historicalEvents": [
+        "1953 North Sea Flood — 307 deaths in UK",
+        "2007 UK floods — £3.2B damage",
+        "2022 Storm Arwen — 3 deaths",
+        "2022 UK heatwave — 2,800+ excess deaths (46.8°C record)"
+      ],
+      "sources": [
+        "UK Met Office — https://www.metoffice.gov.uk",
+        "Environment Agency — https://www.gov.uk/government/organisations/environment-agency",
+        "BGS British Geological Survey — https://www.bgs.ac.uk"
+      ]
+    },
+    {
+      "country": "Germany",
+      "countryCode": "DE",
+      "worldRiskIndex": 3.28,
+      "ndGainScore": 69.0,
+      "naturalRiskLevel": "LOW",
+      "politicalRiskLevel": "VERY LOW",
+      "climateRiskLevel": "MEDIUM",
+      "overallRisk": "SAFE",
+      "hazardBreakdown": {
+        "earthquake": "LOW",
+        "tsunami": "VERY LOW",
+        "volcanic": "VERY LOW",
+        "cyclone": "VERY LOW",
+        "drought": "MEDIUM",
+        "flood": "HIGH",
+        "seaLevelRise": "LOW",
+        "wildfire": "LOW"
+      },
+      "historicalEvents": [
+        "2021 Ahr Valley floods — 184 deaths, €33B damage (deadliest in recent decades)",
+        "2002 Elbe floods — €11.6B damage",
+        "Recurring Rhineland winter storms"
+      ],
+      "sources": [
+        "DWD German Weather Service — https://www.dwd.de",
+        "BGR Federal Institute for Geosciences — https://www.bgr.bund.de",
+        "BBK Federal Office for Civil Protection — https://www.bbk.bund.de"
+      ]
+    }
+  ],
+  "globalRankings": {
+    "highestNaturalRisk": ["Philippines", "Indonesia", "Japan", "India", "Colombia"],
+    "highestPoliticalRisk": ["Yemen", "Sudan", "South Sudan", "Afghanistan", "Myanmar", "Somalia"],
+    "highestClimateRisk": ["Bangladesh", "Maldives", "Somalia", "Yemen", "South Sudan"],
+    "highestOverallRisk": ["Philippines", "Yemen", "Sudan", "Myanmar", "Haiti", "Somalia", "Afghanistan", "Bangladesh"],
+    "safest": ["Norway", "Finland", "Switzerland", "Denmark", "Singapore", "Sweden", "Austria"],
+    "highestEarthquakeRisk": ["Japan", "Indonesia", "Philippines", "Chile", "Turkey"],
+    "highestCycloneRisk": ["Philippines", "Bangladesh", "Myanmar", "Japan", "China"],
+    "highestFloodRisk": ["Bangladesh", "Netherlands", "Vietnam", "Myanmar", "Philippines"],
+    "highestWildfireRisk": ["Australia", "United States", "Canada", "Brazil", "Indonesia"],
+    "activeConflicts2025": ["Ukraine", "Sudan", "Yemen", "Myanmar", "Palestine/Gaza", "Somalia", "DR Congo"]
+  }
+}
