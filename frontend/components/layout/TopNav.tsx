@@ -8,6 +8,7 @@ import {
   Settings,
   Sparkles,
   X,
+  BookOpen,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -22,6 +23,7 @@ const LINKS = [
   { href: "/agents", label: "AI Workspace", icon: Sparkles },
   { href: "/reports", label: "Reports", icon: FileText },
   { href: "/admin/datasets", label: "Datasets", icon: Database },
+  { href: "/resources", label: "Resources", icon: BookOpen },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
