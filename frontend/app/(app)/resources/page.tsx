@@ -76,7 +76,7 @@ export default function ResourcesPage() {
   ];
 
   return (
-    <div className="space-y-20">
+    <div className="mx-auto max-w-6xl space-y-20 px-4 md:px-6 lg:px-8">
       {/* Page Header */}
       <div className="space-y-3">
         <h1 className="text-5xl font-bold tracking-tight">Resources</h1>
