@@ -80,6 +80,7 @@ class AskAIRequest(BaseModel):
     lat: Optional[float] = Field(None, ge=-90, le=90)
     lng: Optional[float] = Field(None, ge=-180, le=180)
     location_name: Optional[str] = Field(None, max_length=120)
+    mapTargetContext: Optional[str] = Field(None, max_length=4000)
 
     @field_validator("persona")
     @classmethod

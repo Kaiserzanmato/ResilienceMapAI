@@ -29,6 +29,13 @@ IN_SCOPE_PATTERNS = [
     r"\b(satellite|remote sensing|earth observation|monitoring|detection)\b",
     r"\b(evacuation|shelter|aid|relief|humanitarian|response)\b",
     r"\b(exposure|vulnerability|adaptation|mitigation)\b",
+    # Safety and location risk questions
+    r"\b(safe|unsafe|safety|dangerous|livable|habitable|risky)\b",
+    r"\b(live|living|reside|relocate|move|settle|invest)\b.{0,40}(here|area|place|region|location|city|country)",
+    r"(is|are|was|were).{0,40}(safe|dangerous|risky|hazardous|risk)",
+    r"\b(conflict|war|political|fragile|peace|famine|displacement|refugee)\b",
+    r"\b(sea level|flooding|loss|damage|casualty|death toll)\b",
+    r"\b(tell me about|explain|describe|what.{0,20}risk|how (safe|dangerous|risky))\b",
 ]
 
 OUT_OF_SCOPE_PATTERNS = [
@@ -66,6 +73,7 @@ async def ask_ai_guardrailed(
     location_name: Optional[str] = None,
     persona: str = "technical",
     provider: Optional[str] = None,
+    map_target_context: Optional[str] = None,
 ) -> dict:
     """Execute Ask AI with guardrails: scope checking and source attribution.
 
@@ -130,6 +138,7 @@ async def ask_ai_guardrailed(
             query,
             persona,
             provider,
+            map_target_context,
         )
 
         return {

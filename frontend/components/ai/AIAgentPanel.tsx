@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { formatMapTargetForPrompt } from "@/lib/map-target-builder";
 import { getPersona } from "@/lib/personas";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -21,7 +22,7 @@ import { SourceGroundingCard } from "./SourceGroundingCard";
 export function AIAgentPanel() {
   const {
     aiOpen, setAiOpen, aiPinned, setAiPinned, messages, addMessage,
-    clearMessages, persona, selected, risk,
+    clearMessages, persona, selected, risk, activeTarget,
   } = useAppStore();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -61,6 +62,7 @@ export function AIAgentPanel() {
         lat: selected?.lat,
         lng: selected?.lng,
         location_name: selected?.name,
+        mapTargetContext: activeTarget ? formatMapTargetForPrompt(activeTarget) : undefined,
       });
 
       // Handle out-of-scope queries

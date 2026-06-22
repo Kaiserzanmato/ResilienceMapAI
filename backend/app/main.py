@@ -224,6 +224,7 @@ async def ask_ai(req: AskAIRequest):
         location_name=req.location_name,
         persona=req.persona,
         provider=req.provider,
+        map_target_context=req.mapTargetContext,
     )
     return result
 
