@@ -48,21 +48,29 @@ OUT_OF_SCOPE_PATTERNS = [
 ]
 
 
-def classify_query_scope(query: str) -> Literal["in_scope", "out_of_scope"]:
-    """Classify user query as in-scope or out-of-scope for Ask AI."""
+def classify_query_scope(query: str, has_location_context: bool = False) -> Literal["in_scope", "out_of_scope"]:
+    """Classify user query as in-scope or out-of-scope for Ask AI.
+
+    When the user has a location selected (has_location_context=True), any question
+    that isn't explicitly off-topic (sports, entertainment, food, etc.) is treated as
+    in-scope — the user is clearly asking about that location's risk profile.
+    """
     lower_query = query.lower()
 
-    # Check out-of-scope patterns first
+    # Always block explicitly off-topic queries regardless of context
     for pattern in OUT_OF_SCOPE_PATTERNS:
         if re.search(pattern, lower_query, re.IGNORECASE):
             return "out_of_scope"
 
-    # Check in-scope patterns
+    # When a location is selected, pass anything not explicitly blocked
+    if has_location_context:
+        return "in_scope"
+
+    # No location context — require a positive match to a risk/hazard pattern
     for pattern in IN_SCOPE_PATTERNS:
         if re.search(pattern, lower_query, re.IGNORECASE):
             return "in_scope"
 
-    # Default: out of scope
     return "out_of_scope"
 
 
@@ -88,8 +96,9 @@ async def ask_ai_guardrailed(
       }
     """
 
-    # 1. Classify scope
-    scope = classify_query_scope(query)
+    # 1. Classify scope — treat any query as in-scope when a location is selected
+    has_location_context = (lat is not None and lng is not None) or bool(map_target_context)
+    scope = classify_query_scope(query, has_location_context=has_location_context)
 
     if scope == "out_of_scope":
         return {
