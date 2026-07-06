@@ -1,7 +1,6 @@
 "use client";
 import {
   BookOpen,
-  Video,
   BarChart3,
   AlertTriangle,
   Cloud,
@@ -204,9 +203,14 @@ export default function ResourcesPage() {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
-          <button className="flex items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[color-mix(in_srgb,var(--accent)_85%,#000)]">
+          <a
+            href="https://docypherlabs.com/contact"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="focus-ring flex items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[color-mix(in_srgb,var(--accent)_85%,#000)]"
+          >
             Contact Us <ArrowRight size={16} />
-          </button>
+          </a>
           <button className="flex items-center justify-center gap-2 rounded-lg border border-[var(--surface-border)] px-6 py-2.5 text-sm font-semibold text-[var(--fg)] transition-all hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)]">
             View Full Dataset <ArrowRight size={16} />
           </button>

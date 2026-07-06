@@ -1,24 +1,47 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  FileDown, FileSpreadsheet, Link2, Loader2, Sparkles, Zap, X,
+  Download, FileDown, FileSpreadsheet, FileText, FileCode2,
+  Link2, Loader2, Sparkles, Zap, X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, downloadExport } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { captureMapSnapshot, formatNumber, riskColor } from "@/lib/utils";
+import { buildReportSnapshot, downloadTextFile } from "@/lib/report-snapshot";
+import { snapshotToText, snapshotToMarkdown, snapshotToCsv } from "@/lib/report-formats";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { RiskBadge } from "@/components/ui/RiskBadge";
 import { InsightsPanel } from "./InsightsPanel";
 
 export function RiskSummaryWidget() {
-  const { risk, selected, setSelected, setRisk, persona, setAiOpen } = useAppStore();
+  const { risk, selected, setSelected, setRisk, persona, setAiOpen, activeTarget } = useAppStore();
   const [busy, setBusy] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsError, setInsightsError] = useState<string | null>(null);
-  const [insightsData, setInsightsData] = useState<any>(null);
+  const [insightsData, setInsightsData] = useState<unknown>(null);
+
+  // Close export menu on Escape or outside click
+  useEffect(() => {
+    if (!exportOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setExportOpen(false);
+    const onClick = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setExportOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onClick);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onClick);
+    };
+  }, [exportOpen]);
 
   if (!selected || !risk) return null;
 
@@ -41,17 +64,32 @@ export function RiskSummaryWidget() {
     }
   }
 
-  async function exportCsv() {
-    if (!risk) return;
-    setBusy("csv");
+  /**
+   * TXT / Markdown / CSV exports share one immutable snapshot built from the
+   * canonical store state at the instant of the click — no async gap between
+   * reading state and generating the file, so stale exports are impossible.
+   */
+  function exportSnapshotFormat(format: "txt" | "md" | "csv") {
+    if (!risk || busy) return;
+    setBusy(format);
+    setExportOpen(false);
     try {
-      await downloadExport(
-        "csv",
-        { locations: [{ lat: risk.latitude, lng: risk.longitude, name: risk.location_name }] },
-        `resiliencemap-${slug}.csv`
-      );
+      const snapshot = buildReportSnapshot({ risk, activeTarget, persona });
+      const content =
+        format === "txt" ? snapshotToText(snapshot)
+        : format === "md" ? snapshotToMarkdown(snapshot)
+        : snapshotToCsv(snapshot);
+      const mime =
+        format === "csv" ? "text/csv"
+        : format === "md" ? "text/markdown"
+        : "text/plain";
+      downloadTextFile(`resiliencemap-${slug}.${format}`, content, mime);
+      setExportNotice("Report downloaded");
+    } catch {
+      setExportNotice("Export failed — please retry");
     } finally {
       setBusy(null);
+      setTimeout(() => setExportNotice(null), 3000);
     }
   }
 
@@ -100,9 +138,15 @@ export function RiskSummaryWidget() {
   const actions = [
     { key: "insights", label: "Insights", icon: Zap, onClick: generateInsights },
     { key: "ai", label: "Ask AI", icon: Sparkles, onClick: () => setAiOpen(true) },
-    { key: "pdf", label: "PDF", icon: FileDown, onClick: exportPdf },
-    { key: "csv", label: "CSV", icon: FileSpreadsheet, onClick: exportCsv },
+    { key: "export", label: "Export", icon: Download, onClick: () => setExportOpen((v) => !v) },
     { key: "share", label: shareUrl ? "Copied!" : "Share", icon: Link2, onClick: makeShareLink },
+  ];
+
+  const exportOptions = [
+    { key: "pdf", label: "PDF Report", desc: "Shareable formatted risk brief", icon: FileDown, onClick: () => { setExportOpen(false); exportPdf(); } },
+    { key: "txt", label: "Text File", desc: "Readable plain-text assessment", icon: FileText, onClick: () => exportSnapshotFormat("txt") },
+    { key: "md", label: "Markdown Report", desc: "Portable evidence-rich report", icon: FileCode2, onClick: () => exportSnapshotFormat("md") },
+    { key: "csv", label: "CSV Data", desc: "Structured records for analysis", icon: FileSpreadsheet, onClick: () => exportSnapshotFormat("csv") },
   ];
 
   return (
@@ -181,22 +225,57 @@ export function RiskSummaryWidget() {
             </p>
           )}
 
-          <div className="mt-3.5 flex flex-wrap gap-1.5">
-            {actions.map((a) => (
-              <button
-                key={a.key}
-                onClick={a.onClick}
-                disabled={busy !== null}
-                className="focus-ring glass flex cursor-pointer flex-col items-center gap-1 rounded-xl px-1 py-2.5 text-[11px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50 flex-1 min-w-[60px]"
+          <div ref={exportMenuRef} className="relative mt-3.5">
+            {/* Export dropdown menu — opens above the action row */}
+            {exportOpen && (
+              <div
+                role="menu"
+                aria-label="Export report formats"
+                className="glass-strong absolute bottom-full left-0 right-0 z-20 mb-2 overflow-hidden rounded-xl p-1.5"
               >
-                {busy === a.key ? (
-                  <Loader2 size={15} className="animate-spin" aria-hidden="true" />
-                ) : (
-                  <a.icon size={15} aria-hidden="true" />
-                )}
-                {a.label}
-              </button>
-            ))}
+                {exportOptions.map((o) => (
+                  <button
+                    key={o.key}
+                    role="menuitem"
+                    onClick={o.onClick}
+                    disabled={busy !== null}
+                    className="focus-ring flex w-full cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] disabled:opacity-50"
+                  >
+                    <o.icon size={15} className="mt-0.5 shrink-0 text-[var(--accent)]" aria-hidden="true" />
+                    <span className="min-w-0">
+                      <span className="block text-[12px] font-semibold">{o.label}</span>
+                      <span className="block truncate text-[10.5px] text-[var(--fg-muted)]">{o.desc}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-1.5">
+              {actions.map((a) => (
+                <button
+                  key={a.key}
+                  onClick={a.onClick}
+                  disabled={busy !== null}
+                  aria-haspopup={a.key === "export" ? "menu" : undefined}
+                  aria-expanded={a.key === "export" ? exportOpen : undefined}
+                  className="focus-ring glass flex cursor-pointer flex-col items-center gap-1 rounded-xl px-1 py-2.5 text-[11px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50 flex-1 min-w-[60px]"
+                >
+                  {busy === a.key || (a.key === "export" && busy && ["pdf", "txt", "md", "csv"].includes(busy)) ? (
+                    <Loader2 size={15} className="animate-spin" aria-hidden="true" />
+                  ) : (
+                    <a.icon size={15} aria-hidden="true" />
+                  )}
+                  {a.label}
+                </button>
+              ))}
+            </div>
+
+            {exportNotice && (
+              <p role="status" className="mt-2 text-center text-[10.5px] font-medium text-[var(--accent)]">
+                {exportNotice}
+              </p>
+            )}
           </div>
 
           <p className="mt-3 text-[10px] leading-snug text-[var(--fg-muted)]">
