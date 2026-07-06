@@ -7,6 +7,7 @@ import type { MapTarget, SelectedLocation } from "./store";
 import type { RiskAssessment } from "./types";
 import { compressHazardScores } from "./hazard-utils";
 import { getRiskReference, formatReferenceForPrompt } from "./risk-reference";
+import { formatKnowledgeForPrompt } from "./resilience-knowledge";
 
 /**
  * Build MapTarget from location and risk assessment.
@@ -60,6 +61,7 @@ export function formatMapTargetForPrompt(target: MapTarget): string {
   const sourcesList = target.officialSources.join("; ");
   const ref = getRiskReference(target.countryCode);
   const referenceBlock = ref ? formatReferenceForPrompt(ref) : null;
+  const knowledgeBlock = formatKnowledgeForPrompt(target.countryCode);
 
   return [
     `[ACTIVE GEOPOLITICAL VIEWPORT]`,
@@ -73,7 +75,10 @@ export function formatMapTargetForPrompt(target: MapTarget): string {
     `[AUTHORIZED GROUNDING SOURCE SITES]`,
     sourcesList || "(No sources configured)",
     referenceBlock ? `\n${referenceBlock}` : "",
+    knowledgeBlock ? `\n${knowledgeBlock}` : "",
   ]
     .join("\n")
-    .trim();
+    .trim()
+    // Backend schema caps mapTargetContext at 4000 chars
+    .slice(0, 3900);
 }

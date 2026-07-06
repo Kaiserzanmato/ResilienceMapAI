@@ -212,6 +212,40 @@ ACTIVE_ALERTS = [
     {"id": "al-3", "title": "Flood Advisory — Marikina River", "hazard": "flood",
      "area": "Metro Manila", "lat": 14.63, "lng": 121.10, "severity": "Medium",
      "issued": "2026-06-13T02:00:00Z", "source": "PAGASA"},
+    # July 2026 Strategic Assessment watchlist (knowledge revision
+    # 2026-07-strategic-assessment-v1 — see frontend/data/knowledge-events.json)
+    {"id": "al-bavi", "title": "Super Typhoon Bavi (Category 5) — Typhoon Warning",
+     "hazard": "tropical_cyclone", "area": "Guam / Northern Mariana Islands",
+     "lat": 13.44, "lng": 144.79, "severity": "Critical",
+     "issued": "2026-07-06T04:25:00Z", "source": "NWS Guam / JTWC"},
+    {"id": "al-venezuela-eq", "title": "Yaracuy-Carabobo Earthquake Aftermath (M7.5)",
+     "hazard": "earthquake", "area": "North-Central Venezuela",
+     "lat": 10.35, "lng": -68.75, "severity": "Critical",
+     "issued": "2026-07-04T20:00:00Z", "source": "USGS / OCHA"},
+    {"id": "al-europe-heat", "title": "Extreme Heatwave — Heat-Health Warnings",
+     "hazard": "extreme_heat", "area": "Western / Central / Southern Europe",
+     "lat": 48.85, "lng": 2.35, "severity": "High",
+     "issued": "2026-06-29T00:00:00Z", "source": "WMO / WHO"},
+    {"id": "al-mayon-al3", "title": "Mayon Volcano Alert Level 3 (Effusive Eruption)",
+     "hazard": "volcano", "area": "Albay Province",
+     "lat": 13.257, "lng": 123.685, "severity": "High",
+     "issued": "2026-07-05T00:00:00Z", "source": "DOST-PHIVOLCS"},
+    {"id": "al-kanlaon-al2", "title": "Kanlaon Volcano Alert Level 2 (Increased Unrest)",
+     "hazard": "volcano", "area": "Negros Island",
+     "lat": 10.412, "lng": 123.132, "severity": "Medium",
+     "issued": "2026-07-05T00:00:00Z", "source": "DOST-PHIVOLCS"},
+    {"id": "al-portugal-fire", "title": "National Wildfire State of Alert",
+     "hazard": "wildfire", "area": "Interior North / Central Portugal",
+     "lat": 40.68, "lng": -8.11, "severity": "High",
+     "issued": "2026-07-05T00:00:00Z", "source": "IPMA / Civil Protection"},
+    {"id": "al-sudan-elobeid", "title": "El Obeid Siege — Famine Risk (IPC 5)",
+     "hazard": "conflict", "area": "North Kordofan, Sudan",
+     "lat": 13.18, "lng": 30.22, "severity": "Critical",
+     "issued": "2026-07-03T00:00:00Z", "source": "IPC / OHCHR / OCHA"},
+    {"id": "al-bd-monsoon", "title": "Monsoon Flood Anticipatory Action Window",
+     "hazard": "flood", "area": "Bangladesh (20 districts)",
+     "lat": 23.68, "lng": 90.35, "severity": "Medium",
+     "issued": "2026-07-01T00:00:00Z", "source": "AATWG / UN OCHA"},
 ]
 
 # Dataset registry (source provenance, shown in Data Source widgets)
@@ -237,6 +271,11 @@ DATASETS = [
     {"id": "ds-nasa-landslide", "name": "NASA Global Landslide Catalog", "agency": "NASA",
      "category": "landslide", "updated": "2025-12-15", "confidence": "Medium",
      "url": "https://gpm.nasa.gov/landslides/", "records": 11033, "status": "active"},
+    {"id": "ds-rmai-ka-2026-07", "name": "July 2026 Strategic Assessment (Curated Knowledge)",
+     "agency": "ResilienceMap AI Research / WMO / WHO / OCHA / PHIVOLCS",
+     "category": "multi", "updated": "2026-07-06", "confidence": "High",
+     "url": "https://github.com/Kaiserzanmato/ResilienceMapAI/blob/main/frontend/data/knowledge-events.json",
+     "records": 27, "status": "active"},
 ]
 
 # Lightweight gazetteer for the MVP location search (no external geocoder key needed)

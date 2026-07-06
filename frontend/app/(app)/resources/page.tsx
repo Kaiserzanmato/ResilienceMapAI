@@ -73,6 +73,13 @@ export default function ResourcesPage() {
       subtitle: "Long-term Risks",
       description: "Sea level rise, drought scarcity, and environmental degradation trends.",
     },
+    {
+      icon: Zap,
+      title: "July 2026 Strategic Assessment",
+      subtitle: "Active Watchlist",
+      description:
+        "Curated global watchlist of 22 active events and 5 structural climate layers — typhoons, earthquakes, heatwaves, epidemics, conflict, and famine risk — sourced from WMO, WHO, OCHA, PHIVOLCS, USGS, and IPC (revision 2026-07-06).",
+    },
   ];
 
   return (
