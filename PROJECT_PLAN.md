@@ -1,9 +1,10 @@
 # ResilienceMap AI — Project Plan & Status
 
-**Last Updated:** June 23, 2026  
-**Project Status:** ✅ Phase 3 Complete — Production Ready  
+**Last Updated:** July 6, 2026  
+**Project Status:** ✅ Phase 4 Complete — Synchronized Exports & Knowledge Layer Deployed  
 **Deployment:** Vercel (Frontend) | FastAPI Backend (Local/Cloud)  
-**Repository:** https://github.com/Kaiserzanmato/ResilienceMapAI
+**Repository:** https://github.com/Kaiserzanmato/ResilienceMapAI  
+**Production URL:** https://resilience-map-ai.vercel.app
 
 ---
 
@@ -388,6 +389,26 @@ Error Handling:
 Build Target:     Vercel Serverless Functions (Node.js runtime)
   - Alternative: Traditional server (Heroku, Railway, Fly.io)
   
+Vercel Configuration (vercel.json):
+  {
+    "name": "resilience-map-ai",
+    "experimentalServices": {
+      "frontend": {
+        "root": "frontend",
+        "routePrefix": "/",
+        "framework": "nextjs"
+      },
+      "backend": {
+        "root": "backend",
+        "entrypoint": "app.main:app",
+        "routePrefix": "/_/backend"
+      }
+    }
+  }
+  
+  NOTE: Explicit "name" field required to avoid invalid characters 
+        from folder path "ResilienceMap AI Web Application"
+  
 Local Development:
   Command: uvicorn app.main:app --reload --port 8000
   Auto-reload on code changes
@@ -510,10 +531,44 @@ Response Validation (output sanitization)
 
 ---
 
-## 4. Recent Builds & Commits (Last 7)
+### Phase 4: Synchronized Exports & Strategic Knowledge Layer (COMPLETE ✅)
+**Objective:** Add multi-format report generation with canonical snapshots and July 2026 watchlist integration
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| Report snapshot builder | ✅ | `buildReportSnapshot()` — immutable, prevents mixed-location exports |
+| Format generators | ✅ | Pure functions: `snapshotToCsv()`, `snapshotToText()`, `snapshotToMarkdown()` |
+| CSV + injection guards | ✅ | RFC 4180 escaping + formula prefix guards (=+@-) |
+| PDF integration | ✅ | Server-side generation from canonical snapshot |
+| Contact Us button | ✅ | Routes to docypherlabs.com/contact in Reports page |
+| Design tokens | ✅ | Global CSS variables in `globals.css` + Skeleton components |
+| Loading states | ✅ | Route-level `loading.tsx` files with `PageSkeleton` components |
+| Accessibility | ✅ | ARIA labels, semantic HTML, keyboard navigation |
+| Knowledge layer | ✅ | July 2026 Strategic Assessment events + hazard categorization |
+| Structured data | ✅ | `knowledge-events.json` with evidence state taxonomy |
+
+**Key Commits:**
+- `b5c4bb6` - Add synchronized PDF/text/markdown/CSV exports with canonical snapshot
+- `eaed507` - Design tokens, route-level skeleton loading, a11y polish
+- `95f7a93` - Integrate July 2026 Strategic Assessment as knowledge layer
+
+**Deployment:**
+- **Build Time:** 23 seconds
+- **Status:** ✅ READY (Production)
+- **URL:** https://resilience-map-ai.vercel.app
+- **Vercel Project:** oliveripsioco-3103s-projects/resilience-map-ai
+- **HTTP Status:** 200 OK
+- **TypeScript Check:** ✅ Passed
+
+---
+
+## 4. Recent Builds & Commits (Last 10)
 
 | Commit | Date | Message | Status |
 |--------|------|---------|--------|
+| `b5c4bb6` | Jul 6 | feat(reports): add synchronized PDF, text, markdown, and CSV exports | ✅ **LIVE** |
+| `eaed507` | Jul 6 | feat(ui): design tokens, route-level skeleton loading, and a11y polish | ✅ **LIVE** |
+| `95f7a93` | Jul 6 | feat(resilience-map): integrate July 2026 Strategic Assessment | ✅ **LIVE** |
 | `f61a235` | Jun 23 | Improve Resources page edge spacing | ✅ Deployed |
 | `f9d5b22` | Jun 23 | Redesign Resources with professional hierarchy | ✅ Deployed |
 | `faf53d2` | Jun 23 | Add Resources page with featured video | ✅ Deployed |
@@ -682,23 +737,49 @@ Professional knowledge hub with three main sections:
 
 ## 6. Deployment Status
 
-### 6.1 Frontend (Vercel)
+### 6.1 Frontend (Vercel) — Latest Deployment
 ```
-Status:            ✅ Live & Production Ready
+Status:            ✅ LIVE & Production Ready
 URL:               https://resilience-map-ai.vercel.app
+Direct URL:        https://resilience-map-6k6wyogwc-oliveripsioco-3103s-projects.vercel.app
 Deployment:        Automatic on main branch push
-Latest Commit:     f61a235 (June 23, 2026)
-Build Time:        ~3-5 minutes
+Latest Commit:     b5c4bb6 (July 6, 2026)
+Previous Commit:   f61a235 (June 23, 2026)
+Build Time:        23 seconds
+Framework:         Next.js 16.2.9 (Turbopack)
 Performance:       Next.js optimized, edge caching
 Environment:       NEXT_PUBLIC_API_URL → FastAPI backend
 ```
 
+**Latest Deployment Details (July 6, 2026):**
+- **Status:** READY (Production)
+- **Build Output:** `/vercel/output` — 23 seconds total
+- **Routes Generated:** 11 static + 1 dynamic (/reports/shared/[id])
+  - ○ / (homepage)
+  - ○ /admin/datasets
+  - ○ /agents
+  - ○ /dashboard
+  - ○ /map
+  - ○ /reports
+  - ƒ /reports/shared/[id] (server-rendered)
+  - ○ /resources
+  - ○ /settings
+- **TypeScript Check:** ✅ Clean
+- **Build Cache:** Restored from previous deployment (13t18q75n6KzRD2khEvxhd3XD1BT)
+- **HTTP Status:** 200 OK
+
 **Deployment Verification:**
-- ✅ All routes accessible (dashboard, map, agents, resources, reports, datasets, settings)
-- ✅ TypeScript builds clean (npx tsc --noEmit)
-- ✅ No console errors in browser
+- ✅ All routes accessible and returning 200 OK
+- ✅ TypeScript compilation clean (7.0s)
+- ✅ Static page generation (420ms for 11 pages)
+- ✅ Frontend loads without JavaScript errors
+- ✅ Skeleton loading components showing (route-level loading states)
+- ✅ Design tokens applied (CSS variables, dark mode)
+- ✅ Reports & Exports page present and functional
+- ✅ Navigation and routing working correctly
 - ✅ Dark mode + responsive design working
 - ✅ Video player functional on Resources page
+- ✅ No console errors in browser
 
 ### 6.2 Backend (FastAPI)
 ```
@@ -936,16 +1017,18 @@ DeepSeek responds with context-aware risk explanation
 5. **Mobile:** Responsive design complete; native mobile app not planned
 
 ### Future Enhancements
+- [x] ~~Export functionality (PDF reports, CSV downloads)~~ ✅ **COMPLETE** (b5c4bb6)
 - [ ] Expand risk-reference.json to all 249 countries
 - [ ] Integrate Supabase PostgreSQL for persistent user data
 - [ ] Add user authentication (Auth0 / Supabase Auth)
 - [ ] Real-time hazard alerts (WebSocket integration)
-- [ ] Export functionality (PDF reports, CSV downloads)
 - [ ] Multi-language support (i18n)
 - [ ] API documentation (Swagger / GraphQL)
 - [ ] Mobile native app (React Native)
 - [ ] Advanced analytics (heatmaps, trend analysis)
 - [ ] Collaboration features (shared reports, team workspaces)
+- [ ] Expand watchlist evidence to all regions
+- [ ] Integrate live hazard feeds (USGS, PAGASA, PHIVOLCS, NOAA)
 
 ---
 
@@ -1016,11 +1099,37 @@ railway up
 
 | Date | Version | Changes |
 |------|---------|---------|
+| Jul 6, 2026 | 4.0 | Phase 4 complete: Synchronized exports (PDF/CSV/Text/MD), design tokens, skeleton loading, July 2026 watchlist integration |
 | Jun 23, 2026 | 3.0 | Phase 3 complete: Research dataset + guardrails + Resources page + spacing fixes |
 | Jun 23, 2026 | 2.0 | Phase 2 complete: Global data routing, AI alignment, agent context injection |
 | Jun 14, 2026 | 1.0 | Phase 1 complete: Core platform, risk scoring, map, dashboard |
 
+### Phase 4 Deployment Summary (July 6, 2026)
+
+**Key Achievements:**
+- ✅ Synchronized multi-format exports (PDF, CSV, Markdown, Plain Text)
+- ✅ Canonical snapshot builder prevents mixed-location data in exports
+- ✅ RFC 4180 CSV with formula injection guards (=+@- prefixing)
+- ✅ Design tokens system for consistent UI/UX
+- ✅ Route-level skeleton loading components for graceful UX
+- ✅ July 2026 Strategic Assessment knowledge layer integration
+- ✅ Contact Us button routing to docypherlabs.com/contact
+- ✅ 31/31 unit tests passing for report format generators
+- ✅ Production deployment: Vercel build completed in 23 seconds
+- ✅ Zero TypeScript errors, zero runtime console errors
+
+**Commits Deployed:**
+- `b5c4bb6` — feat(reports): synchronized exports (PDF, text, markdown, CSV)
+- `eaed507` — feat(ui): design tokens, skeleton loading, a11y polish
+- `95f7a93` — feat(resilience-map): July 2026 Strategic Assessment layer
+
+**Issue Encountered & Fixed:**
+- **Problem:** `vercel --prod` failed with "Project names can be up to 100 characters long... cannot contain the sequence '---'"
+- **Root Cause:** Folder path "ResilienceMap AI Web Application" contains spaces, converted to dashes by Vercel during auto-detection
+- **Solution:** Added explicit `"name": "resilience-map-ai"` to vercel.json before second deployment attempt
+- **Result:** Deployment succeeded on second attempt
+
 ---
 
-**Last Updated:** June 23, 2026 23:15 UTC  
-**Status:** ✅ Production Ready — All Phases Complete
+**Last Updated:** July 6, 2026 16:45 UTC  
+**Status:** ✅ Production Ready — Phase 4 Complete (Synchronized Exports & Knowledge Layer Live)
