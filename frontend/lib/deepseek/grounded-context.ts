@@ -48,11 +48,11 @@ export function buildGroundedContext(opts: {
   domain?: RiskDomain;
 }): GroundedContext {
   // Resolve country metadata
-  let countryAlpha2 = opts.countryAlpha2;
-  let countryData = countryAlpha2 ? getCountryByAlpha2(countryAlpha2) : undefined;
+  const countryAlpha2 = opts.countryAlpha2;
+  const countryData = countryAlpha2 ? getCountryByAlpha2(countryAlpha2) : undefined;
 
   // Select sources: use country-aware routing if alpha2 provided, else generic prioritization
-  let prioritized = opts.domain && countryAlpha2
+  const prioritized = opts.domain && countryAlpha2
     ? selectSourcesForCountry(countryAlpha2, opts.domain)
     : getPrioritizedSources(opts.country, opts.domain);
 

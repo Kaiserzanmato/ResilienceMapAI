@@ -22,6 +22,22 @@
   --banner-h: 44px;
   --footer-h: 44px;
 
+  /* Radius scale (spec: 12–20px) */
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+
+  /* Elevation scale */
+  --elevation-1: 0 4px 16px rgba(2, 8, 23, 0.08);
+  --elevation-2: 0 8px 32px rgba(2, 8, 23, 0.12);
+  --elevation-3: 0 16px 48px rgba(2, 8, 23, 0.18);
+
+  /* Motion tokens (GPU-friendly transform/opacity transitions) */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 320ms;
+  --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
   /* Risk colors are fixed across themes (icon + text always accompany color) */
   --risk-low: #16a34a;
   --risk-medium: #d97706;
@@ -37,6 +53,9 @@
 
 .dark {
   /* Dark: intelligence command center */
+  --elevation-1: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --elevation-2: 0 8px 36px rgba(0, 0, 0, 0.45);
+  --elevation-3: 0 16px 48px rgba(0, 0, 0, 0.55);
   --bg: #060a14;
   --bg-deep: #03060d;
   --surface: rgba(13, 20, 38, 0.66);
@@ -182,6 +201,31 @@ body {
   color: var(--fg-muted) !important; font-size: 10px !important;
 }
 .maplibregl-ctrl-attrib a { color: var(--fg-muted) !important; }
+
+/* ---------- Skeleton loading ---------- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--fg-muted) 12%, transparent);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--fg) 6%, transparent),
+    transparent
+  );
+  animation: skeleton-shimmer 1.6s var(--motion-ease) infinite;
+}
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+.high-contrast .skeleton { background: rgba(255, 255, 255, 0.14); }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
