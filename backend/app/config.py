@@ -1,5 +1,6 @@
 """Application configuration. All secrets come from environment variables —
 no API keys are ever shipped to the frontend."""
+import logging
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -79,12 +80,15 @@ def get_settings() -> Settings:
             "Set DEEPSEEK_API_KEY environment variable and restart."
         )
 
-    # Fail closed: without a secret, the cron sync endpoint would be
-    # unauthenticated in production.
+    # The /api/cron/sync-sources endpoint itself already fails closed (403)
+    # when cron_secret is unset — see main.py's cron_sync_sources — so an
+    # unset secret can't actually be exploited. Warn instead of crashing the
+    # whole app at startup; a hard failure here would take down every route,
+    # not just the cron endpoint, over one optional feature being unconfigured.
     if settings.environment == "production" and not settings.cron_secret:
-        raise ValueError(
-            "FATAL: CRON_SECRET is required in production to authenticate the "
-            "/api/cron/sync-sources endpoint. Set CRON_SECRET and restart."
+        logging.getLogger(__name__).warning(
+            "CRON_SECRET is not set — /api/cron/sync-sources will reject all "
+            "requests (including Vercel's own scheduler) until it's configured."
         )
 
     return settings
