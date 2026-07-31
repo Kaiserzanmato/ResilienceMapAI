@@ -5,5 +5,13 @@ pydantic-settings==2.11.0
 pydantic_core==2.46.4
 python-dotenv==1.0.0
 pytest==8.4.2
+pytest-asyncio==0.24.0
 reportlab==4.5.1
 uvicorn==0.39.0
+
+# Persistence (optional — only used when DATABASE_URL is set; the app runs
+# fully on in-memory stores otherwise). Migrations run out-of-band via Alembic,
+# never inside the serverless function.
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
