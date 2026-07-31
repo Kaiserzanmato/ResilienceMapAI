@@ -22,6 +22,10 @@ audit_logger.propagate = False
 ROLES = ["public_user", "registered_user", "analyst", "organization_admin",
          "dataset_admin", "super_admin"]
 
+# Roles above these two grant real privileges (dataset mutation, org admin,
+# etc.) and require ADMIN_SHARED_SECRET alongside X-Role — see get_role().
+ELEVATED_ROLES = {"analyst", "organization_admin", "dataset_admin", "super_admin"}
+
 # role -> allowed permission scopes (enforced on dataset mutation for the MVP)
 ROLE_PERMISSIONS = {
     "public_user": {"read"},
@@ -35,9 +39,24 @@ ROLE_PERMISSIONS = {
 
 def get_role(request: Request) -> str:
     """MVP role resolution: an X-Role header simulates authenticated roles for
-    local development; production swaps this for JWT verification."""
+    local development; production swaps this for JWT verification.
+
+    Stopgap hardening: X-Role alone is fully client-controlled (the frontend
+    itself sends `x-role: dataset_admin` on every dataset upload), so any
+    caller could otherwise grant themselves an elevated role. Until real
+    auth exists, an elevated role additionally requires a matching
+    `Authorization: Bearer <ADMIN_SHARED_SECRET>` header — NOT real
+    authentication (one static secret, no per-user identity, no rotation),
+    just a bar against opportunistic third-party abuse of the header.
+    """
     role = request.headers.get("x-role", "public_user")
-    return role if role in ROLES else "public_user"
+    if role not in ROLES:
+        return "public_user"
+    if role in ELEVATED_ROLES:
+        secret = get_settings().admin_shared_secret
+        if not secret or request.headers.get("authorization") != f"Bearer {secret}":
+            return "public_user"
+    return role
 
 
 def require_permission(request: Request, permission: str) -> None:

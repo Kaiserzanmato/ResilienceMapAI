@@ -85,19 +85,28 @@ export const api = {
 
   datasets: () => request<{ datasets: Dataset[] }>("/api/datasets"),
 
-  uploadDataset: (meta: {
+  // Routed through a same-origin Next.js proxy (app/api/admin/datasets/upload)
+  // rather than straight to the backend — the backend's privileged-role
+  // check requires a server-only secret that must never reach the browser.
+  uploadDataset: async (meta: {
     name: string;
     agency: string;
     category: string;
     url: string;
     confidence: string;
     records: number;
-  }) =>
-    request<{ dataset: Dataset; message: string }>("/api/datasets/upload", {
+  }) => {
+    const res = await fetch("/api/admin/datasets/upload", {
       method: "POST",
-      headers: { "x-role": "dataset_admin" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(meta),
-    }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new APIError(data?.detail ?? `Request failed (${res.status})`, res.status, data);
+    }
+    return data as { dataset: Dataset; message: string };
+  },
 
   reports: () =>
     request<{
