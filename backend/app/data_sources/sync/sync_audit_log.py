@@ -1,37 +1,23 @@
-"""Append-only sync audit log — records every sync attempt."""
+"""Append-only sync audit log — records every sync attempt.
+
+Storage lives in app/repositories/audit_log_repo.py — in-memory by default,
+Postgres-backed when DATABASE_URL is set.
+"""
 from __future__ import annotations
-from datetime import datetime
 from typing import Optional
-import logging
 
-logger = logging.getLogger(__name__)
-
-_audit_log: list[dict] = []
+from ...repositories.audit_log_repo import get_audit_log_repo
 
 
-def log_sync_attempt(
+async def log_sync_attempt(
     source_id: str,
     status: str,
     records_synced: int = 0,
     error: Optional[str] = None,
     duration_ms: Optional[int] = None,
 ) -> None:
-    entry = {
-        "timestamp": datetime.utcnow().isoformat(),
-        "source_id": source_id,
-        "status": status,
-        "records_synced": records_synced,
-        "error": error,
-        "duration_ms": duration_ms,
-    }
-    _audit_log.append(entry)
-    if len(_audit_log) > 1000:
-        _audit_log.pop(0)
-    logger.info("[sync-audit] %s", entry)
+    await get_audit_log_repo().log(source_id, status, records_synced, error, duration_ms)
 
 
-def get_audit_log(source_id: Optional[str] = None, limit: int = 100) -> list[dict]:
-    entries = _audit_log if not source_id else [
-        e for e in _audit_log if e["source_id"] == source_id
-    ]
-    return list(reversed(entries[-limit:]))
+async def get_audit_log(source_id: Optional[str] = None, limit: int = 100) -> list[dict]:
+    return await get_audit_log_repo().get(source_id=source_id, limit=limit)

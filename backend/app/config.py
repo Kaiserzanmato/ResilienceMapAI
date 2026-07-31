@@ -55,6 +55,18 @@ class Settings(BaseSettings):
     database_url: str = os.getenv("DATABASE_URL", "")
     redis_url: str = os.getenv("REDIS_URL", "")
 
+    # Shared secret for the Vercel Cron-triggered sync endpoint. Not a
+    # per-user credential — it only proves the caller is Vercel's scheduler
+    # (or another holder of the secret), not a real identity.
+    cron_secret: str = os.getenv("CRON_SECRET", "")
+
+    # Stopgap RBAC hardening: an X-Role header above public_user/registered_user
+    # is only honored when this secret is also presented (see app/security.py).
+    # This is NOT real authentication — no per-user identity, no rotation. It
+    # exists to stop opportunistic third-party abuse of the spoofable X-Role
+    # header until real auth (JWT/OAuth) is built.
+    admin_shared_secret: str = os.getenv("ADMIN_SHARED_SECRET", "")
+
 
 @lru_cache()
 def get_settings() -> Settings:
@@ -65,6 +77,14 @@ def get_settings() -> Settings:
         raise ValueError(
             "FATAL: DeepSeek API key is required in production. "
             "Set DEEPSEEK_API_KEY environment variable and restart."
+        )
+
+    # Fail closed: without a secret, the cron sync endpoint would be
+    # unauthenticated in production.
+    if settings.environment == "production" and not settings.cron_secret:
+        raise ValueError(
+            "FATAL: CRON_SECRET is required in production to authenticate the "
+            "/api/cron/sync-sources endpoint. Set CRON_SECRET and restart."
         )
 
     return settings

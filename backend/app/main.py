@@ -10,6 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .data.sample_hazards import ACTIVE_ALERTS, DATASETS, HAZARD_EVENTS
+from .data_sources.sync.run_source_sync import run_all_wired_sources
+from .repositories.dataset_repo import get_dataset_repo
 from .schemas import (AgentQueryRequest, AIReportRequest, AISummaryRequest,
                       AskAIRequest, CompareRequest, DatasetUpload, DataStatusResponse,
                       ExportCSVRequest, ExportPDFRequest, ShareLinkRequest)
@@ -35,10 +37,6 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
-
-# Runtime registry of uploaded dataset metadata (in addition to curated DATASETS)
-_uploaded_datasets = []
-
 
 @app.get("/health")
 def health():
@@ -260,66 +258,66 @@ async def generate_insights_endpoint(
 
 
 # ---------------------------------------------------------------- data sync & status
-_last_sync_timestamp = None
-_sync_status = {}
-
-
 @app.get("/api/data-status")
-def data_status():
-    """Report current data freshness and sync status.
+async def data_status():
+    """Report current data freshness and sync status, derived from real sync
+    health (see app/data_sources/sync/) rather than a hardcoded MVP status."""
+    from .data_sources.sync.run_source_sync import WIRED_SOURCE_IDS
+    from .data_sources.sync.source_sync_health import get_sync_health_report
 
-    Returns whether displayed data is real-time, synced, stale, or static/mock.
-    """
-    global _last_sync_timestamp, _sync_status
+    health = await get_sync_health_report()
+    wired = [h for h in health if h["source_id"] in WIRED_SOURCE_IDS]
+    synced = [h for h in wired if h["last_sync_status"] == "success"]
 
-    # MVP: using static sample data, not real-time APIs
-    is_fresh = _last_sync_timestamp is not None
+    last_sync_timestamp = None
+    successful_ats = [h["last_successful_sync_at"] for h in wired if h["last_successful_sync_at"]]
+    if successful_ats:
+        last_sync_timestamp = max(successful_ats)
+
+    is_fresh = bool(synced) and not any(h["is_stale"] for h in synced)
+    sources_status = {h["source_id"]: (h["last_sync_status"] or "never") for h in wired}
+
+    if synced:
+        data_type, message = "synced", "Live sources synced via scheduled backend sync."
+    else:
+        data_type, message = (
+            "static",
+            "No wired source has completed a sync yet. Falling back to curated sample data "
+            "(sample_hazards.py) until the first successful sync.",
+        )
+
     return DataStatusResponse(
-        data_type="static",  # MVP uses sample_hazards.py
-        last_sync_timestamp=_last_sync_timestamp,
-        sources_status=_sync_status or {"sample-data": "manual"},
-        sync_method="static-file",
+        data_type=data_type,
+        last_sync_timestamp=last_sync_timestamp,
+        sources_status=sources_status or {"sample-data": "manual"},
+        sync_method="scheduled" if wired else "static-file",
         is_fresh=is_fresh,
-        message="MVP uses curated sample data. To enable real-time sync, configure source APIs (PAGASA, PHIVOLCS, NASA FIRMS, etc.).",
+        message=message,
     )
 
 
 @app.post("/api/data-sync")
-def data_sync(request: Request):
-    """Manually trigger data sync from approved official sources.
-
-    In production, this would fetch from:
-    - PHIVOLCS Latest Earthquake Information
-    - PAGASA Severe Weather Bulletin
-    - NASA FIRMS Active Fire Data
-    - USGS Earthquake GeoJSON
-    - And other approved sources
-
-    For MVP: returns status message.
-    """
-    global _last_sync_timestamp, _sync_status
+async def data_sync(request: Request):
+    """Manually trigger data sync for stale/eligible wired sources. Shares
+    dispatch logic with the Vercel Cron-triggered endpoint below, so a manual
+    admin trigger and the scheduled one never diverge in behavior."""
     require_permission(request, "manage_datasets")
-
-    _last_sync_timestamp = datetime.now(timezone.utc).isoformat()
-    _sync_status = {
-        "sample-data": "synced",
-        "phivolcs": "pending (api-key required)",
-        "pagasa": "pending (api-key required)",
-        "nasa-firms": "pending (api-key required)",
-    }
-
+    result = await run_all_wired_sources()
     return {
-        "message": "Data sync triggered (MVP: sample data only)",
-        "sync_timestamp": _last_sync_timestamp,
-        "status": _sync_status,
-        "sources_available": [
-            "PHIVOLCS Latest Earthquake Information",
-            "PAGASA Severe Weather Bulletin",
-            "NASA FIRMS Active Fire Data",
-            "USGS Earthquake GeoJSON",
-        ],
-        "next_steps": "Configure source API keys in environment variables to enable live data.",
+        "message": f"Sync triggered for {len(result['sources_synced'])} wired source(s).",
+        **result,
     }
+
+
+@app.get("/api/cron/sync-sources")
+async def cron_sync_sources(request: Request):
+    """Vercel Cron target — see the `crons` entry in vercel.json. Guarded by a
+    shared secret rather than RBAC, since Vercel's scheduler can't supply an
+    X-Role header. Not exposed to, or callable by, ordinary users."""
+    expected = f"Bearer {settings.cron_secret}"
+    if not settings.cron_secret or request.headers.get("authorization") != expected:
+        raise HTTPException(403, "Forbidden")
+    return await run_all_wired_sources()
 
 
 # ---------------------------------------------------------------- export
@@ -349,26 +347,26 @@ async def share_link(req: ShareLinkRequest):
     summary = await generate_insight("summary", risk,
                                      "Summarize the risk profile for this location.",
                                      req.persona)
-    report_id = store_report({"risk": risk, "summary": summary["answer"],
-                              "persona": req.persona, "sources": summary["sources"],
-                              "disclaimer": DISCLAIMER})
+    report_id = await store_report({"risk": risk, "summary": summary["answer"],
+                                    "persona": req.persona, "sources": summary["sources"],
+                                    "disclaimer": DISCLAIMER})
     return {"report_id": report_id, "path": f"/reports/shared/{report_id}"}
 
 
 # ---------------------------------------------------------------- reports
 @app.get("/api/reports")
-def reports_index():
+async def reports_index():
     return {"reports": [
         {"id": r["id"], "location": r["risk"]["location_name"],
          "persona": r["persona"], "created_at": r["created_at"],
          "overall": r["risk"]["overall"]}
-        for r in list_reports()
+        for r in await list_reports()
     ]}
 
 
 @app.get("/api/reports/{report_id}")
-def report_detail(report_id: str):
-    report = get_report(report_id)
+async def report_detail(report_id: str):
+    report = await get_report(report_id)
     if not report:
         raise HTTPException(404, "Report not found or link expired")
     return report
@@ -383,33 +381,28 @@ def source_registry_endpoint():
 
 
 @app.get("/api/sync-health")
-def sync_health_endpoint():
+async def sync_health_endpoint():
     """Return sync health status for all registered sources."""
     from .data_sources.sync.source_sync_health import get_sync_health_report
-    return {"sync_health": get_sync_health_report()}
+    return {"sync_health": await get_sync_health_report()}
 
 
 @app.get("/api/sync-audit-log")
-def sync_audit_log_endpoint(source_id: str = Query(None), limit: int = Query(50, le=200)):
+async def sync_audit_log_endpoint(source_id: str = Query(None), limit: int = Query(50, le=200)):
     """Return the sync audit log."""
     from .data_sources.sync.sync_audit_log import get_audit_log
-    return {"audit_log": get_audit_log(source_id=source_id, limit=limit)}
+    return {"audit_log": await get_audit_log(source_id=source_id, limit=limit)}
 
 
 # ---------------------------------------------------------------- datasets
 @app.get("/api/datasets")
-def datasets():
-    return {"datasets": DATASETS + _uploaded_datasets}
+async def datasets():
+    uploaded = await get_dataset_repo().list()
+    return {"datasets": DATASETS + uploaded}
 
 
 @app.post("/api/datasets/upload")
-def upload_dataset(meta: DatasetUpload, request: Request):
+async def upload_dataset(meta: DatasetUpload, request: Request):
     require_permission(request, "manage_datasets")
-    entry = meta.model_dump()
-    entry.update({
-        "id": f"ds-up-{len(_uploaded_datasets) + 1}",
-        "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-        "status": "pending_review",
-    })
-    _uploaded_datasets.append(entry)
+    entry = await get_dataset_repo().add(meta.model_dump())
     return {"dataset": entry, "message": "Dataset metadata registered for review."}
