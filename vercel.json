@@ -15,7 +15,7 @@
   "crons": [
     {
       "path": "/_/backend/api/cron/sync-sources",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }

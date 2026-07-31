@@ -88,10 +88,12 @@ without a connector yet, registered for discoverability, not sync
 (`GET /api/source-registry`, `GET /api/sync-health`).
 
 - **Scheduling**: `vercel.json`'s `crons` entry hits
-  `GET /api/cron/sync-sources` every 15 minutes, authenticated by
+  `GET /api/cron/sync-sources` once daily (00:00 UTC), authenticated by
   `CRON_SECRET` (required in production — the app refuses to start without
-  it there). `POST /api/data-sync` (RBAC-gated) triggers the same dispatch
-  manually.
+  it there). Vercel's Hobby plan only allows daily cron jobs; upgrade to Pro
+  and shorten the schedule (e.g. `*/15 * * * *`) for more frequent sync.
+  `POST /api/data-sync` (RBAC-gated) triggers the same dispatch manually
+  anytime in between.
 - **Persistence**: sync health, the sync audit log, uploaded-dataset
   metadata, and shareable reports all live behind a repository interface
   (`backend/app/repositories/`) with two implementations — in-memory
