@@ -27,6 +27,7 @@ export interface RiskAssessment {
   confidence: "High" | "Medium" | "Low";
   generated_at: string;
   methodology: string;
+  engine_version: string;
 }
 
 export interface GroundingSource {

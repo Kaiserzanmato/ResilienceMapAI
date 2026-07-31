@@ -1,4 +1,4 @@
-from app.services.risk_scoring import level_for_score, score_location
+from app.services.risk_scoring import ENGINE_VERSION, level_for_score, score_location
 
 
 def test_manila_is_covered_and_high_flood():
@@ -37,3 +37,9 @@ def test_distance_decay():
     near = score_location(14.5995, 120.9842)
     far = score_location(15.4, 120.9842)  # ~89 km north, inside falloff band
     assert far["hazards"]["flood"]["score"] < near["hazards"]["flood"]["score"]
+
+
+def test_engine_version_present():
+    r = score_location(14.5995, 120.9842, "Metro Manila")
+    assert r["engine_version"] == ENGINE_VERSION
+    assert ENGINE_VERSION

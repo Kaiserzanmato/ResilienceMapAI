@@ -307,7 +307,7 @@ OUT_OF_SCOPE_RESPONSE = (
 # ---------------------------------------------------------------------------
 # Patterns that indicate prompt-injection attempts; matched input is replaced.
 INJECTION_PATTERNS = re.compile(
-    r"(ignore (all |previous |above )?(instructions|prompts|rules)"
+    r"(ignore (all |previous |above )*(instructions|prompts|rules)"
     r"|you are now "
     r"|act as (?!a (resident|buyer|planner|analyst|officer|administrator|manager|teacher|student|researcher|citizen|government))"
     r"|pretend (you are|to be)"

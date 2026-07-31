@@ -95,7 +95,7 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
           <SourceGroundingCard sources={sources} />
 
           <p className="border-t border-[var(--surface-border)] pt-4 text-[11px] leading-relaxed text-[var(--fg-muted)]">
-            {disclaimer} · {risk.methodology}
+            {disclaimer} · {risk.methodology} · Engine v{risk.engine_version}
           </p>
         </div>
       </GlassCard>

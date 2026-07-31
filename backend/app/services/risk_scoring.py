@@ -14,6 +14,10 @@ from ..data.sample_hazards import HAZARD_KEYS, HAZARD_LABELS, HAZARD_ZONES
 # at FALLOFF_MULTIPLIER x radius.
 FALLOFF_MULTIPLIER = 3.0
 
+# Bump when the scoring methodology (weights, formula, baseline data) changes,
+# so consumers can tell which ruleset produced a given score.
+ENGINE_VERSION = "1.0.0"
+
 RISK_LEVELS = [
     (0, 25, "Low", "green"),
     (26, 60, "Medium", "yellow"),
@@ -244,10 +248,12 @@ def score_location(lat: float, lng: float, name: Optional[str] = None, country_c
         if base:
             country_baseline = _expand_baseline(base)
 
-    # If country not in explicit baseline, use conservative defaults
-    if not has_data and not country_baseline:
+    # If a country code was given but isn't in the explicit baseline, fall back
+    # to conservative defaults. Coordinates with no country code at all (e.g.
+    # open ocean) should remain genuinely "no data", not get the XX default.
+    if not has_data and country_code and not country_baseline:
         base = COUNTRY_RISK_BASELINE.get("XX")
-        country_baseline = _expand_baseline(base) if base else {}
+        country_baseline = _expand_baseline(base) if base else None
 
     hazards = {}
     for key in HAZARD_KEYS:
@@ -267,8 +273,9 @@ def score_location(lat: float, lng: float, name: Optional[str] = None, country_c
             else:
                 score = country_baseline.get(key, 0) if country_baseline else 0
         else:
-            # Use country-level fallback (always available now with XX default)
-            score = country_baseline.get(key, 0) if country_baseline else 0
+            # No zone data. If we have a country-level baseline, use it;
+            # otherwise there is genuinely no data for this hazard.
+            score = country_baseline.get(key) if country_baseline else None
 
         hazards[key] = {"score": score, "label": HAZARD_LABELS[key],
                         **level_for_score(score)}
@@ -312,6 +319,7 @@ def score_location(lat: float, lng: float, name: Optional[str] = None, country_c
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "methodology": "Deterministic zone-based scoring (max-weighted hazard contribution, "
                        "linear distance decay). Indicative only — not an official advisory.",
+        "engine_version": ENGINE_VERSION,
     }
 
 

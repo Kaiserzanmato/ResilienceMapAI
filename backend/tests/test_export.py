@@ -11,6 +11,8 @@ def test_csv_has_all_columns():
     assert header == CSV_COLUMNS
     assert len(csv_text.splitlines()) == 3
     assert "Metro Manila" in csv_text
+    assert "engine_version" in header
+    assert risks[0]["engine_version"] in csv_text.splitlines()[1]
 
 
 def test_pdf_renders():
@@ -20,11 +22,11 @@ def test_pdf_renders():
     assert len(pdf) > 2000
 
 
-def test_report_store_roundtrip():
+async def test_report_store_roundtrip():
     risk = score_location(14.5995, 120.9842)
-    rid = store_report({"risk": risk, "summary": "s", "persona": "citizen",
-                        "sources": [], "disclaimer": "d"})
-    fetched = get_report(rid)
+    rid = await store_report({"risk": risk, "summary": "s", "persona": "citizen",
+                              "sources": [], "disclaimer": "d"})
+    fetched = await get_report(rid)
     assert fetched is not None
     assert fetched["risk"]["location_name"] == risk["location_name"]
-    assert get_report("nonexistent") is None
+    assert await get_report("nonexistent") is None

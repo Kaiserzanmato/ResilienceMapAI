@@ -1,12 +1,11 @@
-"""CSV and PDF export generation, plus the in-memory shareable report store.
+"""CSV and PDF export generation, plus the shareable report store.
 
-The report store keeps generated reports addressable by id for share links;
-swap for PostgreSQL persistence in production (models are schema-ready).
+Report storage lives in app/repositories/report_repo.py — in-memory by
+default, Postgres-backed when DATABASE_URL is set.
 """
 import base64
 import csv
 import io
-import secrets
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
@@ -19,13 +18,13 @@ from reportlab.platypus import (HRFlowable, Image, Paragraph, SimpleDocTemplate,
                                 Spacer, Table, TableStyle)
 
 from ..data.sample_hazards import HAZARD_KEYS
+from ..repositories.report_repo import get_report_repo
 from .ai_router import DISCLAIMER, grounding_sources
 
 CSV_COLUMNS = [
     "location_name", "latitude", "longitude", "overall_score", "overall_level",
-    "flood_score", "earthquake_score", "tropical_cyclone_score", "volcano_score",
-    "landslide_score", "storm_surge_score", "main_drivers", "source_names",
-    "source_dates", "generated_at",
+    *[f"{key}_score" for key in HAZARD_KEYS],
+    "main_drivers", "source_names", "source_dates", "generated_at", "engine_version",
 ]
 
 RISK_COLOR_HEX = {"green": "#22c55e", "yellow": "#eab308", "red": "#ef4444",
@@ -42,24 +41,16 @@ PERSONA_REPORT_TITLES = {
     "executive": "Executive Summary",
 }
 
-# In-memory shareable report registry: id -> report payload
-_REPORT_STORE: Dict[str, Dict] = {}
+async def store_report(payload: Dict) -> str:
+    return await get_report_repo().store(payload)
 
 
-def store_report(payload: Dict) -> str:
-    report_id = secrets.token_urlsafe(8)
-    payload["id"] = report_id
-    payload["created_at"] = datetime.now(timezone.utc).isoformat()
-    _REPORT_STORE[report_id] = payload
-    return report_id
+async def get_report(report_id: str) -> Optional[Dict]:
+    return await get_report_repo().get(report_id)
 
 
-def get_report(report_id: str) -> Optional[Dict]:
-    return _REPORT_STORE.get(report_id)
-
-
-def list_reports() -> List[Dict]:
-    return sorted(_REPORT_STORE.values(), key=lambda r: r["created_at"], reverse=True)
+async def list_reports() -> List[Dict]:
+    return await get_report_repo().list()
 
 
 def risks_to_csv(risks: List[Dict]) -> str:
@@ -78,6 +69,7 @@ def risks_to_csv(risks: List[Dict]) -> str:
             "source_names": "; ".join(s["name"] for s in sources),
             "source_dates": "; ".join(s["updated"] for s in sources),
             "generated_at": r["generated_at"],
+            "engine_version": r.get("engine_version", ""),
         }
         for key in HAZARD_KEYS:
             row[f"{key}_score"] = r["hazards"][key]["score"]
@@ -209,7 +201,8 @@ def build_pdf_report(risk: Dict, persona: str, ai_summary: str,
 
     story += [Spacer(1, 14), HRFlowable(width="100%", color=colors.HexColor("#e2e8f0")),
               Spacer(1, 6), Paragraph(f"Disclaimer: {DISCLAIMER}", st["small"]),
-              Paragraph(f"Methodology: {risk['methodology']}", st["small"])]
+              Paragraph(f"Methodology: {risk['methodology']} · "
+                        f"Engine v{risk.get('engine_version', 'n/a')}", st["small"])]
 
     doc.build(story)
     return buf.getvalue()
