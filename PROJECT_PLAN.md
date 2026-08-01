@@ -583,9 +583,12 @@ Response Validation (output sanitization)
 - `7411f64` - security(rbac): require ADMIN_SHARED_SECRET alongside X-Role for elevated roles
 - `0fea79d` - feat(registry): reconcile backend/frontend source registries; add TS codegen script
 - `b3f611e` - fix(vercel): switch sync cron to daily cadence to fit the Hobby plan limit
-- `b18f89b` - fix(config): don't crash the whole app at startup when CRON_SECRET is unset (production incident fix — see §11)
+- `b18f89b` - fix(config): don't crash the whole app at startup when CRON_SECRET is unset (necessary but **not sufficient** — see next commit)
+- `7659823` - fix(deps): resolve Python 3.14 incompatibility that was actually breaking Render deploys — the real root cause of the production incident (see §11)
 
 **Explicitly out of scope this phase:** new AI providers, full security audit, frontend test suite, CI/CD, Docker, real JWT/OAuth auth.
+
+**Production incident retrospective (2026-08-01):** a deploy of this phase's work crashed the live Render service on every attempt. The first hypothesis (`b18f89b`) was real but incomplete — it fixed a redundant startup check, but the service kept crashing because Render defaults to whatever Python version is current with no pin in this repo (it had silently moved to Python 3.14), and `sqlalchemy==2.0.36`'s declarative-mapping code is incompatible with Python 3.14's `typing` internals (`TypeError: descriptor '__getitem__' requires a 'typing.Union' object but received a 'tuple'`). Diagnosed by installing Python 3.14 locally and reproducing the exact traceback from Render's logs, rather than guessing further. Fixed by upgrading to `sqlalchemy==2.0.51` and adding `backend/runtime.txt` to pin the Python version going forward, so an unannounced runtime bump on Render's side can't silently break the service again.
 
 ---
 
@@ -605,12 +608,14 @@ Response Validation (output sanitization)
 
 ---
 
-## 4. Recent Builds & Commits (Last 10)
+## 4. Recent Builds & Commits (Last 12)
 
 | Commit | Date | Message | Status |
 |--------|------|---------|--------|
+| `7659823` | Aug 1 | fix(deps): resolve Python 3.14 incompatibility that was actually breaking Render deploys | ✅ **LIVE** |
+| `ebc159a` | Aug 1 | docs: bring README and PROJECT_PLAN up to date with today's work | ✅ **LIVE** |
 | `f57f269` | Aug 1 | feat(ui): add ambient rotating globe background on every page except /map | ✅ **LIVE** |
-| `b18f89b` | Aug 1 | fix(config): don't crash the whole app at startup when CRON_SECRET is unset | ✅ **LIVE** |
+| `b18f89b` | Aug 1 | fix(config): don't crash the whole app at startup when CRON_SECRET is unset | ✅ **LIVE** (insufficient alone — see `7659823`) |
 | `b3f611e` | Aug 1 | fix(vercel): switch sync cron to daily cadence to fit the Hobby plan limit | ✅ **LIVE** |
 | `1e5439c` | Aug 1 | docs: document data sync, persistence, RBAC stopgap, and registry codegen convention | ✅ **LIVE** |
 | `0fea79d` | Aug 1 | feat(registry): reconcile backend/frontend source registries; add TS codegen script | ✅ **LIVE** |

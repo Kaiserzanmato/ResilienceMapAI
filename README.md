@@ -98,7 +98,11 @@ without a connector yet, registered for discoverability, not sync
   warning, not a fatal error — an earlier version of this check crashed the
   whole backend on every deploy when the secret was missing; see commit
   `b18f89b`) but the cron endpoint rejects every request, including Vercel's
-  own scheduler, until it's configured. Vercel's Hobby plan only allows daily
+  own scheduler, until it's configured. **Note**: `b18f89b` alone did not
+  actually resolve that outage — the real cause was `sqlalchemy==2.0.36`
+  being incompatible with Python 3.14 (Render's unpinned default at the
+  time), fixed in `7659823` by upgrading SQLAlchemy and adding
+  `backend/runtime.txt` to pin the Python version. Vercel's Hobby plan only allows daily
   cron jobs; upgrade to Pro and shorten the schedule (e.g. `*/15 * * * *`)
   for more frequent sync. `POST /api/data-sync` (RBAC-gated) triggers the
   same dispatch manually anytime in between.
@@ -131,7 +135,10 @@ editing the Python registry. Never hand-edit the `.ts` file.
   independent of Vercel, also auto-deploying from `main`. Free tier: spins down with
   inactivity, first request after idle can take 50s+. Env vars (`DATABASE_URL`,
   `CRON_SECRET`, `ADMIN_SHARED_SECRET`, `DEEPSEEK_API_KEY`, etc.) are configured in
-  the Render dashboard, not committed to the repo.
+  the Render dashboard, not committed to the repo. Python version is pinned in
+  `backend/runtime.txt` — do not remove it; Render's unpinned default silently
+  moved to a version that broke SQLAlchemy's declarative mapping (see `7659823`)
+  and cost real production downtime to diagnose.
 - **Critical link**: the frontend's `NEXT_PUBLIC_API_URL` (Vercel env var) must point
   at the Render backend URL above. If it's ever empty/unset, the frontend silently
   falls back to same-origin relative API calls, which 404 — the map, dashboard, and
