@@ -97,7 +97,7 @@ export default function ResourcesPage() {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-20 px-4 sm:px-6 md:px-8 overflow-x-hidden">
+    <div className="mx-auto w-full max-w-6xl space-y-20 px-4 sm:px-6 md:px-8 overflow-x-hidden pb-32">
       {/* Page Header */}
       <div className="space-y-3">
         <h1 className="text-5xl font-bold tracking-tight">Resources</h1>
@@ -243,16 +243,17 @@ export default function ResourcesPage() {
       </div>
 
       {/* Footer Note */}
-      <div className="rounded-lg border border-[var(--surface-border)] bg-[color-mix(in_srgb,var(--surface)_50%,transparent)] p-4 md:p-6 w-full overflow-hidden">
-        <div className="space-y-3 text-xs md:text-sm text-[var(--fg-muted)] leading-relaxed">
-          <p>
-            <strong className="text-[var(--fg)]">Data Accuracy Notice:</strong> All datasets in ResilienceMap AI are sourced
-            from verified government agencies, scientific institutions, and internationally
-            recognized indices. No independent risk scores are generated.
+      <div className="rounded-lg border border-[var(--surface-border)] bg-[color-mix(in_srgb,var(--surface)_50%,transparent)] p-4 md:p-8 w-full overflow-hidden mb-16">
+        <div className="space-y-4 text-xs md:text-sm text-[var(--fg-muted)] leading-relaxed">
+          <p className="flex gap-2">
+            <span className="shrink-0">⚠️</span>
+            <span>
+              <strong className="text-[var(--fg)] block">Data Accuracy Notice</strong>
+              All datasets in ResilienceMap AI are sourced from verified government agencies, scientific institutions, and internationally recognized indices. No independent risk scores are generated.
+            </span>
           </p>
-          <p>
-            For real-time risk assessment, always reference the ResilienceMap risk engine outputs and official
-            government advisories.
+          <p className="ml-6">
+            For real-time risk assessment, always reference the ResilienceMap risk engine outputs and official government advisories.
           </p>
         </div>
       </div>
