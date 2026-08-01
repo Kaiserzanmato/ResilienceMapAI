@@ -12,6 +12,11 @@ uvicorn==0.39.0
 # Persistence (optional — only used when DATABASE_URL is set; the app runs
 # fully on in-memory stores otherwise). Migrations run out-of-band via Alembic,
 # never inside the serverless function.
-sqlalchemy[asyncio]==2.0.36
+# sqlalchemy must be >=2.0.37 — 2.0.36's declarative-mapping code (used by
+# the Mapped[...] type hints in app/models.py) crashes on Python 3.14+ with
+# "TypeError: descriptor '__getitem__' requires a 'typing.Union' object but
+# received a 'tuple'". Confirmed broken on 2.0.36, confirmed fixed on 2.0.51
+# (2026-08-01, against Python 3.14.6).
+sqlalchemy[asyncio]==2.0.51
 asyncpg==0.30.0
 alembic==1.14.0

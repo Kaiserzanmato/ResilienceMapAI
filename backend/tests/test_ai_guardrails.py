@@ -1,5 +1,3 @@
-import asyncio
-
 import pytest
 
 from app.services.ai_router import (generate_insight, local_insight,
@@ -38,10 +36,9 @@ def test_local_insight_grounded_in_engine_scores():
     assert "not predictive" in text.lower()
 
 
-def test_generate_insight_has_disclaimer_and_sources():
+async def test_generate_insight_has_disclaimer_and_sources():
     risk = score_location(11.2447, 125.0026, "Tacloban City")
-    result = asyncio.get_event_loop().run_until_complete(
-        generate_insight("summary", risk, "Summarize the risk", "government"))
+    result = await generate_insight("summary", risk, "Summarize the risk", "government")
     assert result["disclaimer"]
     assert len(result["sources"]) > 0
     assert result["confidence"] in {"High", "Medium", "Low"}
