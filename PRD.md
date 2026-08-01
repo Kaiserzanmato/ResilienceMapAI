@@ -1,0 +1,500 @@
+# ResilienceMap AI - Product Requirements Document (PRD)
+
+**Version**: 2.1 (Aug 2026)  
+**Status**: ACTIVE - Enhanced Dataset Management  
+**Last Updated**: 2026-08-01  
+**Owner**: DoCypher Labs  
+
+---
+
+## Executive Summary
+
+ResilienceMap AI is an AI-powered disaster risk intelligence platform that combines authoritative global hazard data with explainable AI insights. Users can assess geographic risk, compare locations, generate executive reports, and access a curated registry of 45+ disaster risk datasets.
+
+**August 2026 Enhancement**: Introduces smart data management features (search, rate-limited refresh, update transparency) to improve usability and protect backend infrastructure.
+
+---
+
+## Product Vision
+
+**Mission**: Empower organizations to make informed decisions about disaster risk through accurate, current, and AI-explained intelligence.
+
+**Core Values**:
+- **Accuracy**: No invented predictions; explain existing data only
+- **Transparency**: Show data sources and methodology
+- **Accessibility**: Work without premium AI services (local fallback)
+- **Reliability**: Protect infrastructure with rate limiting and audit trails
+
+---
+
+## Key Features (Current)
+
+### 1. Interactive Hazard Mapping (`/map`)
+**Purpose**: Visualize disaster risk across six map styles
+
+**Features**:
+- 6 map views: Standard, Satellite, Terrain, Hybrid, Dark, Light
+- Real-time hazard layer overlays (earthquake, flood, volcano, cyclone, etc.)
+- Heatmap density visualization
+- Active alert markers with click-to-assess
+- Historical event timeline
+- Floating widget panels
+- Animated zoom-to-location
+- Search address bar
+
+**Technical**: MapLibre GL JS, GeoJSON hazard layers, vector tiles
+
+**Performance Target**: <200ms layer render, <500ms zoom animation
+
+---
+
+### 2. Executive Dashboard (`/dashboard`)
+**Purpose**: High-level KPI view for decision makers
+
+**Displays**:
+- Global risk summary cards (% countries in danger, active alerts)
+- Regional risk rankings (by country/region)
+- Hazard-specific trends (earthquakes, floods, etc.)
+- Temporal charts (last 7 days, 30 days, 90 days)
+- Active event counter and severity breakdown
+
+**Technical**: Recharts, responsive grid layout, cached API responses
+
+**Performance Target**: <1s page load, <100ms chart interaction
+
+---
+
+### 3. AI Workspace (`/agents`)
+**Purpose**: Conversational intelligence assistant
+
+**Features**:
+- Persona selection (Citizen, Analyst, Policy Maker)
+- Multi-turn conversations
+- Source-grounded responses (all claims cite data)
+- Location context (current map view or typed address)
+- Export conversation to PDF
+
+**Personas**:
+- **Citizen**: Accessible language, focus on personal safety
+- **Analyst**: Technical detail, metrics, confidence intervals
+- **Policy Maker**: Strategic implications, options for action
+
+**Technical**: LLM routing (Qwen → DeepSeek → OpenAI → Gemini → local fallback)
+
+**Performance Target**: <5s response (with streaming), <2s local fallback
+
+---
+
+### 4. Report Generation (`/reports`)
+**Purpose**: Create exportable intelligence briefs
+
+**Formats**:
+- PDF: Executive summary + hazard breakdown + charts
+- CSV: Raw data export (location coordinates, hazard scores, metadata)
+
+**Features**:
+- Customizable recipient/agency name
+- Date stamp and disclaimer
+- Share link (30-day expiry)
+- Batch download (multiple locations)
+
+**Technical**: ReportLab (PDF), CSV writer, signed URLs (optional)
+
+**Performance Target**: <3s PDF generation, <2s CSV export
+
+---
+
+### 5. Documentation & Resources (`/resources`)
+**Purpose**: User education and data source discovery
+
+**Sections**:
+- Getting Started guide (with working links)
+- Risk Scoring Methodology explanation
+- API Reference documentation
+- Data Sources catalog (45+ indexed sources)
+- Research Datasets list
+- Contact & Support links
+
+**New (Aug 2026)**:
+- "Learn more" links now functional → open documentation in new tabs
+- "View Full Dataset" button → navigates to `/admin/datasets`
+- Data Accuracy Notice fully responsive (no text cutoff)
+
+**Performance Target**: <1s page load, instant navigation
+
+---
+
+### 6. Dataset Management (`/admin/datasets`)
+**Purpose**: Administer data sources and sync health
+
+**Features**:
+
+#### A. Source Registry Tab
+- Grid view of 45 registered data sources
+- Per-source metadata:
+  - Name, organization, coverage area
+  - Trust level (1-5 scale: Official > UN-backed > Research > Specialized > Manual)
+  - Sync frequency, last sync timestamp, record count
+  - Links to source website and documentation
+  - Status badges (stale, disabled, API-key-required, etc.)
+
+#### B. Search Functionality **(NEW Aug 2026)**
+- Real-time filter across:
+  - Source name (e.g., "USGS")
+  - Organization (e.g., "European Commission")
+  - Coverage (e.g., "Global", "Regional")
+  - Domains (e.g., "natural_hazards", "conflict")
+- Live result count
+- Clear search (X button)
+
+#### C. Smart Refresh Button **(NEW Aug 2026)**
+- Triggers manual data sync
+- **Rate limiting**: Max 1 refresh per hour
+  - Protects backend from accidental/malicious spam
+  - Shows countdown timer when limited ("45m 30s remaining")
+- **Timestamp display**:
+  - Shows exact time of last successful sync
+  - Format: "Last updated: 8/1/2026, 4:05:38 PM"
+  - Uses user's local timezone
+  - Persistent across page reloads (localStorage)
+
+#### D. "What's New" Button **(NEW Aug 2026)**
+- Toggle panel showing update details
+- Per-source information:
+  - Source name
+  - Sync status (success, failed, partial)
+  - Record count (e.g., "1,247 records")
+  - Last successful sync timestamp
+  - Visual indicators (✓ success, ⚠ warnings)
+- Automatic diffing: shows only changed sources
+- Stored in localStorage, survives page reload
+
+**Technical**: React Query, localStorage, JSON diffing
+
+**Performance Target**: <500ms filter, <1s "What's New" panel
+
+---
+
+### 7. User Settings (`/settings`)
+**Purpose**: Personalize the platform
+
+**Options**:
+- Theme: Light / Dark / System / High Contrast
+- Default persona for AI (Citizen / Analyst / Policy Maker)
+- Default map style preference
+- Language (future: currently English-only)
+
+**Technical**: Context + localStorage, CSS custom properties
+
+**Performance Target**: <100ms theme switch
+
+---
+
+## User Flows
+
+### Flow 1: Assess Risk for a Single Location
+
+```
+User starts on landing page
+    ↓
+Clicks "Assess Risk" or navigates to /map
+    ↓
+Searches address in map search bar (or clicks a location)
+    ↓
+[Hazard layers load, risk score calculated]
+    ↓
+Risk card appears (score + color + breakdown by hazard type)
+    ↓
+User can:
+    ├─ Click "Get AI Summary" → /agents (with location context)
+    ├─ Click "Export Report" → generate PDF/CSV
+    ├─ Share location → get 30-day share link
+    └─ Compare with other locations → /map comparison mode
+```
+
+**Time to Risk Assessment**: <2s (map render + scoring)
+
+---
+
+### Flow 2: Search and Filter Data Sources
+
+```
+User navigates to /admin/datasets
+    ↓
+Sees "Source Registry (45)" tab selected
+    ↓
+Types in search box: "USGS"
+    ↓
+[Page filters in real-time]
+    ↓
+Displays 3 matching sources:
+    ├─ USGS Earthquake Hazards Program
+    ├─ USGS Volcano Disaster Assistance Program
+    └─ USGS Flood Inundation Forecast System
+    ↓
+Sees result count: "3 source(s) found"
+    ↓
+User can:
+    ├─ Click source card → open website
+    ├─ Clear search (X button) → reset to all 45
+    └─ Scroll through filtered results
+```
+
+**Time to Filter**: <100ms
+
+---
+
+### Flow 3: Refresh Data with Rate Limiting
+
+```
+User is on /admin/datasets
+    ↓
+Sees "Last updated: 8/1/2026, 4:05:38 PM" with timestamp
+    ↓
+Clicks "Refresh" button
+    ↓
+[Button shows "Refreshing..." with spinner]
+[Backend fetches latest from GDACS, NASA, USGS, ReliefWeb]
+[Sync audit log updated]
+    ↓
+Button re-enables, new timestamp appears:
+    "Last updated: 8/1/2026, 4:06:15 PM (Next refresh in 59m 45s)"
+    ↓
+User tries to refresh again immediately
+    ↓
+Button is DISABLED with tooltip:
+    "Rate limited. Refresh available in 59m 44s"
+    ↓
+User can click "What's New" to see update details:
+    ├─ USGS Earthquake Hazards Program
+    │   Status: success
+    │   Records: 1,247
+    │   Last sync: 8/1/2026, 4:06:12 PM
+    ├─ NASA EONET
+    │   Status: success
+    │   Records: 89
+    │   Last sync: 8/1/2026, 4:05:58 PM
+    └─ [No changes] ReliefWeb (same as before)
+```
+
+**Time to Refresh**: <3s (backend sync), <500ms (UI update)
+
+---
+
+### Flow 4: Generate and Share a Report
+
+```
+User on /map with a location selected
+    ↓
+Clicks "Export" → "Generate Report"
+    ↓
+Modal appears:
+    ├─ Recipient name (optional)
+    ├─ Agency (optional)
+    ├─ Format: PDF / CSV
+    └─ [Generate] button
+    ↓
+[Backend generates PDF/CSV]
+    ↓
+Browser downloads file
+    ↓
+User can optionally create share link:
+    Clicks "Share" → 30-day link created
+    → URL: resilience-map-ai.vercel.app/report/xyz789
+    ↓
+User copies link, sends to stakeholders
+    ↓
+Stakeholders open link, see:
+    ├─ Executive summary
+    ├─ Risk scores + charts
+    ├─ Data sources + disclaimer
+    └─ Generated timestamp
+```
+
+**Time to PDF**: <3s  
+**Time to Share Link**: <1s
+
+---
+
+## Non-Functional Requirements
+
+### Performance
+| Metric | Target | Notes |
+|--------|--------|-------|
+| Landing page load | <2s | Lighthouse >80 |
+| Map render | <200ms | First layer visible |
+| Risk calculation | <500ms | Scoring engine |
+| API response | <1s | 95th percentile |
+| Search filter | <100ms | Real-time responsiveness |
+| Refresh sync | <3s | Backend + UI update |
+| PDF export | <3s | Average document |
+
+### Scalability
+- Support 1,000 concurrent users on Vercel (auto-scales)
+- Backend: Render free tier (can upgrade to Pro)
+- Database: Neon with auto-scaling (optional)
+- Daily data sync: <5 min total (parallel fetches)
+
+### Reliability
+- 99.5% uptime target (Vercel SLA)
+- Graceful degradation if backend unavailable (local fallback for AI)
+- Automated daily data sync with audit logging
+- Database automatic backup (Neon)
+
+### Security
+- All AI keys server-side (no browser secrets)
+- HTTPS enforced (Vercel + Render)
+- CORS restricted to frontend origin
+- Pydantic validation on all inputs
+- Rate limiting on AI and refresh endpoints
+- Audit logging on all data mutations
+
+### Accessibility
+- WCAG 2.1 Level AA compliance
+- Keyboard navigation throughout
+- Dark mode with high-contrast option
+- Respect `prefers-reduced-motion`
+- Alt text on all meaningful images
+- Semantic HTML (`<button>`, `<nav>`, `<main>`)
+
+### Responsiveness
+- **Mobile** (320px): Single-column, bottom navigation
+- **Tablet** (768px): Two-column, top navigation
+- **Desktop** (1024px+): Three-column, full layout
+- **Ultra-wide** (1920px+): Content width capped at 1400px
+
+---
+
+## Success Metrics
+
+### User Engagement
+- Monthly active users
+- Average session duration
+- Features used per session
+- Search query popularity (top domains/agencies)
+
+### Data Quality
+- Sync success rate (% sources updated daily)
+- Data staleness (% sources >1 day old)
+- Records per source (trending over time)
+
+### Platform Reliability
+- API uptime (% successful requests)
+- Refresh success rate (how often sync completes)
+- Error rate (<0.1% target)
+- P95 response time (<1s target)
+
+---
+
+## Constraints & Assumptions
+
+### Constraints
+- **No login required** (RBAC via headers, not authenticated users)
+- **One static admin secret** (not per-user; limits admin UI to insiders)
+- **Single data source of truth**: `sources_registry.py` in backend
+- **Daily sync only** on Vercel Hobby plan (upgrade to Pro for more frequent)
+- **No offline mode** (yet; requires service worker caching)
+
+### Assumptions
+- **Users trust official sources**: GDACS, USGS, NASA, etc.
+- **Internet always available**: Hybrid offline mode not prioritized
+- **English-speaking audience**: No i18n initially
+- **Desktop-first design**: Mobile is secondary (but responsive)
+- **No user accounts needed**: Shareable links replace user history
+
+---
+
+## Roadmap (Future Priorities)
+
+### Q3 2026
+- ✅ Search & filter data sources (DONE - Aug 2026)
+- ✅ Rate-limited refresh (DONE - Aug 2026)
+- ✅ "What's New" transparency (DONE - Aug 2026)
+- [ ] Mobile app (React Native wrapper)
+- [ ] Real authentication (JWT/OAuth)
+
+### Q4 2026
+- [ ] WebSocket for real-time sync notifications
+- [ ] Per-user rate limiting (track by user ID)
+- [ ] Offline mode (service worker caching)
+- [ ] Advanced analytics dashboard
+- [ ] API key management (for external integrations)
+
+### 2027
+- [ ] GraphQL endpoint
+- [ ] Multi-language support (i18n)
+- [ ] Custom data source connectors (no-code UI)
+- [ ] Predictive modeling (based on historical trends)
+- [ ] Integration with emergency management systems
+
+---
+
+## Stakeholders & Approval
+
+| Role | Name | Approval | Date |
+|------|------|----------|------|
+| Product Manager | [Your Name] | Pending | - |
+| Engineering Lead | [Your Name] | Pending | - |
+| Design Lead | [Your Name] | Pending | - |
+| Security | [Your Name] | Pending | - |
+
+---
+
+## Appendices
+
+### A. Data Source Registry (45 Sources)
+
+**Active Connectors (4)**:
+1. GDACS - Global Disaster Alert & Coordination System
+2. NASA EONET - Earth Observation Natural Event Tracker
+3. USGS - Earthquake Hazards Program
+4. ReliefWeb - Humanitarian Data Exchange
+
+**Registry Only (41 sources, awaiting connectors)**:
+- WRI - World Risk Index
+- INFORM - Humanitarian Risk Index
+- ND-GAIN - Climate Vulnerability Index
+- FAO - Food and Agriculture Organization
+- IPC - Integrated Food Security Phase Classification
+- [... and 36 more]
+
+### B. Risk Score Scale
+
+| Score Range | Level | Color | Meaning |
+|---|---|---|---|
+| 0.0 - 0.3 | Low | Green (#27ae60) | Minimal threat |
+| 0.3 - 0.5 | Moderate | Yellow (#f39c12) | Watch closely |
+| 0.5 - 0.7 | High | Orange (#e67e22) | Significant threat |
+| 0.7 - 0.9 | Very High | Red (#e74c3c) | Immediate concern |
+| 0.9 - 1.0 | Critical | Dark Red (#8b0000) | Emergency conditions |
+
+### C. API Endpoint Summary
+
+| Endpoint | Purpose | Rate Limit |
+|---|---|---|
+| GET /api/location-risk | Risk assessment | Standard |
+| POST /api/compare-locations | Multi-location comparison | Standard |
+| GET /api/hazard-layers | Hazard data (GeoJSON) | Standard |
+| POST /api/ai/summary | AI-powered insights | **Tight** |
+| POST /api/agent/query | Conversational assistant | **Tight** |
+| GET /api/sync-health | Sync status & timestamps | Standard |
+| POST /api/data-sync | Manual refresh | **Tight** |
+| GET /api/cron/sync-sources | Scheduled sync (daily) | Admin-only |
+
+### D. Glossary
+
+- **Hazard**: Natural disaster type (earthquake, flood, etc.)
+- **Risk**: Combination of hazard probability, exposure, and vulnerability
+- **Sync**: Automatic data fetch from external sources (daily)
+- **Rate Limiting**: Restricting requests per time period (1 refresh/hour)
+- **Grounded Response**: AI answer citing specific data sources
+- **Trust Level**: 1-5 scale rating data source reliability
+- **Stale**: Data older than expected sync interval
+
+---
+
+**Document Version History**:
+- v1.0 (Jun 2026): Initial PRD
+- v2.0 (Jul 2026): Added dataset management features
+- v2.1 (Aug 2026): Enhanced with search, refresh rate limiting, "What's New" transparency
+

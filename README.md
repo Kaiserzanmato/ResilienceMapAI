@@ -54,7 +54,15 @@ cd backend && .venv/bin/python -m pytest tests/ -q
 - **Dashboard** (`/dashboard`) — executive KPI cards + interactive charts
 - **AI Workspace** (`/agents`) — persona-based, source-grounded assistant
 - **Reports** (`/reports`) — PDF briefs, CSV exports, executive summaries, share links
+- **Resources** (`/resources`) — documentation links, data sources, research datasets with
+  functional "Learn more" links and full dataset access
 - **Datasets** (`/admin/datasets`) — source provenance + metadata-validated registration (RBAC)
+  with enhanced features:
+  - **Search functionality** — filter sources and datasets by name, organization, coverage, domains
+  - **Smart refresh** — 1-hour rate limiting prevents API overload, shows full timestamp of last sync
+  - **"What's New" button** — displays detailed update information showing which sources changed,
+    their sync status, record counts, and exact sync timestamps
+  - **Rate limit transparency** — countdown timer shows when next refresh is available
 - **Settings** (`/settings`) — theme (light/dark/system/high-contrast), persona, map defaults
 - **Ambient globe** — a subtle, continuously rotating background globe on every page
   except `/map` (`frontend/components/globe/AmbientGlobe.tsx`), built on the existing
@@ -154,6 +162,48 @@ editing the Python registry. Never hand-edit the `.ts` file.
 | Structured reasoning | DeepSeek → Qwen → OpenAI → Gemini → local |
 
 Configure keys in `backend/.env`. The local fallback is always available.
+
+## Dataset Management Enhancement (Aug 2026)
+
+### Search Feature
+The dataset management page now includes a full-text search bar that filters sources and
+datasets in real-time across multiple fields:
+- Source name and organization
+- Coverage area and domain tags
+- Dataset name, agency, and category
+- Real-time result count display
+- One-click clear (X button)
+
+**Implementation**: `frontend/app/(app)/admin/datasets/page.tsx` lines 109-218
+
+### Smart Refresh with Rate Limiting
+Prevents accidental or malicious refresh spam that could overload backend services:
+- **Rate limit**: Maximum 1 refresh per hour (configurable via `REFRESH_RATE_LIMIT_MS`)
+- **Timestamp display**: Shows full date/time of last successful sync in user's local timezone
+- **Time remaining**: Real-time countdown when rate limit is active (e.g., "Next refresh in 45m 30s")
+- **Persistent state**: Refresh timestamp stored in browser localStorage, survives page reload
+- **Tooltip feedback**: Disabled state shows rate limit status on hover
+
+**Implementation**: `frontend/app/(app)/admin/datasets/page.tsx` lines 22-24, 103-176
+
+### "What's New" Button
+Transparency feature showing exactly what changed with each data sync:
+- Toggle panel displays detailed update information
+- Per-source details:
+  - Source name and sync status (success/failed/partial)
+  - Record count (formatted with thousands separator)
+  - Exact timestamp of last successful sync
+- Visual status indicators (✓ for success, ⚠ for warnings)
+- Automatic diffing against previous sync state
+
+**Implementation**: `frontend/app/(app)/admin/datasets/page.tsx` lines 283-324
+
+### Resources Page Improvements
+- **"Learn more" links** now functional, opening documentation in new browser tabs
+- **"View Full Dataset" button** navigates directly to `/admin/datasets` page
+- **Data Accuracy Notice** fully responsive, no text cutoff on mobile devices
+
+**Implementation**: `frontend/app/(app)/resources/page.tsx` lines 163-171, 236-241, 245-258
 
 ## Disclaimer
 
