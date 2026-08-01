@@ -2,11 +2,11 @@
   position: fixed;
   z-index: -5; /* between .app-backdrop's -10 and real content's 0+ */
   pointer-events: none;
-  bottom: -18%;
-  right: -12%;
-  width: min(46vw, 640px);
-  height: min(46vw, 640px);
-  opacity: 0.16;
+  bottom: -17%;
+  right: -11%;
+  width: min(50vw, 700px);
+  height: min(50vw, 700px);
+  opacity: 0.2;
 }
 
 .ambient-globe__svg {
@@ -18,18 +18,18 @@
 .ambient-globe__sphere {
   fill: transparent;
   stroke: var(--surface-border);
-  stroke-width: 1;
+  stroke-width: 1.2;
 }
 
 .ambient-globe__countries path {
   fill: none;
   stroke: var(--fg-muted);
-  stroke-width: 0.4;
+  stroke-width: 0.5;
   vector-effect: non-scaling-stroke;
 }
 
 .high-contrast .ambient-globe {
-  opacity: 0.24;
+  opacity: 0.34;
 }
 
 @media (max-width: 640px) {
