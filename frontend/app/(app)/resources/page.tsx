@@ -9,29 +9,44 @@ import {
   Globe,
   ArrowRight,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { GlassCard } from "@/components/ui/GlassCard";
 
+interface DocumentationCard {
+  icon: any;
+  title: string;
+  description: string;
+  link?: string;
+  href?: string;
+}
+
 export default function ResourcesPage() {
-  const documentationCards = [
+  const router = useRouter();
+
+  const documentationCards: DocumentationCard[] = [
     {
       icon: BookOpen,
       title: "Getting Started",
       description: "Learn the basics of ResilienceMap AI and get up and running in minutes.",
+      href: "https://docs.resiliencemap.ai/getting-started",
     },
     {
       icon: BarChart3,
       title: "Risk Scoring Methodology",
       description: "Understand how we calculate deterministic risk scores and hazard metrics.",
+      href: "https://docs.resiliencemap.ai/methodology",
     },
     {
       icon: Zap,
       title: "API Reference",
       description: "Integrate ResilienceMap data into your own systems and applications.",
+      href: "https://docs.resiliencemap.ai/api",
     },
     {
       icon: Map,
       title: "Data Sources",
       description: "Explore the authoritative sources powering our risk intelligence.",
+      href: "https://docs.resiliencemap.ai/sources",
     },
   ];
 
@@ -82,7 +97,7 @@ export default function ResourcesPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-20 px-4 md:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-6xl space-y-20 px-4 sm:px-6 md:px-8 overflow-x-hidden">
       {/* Page Header */}
       <div className="space-y-3">
         <h1 className="text-5xl font-bold tracking-tight">Resources</h1>
@@ -133,7 +148,8 @@ export default function ResourcesPage() {
             return (
               <GlassCard
                 key={card.title}
-                className="group flex flex-col gap-4 p-6 transition-all hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
+                className="group flex flex-col gap-4 p-6 transition-all hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] cursor-pointer"
+                onClick={() => card.href && window.open(card.href, '_blank')}
               >
                 <div className="rounded-lg bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] p-3 w-fit">
                   <Icon size={24} className="text-[var(--accent)]" />
@@ -144,9 +160,15 @@ export default function ResourcesPage() {
                     {card.description}
                   </p>
                 </div>
-                <button className="flex items-center gap-2 text-sm font-medium text-[var(--accent)] opacity-0 transition-opacity group-hover:opacity-100">
+                <a
+                  href={card.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm font-medium text-[var(--accent)] opacity-0 transition-opacity group-hover:opacity-100 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   Learn more <ArrowRight size={14} />
-                </button>
+                </a>
               </GlassCard>
             );
           })}
@@ -211,21 +233,28 @@ export default function ResourcesPage() {
           >
             Contact Us <ArrowRight size={16} />
           </a>
-          <button className="flex items-center justify-center gap-2 rounded-lg border border-[var(--surface-border)] px-6 py-2.5 text-sm font-semibold text-[var(--fg)] transition-all hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)]">
+          <button
+            onClick={() => router.push('/admin/datasets')}
+            className="focus-ring flex items-center justify-center gap-2 rounded-lg border border-[var(--surface-border)] px-6 py-2.5 text-sm font-semibold text-[var(--fg)] transition-all hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
             View Full Dataset <ArrowRight size={16} />
           </button>
         </div>
       </div>
 
       {/* Footer Note */}
-      <div className="rounded-lg border border-[var(--surface-border)] bg-[color-mix(in_srgb,var(--surface)_50%,transparent)] p-6">
-        <p className="text-xs text-[var(--fg-muted)] leading-relaxed">
-          <strong>Data Accuracy Notice:</strong> All datasets in ResilienceMap AI are sourced
-          from verified government agencies, scientific institutions, and internationally
-          recognized indices. No independent risk scores are generated. For real-time risk
-          assessment, always reference the ResilienceMap risk engine outputs and official
-          government advisories.
-        </p>
+      <div className="rounded-lg border border-[var(--surface-border)] bg-[color-mix(in_srgb,var(--surface)_50%,transparent)] p-4 md:p-6 w-full overflow-hidden">
+        <div className="space-y-3 text-xs md:text-sm text-[var(--fg-muted)] leading-relaxed">
+          <p>
+            <strong className="text-[var(--fg)]">Data Accuracy Notice:</strong> All datasets in ResilienceMap AI are sourced
+            from verified government agencies, scientific institutions, and internationally
+            recognized indices. No independent risk scores are generated.
+          </p>
+          <p>
+            For real-time risk assessment, always reference the ResilienceMap risk engine outputs and official
+            government advisories.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -11,12 +11,19 @@ import {
   RefreshCw,
   ShieldCheck,
   XCircle,
+  Info,
+  Search,
+  X,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { api, API_BASE } from "@/lib/api";
 import { cn, formatNumber } from "@/lib/utils";
 import { FLAGS } from "@/lib/feature-flags";
+
+const REFRESH_RATE_LIMIT_MS = 60 * 60 * 1000; // 1 hour in milliseconds
+const STORAGE_KEY_LAST_REFRESH = 'last_sync_refresh_timestamp';
+const STORAGE_KEY_SYNC_UPDATES = 'last_sync_updates';
 
 const CONFIDENCE_TONE: Record<string, string> = {
   High: "var(--risk-low)",
@@ -95,6 +102,87 @@ export default function DatasetsPage() {
   const [activeTab, setActiveTab] = useState<"sources" | "datasets">(
     FLAGS.SOURCE_HEALTH_MONITORING ? "sources" : "datasets"
   );
+  const [lastRefreshTime, setLastRefreshTime] = useState<number | null>(null);
+  const [timeUntilRefresh, setTimeUntilRefresh] = useState<number | null>(null);
+  const [showUpdates, setShowUpdates] = useState(false);
+  const [lastUpdates, setLastUpdates] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY_LAST_REFRESH);
+    if (stored) {
+      setLastRefreshTime(parseInt(stored));
+    }
+    const updates = localStorage.getItem(STORAGE_KEY_SYNC_UPDATES);
+    if (updates) {
+      setLastUpdates(JSON.parse(updates));
+    }
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (lastRefreshTime) {
+        const now = Date.now();
+        const elapsed = now - lastRefreshTime;
+        const remaining = Math.max(0, REFRESH_RATE_LIMIT_MS - elapsed);
+        setTimeUntilRefresh(remaining);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lastRefreshTime]);
+
+  const canRefresh = !lastRefreshTime || (Date.now() - lastRefreshTime) >= REFRESH_RATE_LIMIT_MS;
+
+  const handleRefresh = async () => {
+    if (!canRefresh) return;
+
+    const prevData = syncData?.sync_health ?? [];
+    const now = Date.now();
+
+    try {
+      qc.invalidateQueries({ queryKey: ["sync-health"] });
+      localStorage.setItem(STORAGE_KEY_LAST_REFRESH, now.toString());
+      setLastRefreshTime(now);
+
+      // Calculate what was updated
+      setTimeout(() => {
+        const newData = qc.getQueryData(["sync-health"]) as any;
+        if (newData?.sync_health) {
+          const updates = {
+            timestamp: now,
+            previousCount: prevData.length,
+            currentCount: newData.sync_health.length,
+            changedSources: newData.sync_health.filter((s: any) => {
+              const prev = prevData.find(p => p.source_id === s.source_id);
+              return prev && (
+                prev.last_sync_status !== s.last_sync_status ||
+                prev.records_synced !== s.records_synced ||
+                prev.last_successful_sync_at !== s.last_successful_sync_at
+              );
+            }).map((s: any) => ({
+              name: s.source_name,
+              status: s.last_sync_status,
+              records: s.records_synced,
+              lastSync: s.last_successful_sync_at,
+            })),
+          };
+          localStorage.setItem(STORAGE_KEY_SYNC_UPDATES, JSON.stringify(updates));
+          setLastUpdates(updates);
+          setMessage('Data sources refreshed successfully!');
+          setTimeout(() => setMessage(null), 5000);
+        }
+      }, 500);
+    } catch (error) {
+      setMessage(`Refresh failed: ${(error as Error).message}`);
+      setTimeout(() => setMessage(null), 5000);
+    }
+  };
+
+  const formatTimeRemaining = (ms: number): string => {
+    const mins = Math.floor(ms / 60000);
+    const secs = Math.floor((ms % 60000) / 1000);
+    return `${mins}m ${secs}s`;
+  };
 
   const upload = useMutation({
     mutationFn: api.uploadDataset,
@@ -115,35 +203,76 @@ export default function DatasetsPage() {
   const staleSources = syncEntries.filter((s) => s.is_stale && s.enabled);
   const failedSources = syncEntries.filter((s) => s.last_sync_status === "failed");
 
+  // Filter entries based on search query
+  const filteredSyncEntries = syncEntries.filter((s) =>
+    s.source_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.organization.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.coverage.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.domains.some((d: string) => d.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const filteredDatasets = data?.datasets.filter((d) =>
+    d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    d.agency.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    d.category.toLowerCase().includes(searchQuery.toLowerCase())
+  ) ?? [];
+
   return (
-    <div className="mx-auto max-w-[1400px] px-4 pb-20">
+    <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 md:px-8 pb-20 overflow-x-hidden">
       {/* Header */}
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Dataset <span className="text-gradient">Management</span>
-          </h1>
-          <p className="mt-1 text-[13.5px] text-[var(--fg-muted)]">
-            Global source registry — official agencies, sync health, and approved data provenance.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="mb-6 space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Dataset <span className="text-gradient">Management</span>
+            </h1>
+            <p className="mt-1 text-[13.5px] text-[var(--fg-muted)]">
+              Global source registry — official agencies, sync health, and approved data provenance.
+            </p>
+          </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           {FLAGS.SOURCE_HEALTH_MONITORING && (
-            <button
-              onClick={() => qc.invalidateQueries({ queryKey: ["sync-health"] })}
-              disabled={syncLoading}
-              className="focus-ring glass flex h-10 cursor-pointer items-center gap-2 rounded-xl px-4 text-[13px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {syncLoading ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" aria-hidden="true" /> Refreshing
-                </>
-              ) : (
-                <>
-                  <RefreshCw size={14} aria-hidden="true" /> Refresh
-                </>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleRefresh}
+                  disabled={syncLoading || !canRefresh}
+                  title={!canRefresh ? `Rate limited. Refresh available in ${formatTimeRemaining(timeUntilRefresh || 0)}` : 'Refresh data sources'}
+                  className="focus-ring glass flex h-10 cursor-pointer items-center gap-2 rounded-xl px-4 text-[13px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {syncLoading ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" aria-hidden="true" /> Refreshing
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw size={14} aria-hidden="true" /> Refresh
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowUpdates(!showUpdates)}
+                  className="focus-ring glass flex h-10 cursor-pointer items-center gap-2 rounded-xl px-4 text-[13px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                  title="View what data was updated"
+                >
+                  <Info size={14} aria-hidden="true" /> What's New
+                </button>
+              </div>
+              {lastRefreshTime && (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] border border-[var(--surface-border)]">
+                  <Clock size={14} className="text-[var(--accent)]" />
+                  <div className="text-[12px]">
+                    <span className="text-[var(--fg-muted)]">Last updated: </span>
+                    <span className="font-medium text-[var(--fg)]">{new Date(lastRefreshTime).toLocaleString()}</span>
+                    {!canRefresh && (
+                      <span className="text-[var(--risk-medium)] ml-2">
+                        (Next refresh in {formatTimeRemaining(timeUntilRefresh || 0)})
+                      </span>
+                    )}
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
           )}
           <button
             onClick={() => setShowForm((v) => !v)}
@@ -151,6 +280,34 @@ export default function DatasetsPage() {
           >
             <Plus size={15} aria-hidden="true" /> Register dataset
           </button>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative w-full sm:max-w-md">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--fg-muted)]" />
+            <input
+              type="text"
+              placeholder="Search sources, datasets, agencies..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="focus-ring w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-solid)] pl-9 pr-9 py-2.5 text-[13px] placeholder:text-[var(--fg-muted)] transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
+                title="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <p className="mt-2 text-[11px] text-[var(--fg-muted)]">
+              {activeTab === "sources" ? `${filteredSyncEntries.length} source(s) found` : `${filteredDatasets.length} dataset(s) found`}
+            </p>
+          )}
         </div>
       </div>
 
@@ -176,6 +333,49 @@ export default function DatasetsPage() {
             </GlassCard>
           )}
         </div>
+      )}
+
+      {/* What's New Section */}
+      {showUpdates && lastUpdates && (
+        <GlassCard className="mb-4 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[14px] font-semibold">What's New</h3>
+            <button
+              onClick={() => setShowUpdates(false)}
+              className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="space-y-3 text-[13px]">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--surface-border)]">
+              <span className="text-[var(--fg-muted)]">Last updated:</span>
+              <span className="font-medium">{new Date(lastUpdates.timestamp).toLocaleString()}</span>
+            </div>
+            {lastUpdates.changedSources && lastUpdates.changedSources.length > 0 ? (
+              <div>
+                <p className="text-[var(--fg-muted)] mb-2">
+                  <strong>{lastUpdates.changedSources.length} data source(s) updated:</strong>
+                </p>
+                <ul className="space-y-2">
+                  {lastUpdates.changedSources.map((source: any, idx: number) => (
+                    <li key={idx} className="flex items-start gap-2 p-2 rounded bg-[color-mix(in_srgb,var(--accent)_5%,transparent)]">
+                      <CheckCircle2 size={14} className="text-[var(--risk-low)] mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-medium">{source.name}</p>
+                        <p className="text-[11px] text-[var(--fg-muted)]">
+                          Status: {source.status} · Records: {formatNumber(source.records)} · Last sync: {source.lastSync ? new Date(source.lastSync).toLocaleString() : 'Never'}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-[var(--fg-muted)]">No changes detected in the last update.</p>
+            )}
+          </div>
+        </GlassCard>
       )}
 
       {message && (
@@ -312,9 +512,13 @@ export default function DatasetsPage() {
                 <div key={i} className="glass h-52 animate-pulse rounded-2xl" />
               ))}
             </div>
+          ) : filteredSyncEntries.length === 0 && searchQuery ? (
+            <GlassCard className="p-8 text-center">
+              <p className="text-[var(--fg-muted)]">No sources match your search for "{searchQuery}"</p>
+            </GlassCard>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {syncEntries.map((s) => (
+              {filteredSyncEntries.map((s) => (
                 <GlassCard
                   key={s.source_id}
                   className={cn(
@@ -470,9 +674,13 @@ export default function DatasetsPage() {
                 <div key={i} className="glass h-40 animate-pulse rounded-2xl" />
               ))}
             </div>
+          ) : filteredDatasets.length === 0 && searchQuery ? (
+            <GlassCard className="p-8 text-center">
+              <p className="text-[var(--fg-muted)]">No datasets match your search for "{searchQuery}"</p>
+            </GlassCard>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {data?.datasets.map((d) => (
+              {filteredDatasets.map((d) => (
                 <GlassCard
                   key={d.id}
                   className="flex flex-col p-5 transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_36px_var(--accent-glow)]"
