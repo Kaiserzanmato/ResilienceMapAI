@@ -3,18 +3,66 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { geoOrthographic, geoPath } from "d3-geo";
 import { select } from "d3-selection";
-import { timer, type Timer } from "d3-timer";
 import "./AmbientGlobe.css";
 import { useWorldAtlas } from "./useWorldAtlas";
 
 const SIZE = 640;
 // Ambient drift, not attention-grabbing spin — a full rotation every ~70-100s.
 const ROTATE_DEG_PER_MS = 0.005;
+const ANIMATION_STATE_KEY = "__ambient_globe_start_time";
+
+// Global animation tracking for seamless cross-tab consistency
+class GlobeAnimationState {
+  private startTime: number;
+  private isPaused = false;
+  private pauseTime = 0;
+
+  constructor() {
+    // Restore from sessionStorage (survives hard refresh)
+    const stored = sessionStorage.getItem(ANIMATION_STATE_KEY);
+    this.startTime = stored ? parseInt(stored, 10) : Date.now();
+    sessionStorage.setItem(ANIMATION_STATE_KEY, this.startTime.toString());
+  }
+
+  getElapsedMs(): number {
+    if (this.isPaused) {
+      return this.pauseTime;
+    }
+    return Date.now() - this.startTime;
+  }
+
+  pause(): void {
+    if (!this.isPaused) {
+      this.pauseTime = this.getElapsedMs();
+      this.isPaused = true;
+    }
+  }
+
+  resume(): void {
+    if (this.isPaused) {
+      this.isPaused = false;
+      // Adjust startTime to account for paused duration
+      this.startTime = Date.now() - this.pauseTime;
+      sessionStorage.setItem(ANIMATION_STATE_KEY, this.startTime.toString());
+    }
+  }
+}
+
+// Single global instance
+let globalAnimationState: GlobeAnimationState | null = null;
+
+function getAnimationState(): GlobeAnimationState {
+  if (!globalAnimationState) {
+    globalAnimationState = new GlobeAnimationState();
+  }
+  return globalAnimationState;
+}
 
 export default function AmbientGlobe() {
   const pathname = usePathname();
   const { countries } = useWorldAtlas();
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!countries || !svgRef.current) return;
@@ -57,21 +105,41 @@ export default function AmbientGlobe() {
       return;
     }
 
-    let spin: Timer | null = timer((elapsed) => render([elapsed * ROTATE_DEG_PER_MS, -12, 0]));
+    // Use global animation state for consistency across tab switches
+    const animationState = getAnimationState();
 
+    // Animate using requestAnimationFrame for smooth 60fps rendering
+    const animate = () => {
+      const elapsed = animationState.getElapsedMs();
+      const rotation = elapsed * ROTATE_DEG_PER_MS;
+      render([rotation, -12, 0]);
+      rafRef.current = requestAnimationFrame(animate);
+    };
+
+    // Start animation
+    animate();
+
+    // Handle tab visibility changes with smooth pause/resume
     const handleVisibility = () => {
       if (document.hidden) {
-        spin?.stop();
-        spin = null;
-      } else if (!spin) {
-        const restartedAt = Date.now();
-        spin = timer((elapsed) => render([(restartedAt + elapsed) * ROTATE_DEG_PER_MS, -12, 0]));
+        animationState.pause();
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
+      } else {
+        animationState.resume();
+        animate();
       }
     };
+
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
-      spin?.stop();
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [countries]);
