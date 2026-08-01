@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { DataSourceWidget } from "@/components/map/DataSourceWidget";
 import { IntelligenceMarkersWidget } from "@/components/map/IntelligenceMarkersWidget";
 import { LayerControlWidget } from "@/components/map/LayerControlWidget";
@@ -11,6 +11,7 @@ import { SearchBar } from "@/components/map/SearchBar";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { buildMapTarget, getOfficialSourcesByCountry } from "@/lib/map-target-builder";
+import { cn } from "@/lib/utils";
 
 // Lazy-load the map (heaviest bundle) per performance requirements
 const RiskMap = dynamic(() => import("@/components/map/RiskMap"), {
@@ -23,7 +24,12 @@ const RiskMap = dynamic(() => import("@/components/map/RiskMap"), {
 });
 
 export default function MapPage() {
-  const { selected, setRisk, setActiveTarget } = useAppStore();
+  const { selected, setRisk, setActiveTarget, aiOpen } = useAppStore();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Fetch risk whenever a location is selected (click or search)
   const { data: risk } = useQuery({
@@ -101,9 +107,12 @@ export default function MapPage() {
           <RiskSummaryWidget />
         </div>
       </div>
-      {/* Risk summary desktop — top right */}
+      {/* Risk summary desktop — top right, shifts left when AI panel opens */}
       <div
-        className="pointer-events-none absolute right-3 z-20 hidden md:block"
+        className={cn(
+          "pointer-events-none absolute z-20 hidden md:block transition-[right] duration-300",
+          isMounted && aiOpen ? "right-[430px]" : "right-3"
+        )}
         style={{ top: "calc(var(--banner-h) + var(--nav-h) + 36px)" }}
       >
         <div className="pointer-events-auto">
