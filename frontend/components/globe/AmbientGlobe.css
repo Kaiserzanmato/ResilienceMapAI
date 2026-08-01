@@ -6,7 +6,7 @@
   right: -11%;
   width: min(50vw, 700px);
   height: min(50vw, 700px);
-  opacity: 0.2;
+  opacity: 0.42;
 }
 
 .ambient-globe__svg {
@@ -18,18 +18,18 @@
 .ambient-globe__sphere {
   fill: transparent;
   stroke: var(--surface-border);
-  stroke-width: 1.2;
+  stroke-width: 1.8;
 }
 
 .ambient-globe__countries path {
   fill: none;
   stroke: var(--fg-muted);
-  stroke-width: 0.5;
+  stroke-width: 0.75;
   vector-effect: non-scaling-stroke;
 }
 
 .high-contrast .ambient-globe {
-  opacity: 0.34;
+  opacity: 0.56;
 }
 
 @media (max-width: 640px) {
