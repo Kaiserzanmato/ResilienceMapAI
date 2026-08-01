@@ -111,7 +111,7 @@ export default function MapPage() {
       <div
         className={cn(
           "pointer-events-none absolute z-20 hidden md:block transition-[right] duration-300",
-          isMounted && aiOpen ? "right-[430px]" : "right-3"
+          isMounted && aiOpen ? "right-[760px]" : "right-3"
         )}
         style={{ top: "calc(var(--banner-h) + var(--nav-h) + 36px)" }}
       >
