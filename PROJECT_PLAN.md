@@ -1,10 +1,11 @@
 # ResilienceMap AI — Project Plan & Status
 
-**Last Updated:** July 6, 2026  
-**Project Status:** ✅ Phase 4 Complete — Synchronized Exports & Knowledge Layer Deployed  
-**Deployment:** Vercel (Frontend) | FastAPI Backend (Local/Cloud)  
+**Last Updated:** August 1, 2026  
+**Project Status:** ✅ Phase 6 Complete — Foundation-Phase Backend Hardening & Ambient Globe Visual Deployed  
+**Deployment:** Vercel (Frontend) | Render (Backend API, live)  
 **Repository:** https://github.com/Kaiserzanmato/ResilienceMapAI  
-**Production URL:** https://resilience-map-ai.vercel.app
+**Production URL:** https://resilience-map-ai.vercel.app  
+**Backend API URL:** https://resiliencemap-api.onrender.com
 
 ---
 
@@ -562,20 +563,62 @@ Response Validation (output sanitization)
 
 ---
 
+### Phase 5: Foundation-Phase Backend Hardening (COMPLETE ✅)
+**Objective:** Make the existing live-data-sync scaffolding (registry, connectors, sync dispatcher, health/audit tracking) actually work, fix known bugs, and close a live RBAC gap — without yet building full auth, a task queue, or a frontend test suite
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| Bug fixes | ✅ | Ocean-fallback data-coverage regression, CSV export column-drift crash, chained-modifier injection-detection gap |
+| `engine_version` | ✅ | Added to the risk-scoring payload (metadata only; scoring formula unchanged), flows through CSV/PDF/shared-report footer |
+| Persistence layer | ✅ | SQLAlchemy models + Alembic scaffold + repository interfaces (`backend/app/repositories/`) for sync health, audit log, uploaded datasets, reports — in-memory by default, Postgres-backed when `DATABASE_URL` is set (not yet provisioned) |
+| Live sync wiring | ✅ | GDACS/NASA EONET/USGS Earthquake/ReliefWeb connectors wired to real dispatch via `WIRED_SOURCE_IDS`; `POST /api/data-sync` and `GET /api/data-status` now reflect real state instead of hardcoded MVP responses |
+| Scheduled sync | ✅ | `GET /api/cron/sync-sources`, secured by `CRON_SECRET`, triggered daily via `vercel.json`'s `crons` entry (Vercel Hobby plan only allows daily cron; upgrade to Pro for a shorter interval) |
+| RBAC stopgap | ✅ | `ADMIN_SHARED_SECRET` now required alongside the client-controlled `X-Role` header for elevated roles — closes a previously live exploit where any visitor could reach admin endpoints; frontend calls proxy through a server-side Next.js route so the secret never reaches the browser. **Not real authentication** — see §11 |
+| Registry reconciliation | ✅ | Backend `sources_registry.py` is now the single source of truth (45 sources); `frontend/data-sources/registry/sources.registry.ts` is a generated file (`backend/scripts/export_ts_registry.py`) |
+
+**Key Commits:**
+- `41a9971` - fix(risk-scoring,exporters,ai-router): fix ocean-fallback regression, CSV export crash, and injection-detection gap
+- `f1189b2` - feat(db): add optional Postgres persistence layer
+- `b29b586` - feat(sync): wire live connectors to scheduled sync via Vercel Cron
+- `7411f64` - security(rbac): require ADMIN_SHARED_SECRET alongside X-Role for elevated roles
+- `0fea79d` - feat(registry): reconcile backend/frontend source registries; add TS codegen script
+- `b3f611e` - fix(vercel): switch sync cron to daily cadence to fit the Hobby plan limit
+- `b18f89b` - fix(config): don't crash the whole app at startup when CRON_SECRET is unset (production incident fix — see §11)
+
+**Explicitly out of scope this phase:** new AI providers, full security audit, frontend test suite, CI/CD, Docker, real JWT/OAuth auth.
+
+---
+
+### Phase 6: Ambient Globe Visual (COMPLETE ✅)
+**Objective:** Add a subtle, always-present rotating globe behind page content on every route except `/map`, without a new dependency or licensing cost
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| `AmbientGlobe` component | ✅ | Reuses the existing `d3-geo`/`d3-selection`/`d3-timer`/`topojson-client` stack (previously only powering the landing page's 1.4s boot splash) — no new dependency, no amCharts license |
+| Placement | ✅ | Fixed, bottom-right, mostly cropped off-canvas, `pointer-events: none`, negative z-index behind all content |
+| Theming | ✅ | Uses the app's CSS custom properties (`--fg-muted`, `--surface-border`) — follows light/dark/high-contrast automatically |
+| Accessibility/perf | ✅ | Respects `prefers-reduced-motion` (renders static instead of animating — the app's global CSS reduced-motion rule doesn't reach a JS `requestAnimationFrame` loop, so this is an explicit check); pauses via the Page Visibility API when the tab is backgrounded; hidden below 640px viewports |
+| Route exclusion | ✅ | `/map` excluded via `usePathname()` — confirmed absent from the DOM there, not just hidden |
+
+**Key Commits:**
+- `f57f269` - feat(ui): add ambient rotating globe background on every page except /map
+
+---
+
 ## 4. Recent Builds & Commits (Last 10)
 
 | Commit | Date | Message | Status |
 |--------|------|---------|--------|
-| `b5c4bb6` | Jul 6 | feat(reports): add synchronized PDF, text, markdown, and CSV exports | ✅ **LIVE** |
-| `eaed507` | Jul 6 | feat(ui): design tokens, route-level skeleton loading, and a11y polish | ✅ **LIVE** |
-| `95f7a93` | Jul 6 | feat(resilience-map): integrate July 2026 Strategic Assessment | ✅ **LIVE** |
-| `f61a235` | Jun 23 | Improve Resources page edge spacing | ✅ Deployed |
-| `f9d5b22` | Jun 23 | Redesign Resources with professional hierarchy | ✅ Deployed |
-| `faf53d2` | Jun 23 | Add Resources page with featured video | ✅ Deployed |
-| `0a2ae8b` | Jun 23 | Make Ask AI scope-check location-aware | ✅ Deployed |
-| `c201861` | Jun 23 | Fix Ask AI scope classifier blocking valid queries | ✅ Deployed |
-| `92f5f1e` | Jun 23 | Integrate resiliencemap-research-dataset | ✅ Deployed |
-| `cd8b48e` | Jun 23 | Fix environment variable loading | ✅ Deployed |
+| `f57f269` | Aug 1 | feat(ui): add ambient rotating globe background on every page except /map | ✅ **LIVE** |
+| `b18f89b` | Aug 1 | fix(config): don't crash the whole app at startup when CRON_SECRET is unset | ✅ **LIVE** |
+| `b3f611e` | Aug 1 | fix(vercel): switch sync cron to daily cadence to fit the Hobby plan limit | ✅ **LIVE** |
+| `1e5439c` | Aug 1 | docs: document data sync, persistence, RBAC stopgap, and registry codegen convention | ✅ **LIVE** |
+| `0fea79d` | Aug 1 | feat(registry): reconcile backend/frontend source registries; add TS codegen script | ✅ **LIVE** |
+| `7411f64` | Aug 1 | security(rbac): require ADMIN_SHARED_SECRET alongside X-Role for elevated roles | ✅ **LIVE** |
+| `b29b586` | Aug 1 | feat(sync): wire live connectors to scheduled sync via Vercel Cron | ✅ **LIVE** |
+| `f1189b2` | Aug 1 | feat(db): add optional Postgres persistence layer | ✅ **LIVE** |
+| `41a9971` | Aug 1 | fix(risk-scoring,exporters,ai-router): fix ocean-fallback regression, CSV export crash, and injection-detection gap | ✅ **LIVE** |
+| `b5c4bb6` | Jul 6 | feat(reports): add synchronized PDF, text, markdown, and CSV exports | ✅ Deployed |
 
 ---
 
@@ -741,17 +784,21 @@ Professional knowledge hub with three main sections:
 ```
 Status:            ✅ LIVE & Production Ready
 URL:               https://resilience-map-ai.vercel.app
-Direct URL:        https://resilience-map-6k6wyogwc-oliveripsioco-3103s-projects.vercel.app
-Deployment:        Automatic on main branch push
-Latest Commit:     b5c4bb6 (July 6, 2026)
-Previous Commit:   f61a235 (June 23, 2026)
-Build Time:        23 seconds
+Deployment:        Git-connected to main, but auto-deploy-on-push has been
+                    unreliable in practice — manual `vercel deploy --prod`
+                    was needed to promote at least two recent pushes.
+                    Verify a new deployment actually appears after pushing;
+                    don't assume the push alone was sufficient.
+Latest Commit:     f57f269 (August 1, 2026)
+Previous Commit:   b5c4bb6 (July 6, 2026)
 Framework:         Next.js 16.2.9 (Turbopack)
-Performance:       Next.js optimized, edge caching
-Environment:       NEXT_PUBLIC_API_URL → FastAPI backend
+Environment:       NEXT_PUBLIC_API_URL → https://resiliencemap-api.onrender.com
+                    (was empty/unset for 49+ days before being fixed 2026-08-01 —
+                    this is why map/dashboard/AI features may have appeared
+                    broken on the live site prior to that fix)
 ```
 
-**Latest Deployment Details (July 6, 2026):**
+**Latest Deployment Details (July 6, 2026 — pending refresh after today's push, see note above):**
 - **Status:** READY (Production)
 - **Build Output:** `/vercel/output` — 23 seconds total
 - **Routes Generated:** 11 static + 1 dynamic (/reports/shared/[id])
@@ -781,16 +828,16 @@ Environment:       NEXT_PUBLIC_API_URL → FastAPI backend
 - ✅ Video player functional on Resources page
 - ✅ No console errors in browser
 
-### 6.2 Backend (FastAPI)
+### 6.2 Backend (Render)
 ```
-Status:            ✅ Ready (Local dev + Cloud ready)
-Framework:         FastAPI + uvicorn
-Port:              8000 (local)
-AI Model:          DeepSeek (DEEPSEEK_API_KEY required)
-Env File:          backend/.env.local
-Python:            3.11+
-Dependencies:      requirements.txt (python-dotenv, etc.)
+Status:            ✅ LIVE (Render, Python 3, Free tier)
+URL:               https://resiliencemap-api.onrender.com
+Service:           resiliencemap-api (srv-d8mbaoernols73cdgj80)
+Deployment:        Automatic on main branch push (GitHub-connected, independent of Vercel)
+AI Model:          DeepSeek (DEEPSEEK_API_KEY required in production)
+Free-tier caveat:  Spins down with inactivity — first request after idle can take 50s+
 ```
+Note this corrects an earlier version of this document, which described the backend as "ready for Heroku/Railway/Fly.io deployment (to be configured)" — it has in fact been live on Render this whole time, deploying from the same GitHub repo as the frontend but as a fully separate service. The frontend's `NEXT_PUBLIC_API_URL` must point here (`https://resiliencemap-api.onrender.com`) for the deployed site's map/dashboard/AI features to work at all — this was found unset (empty string) in Vercel for at least 49 days before being fixed on 2026-08-01.
 
 **Local Setup:**
 ```bash
@@ -806,8 +853,10 @@ uvicorn app.main:app --reload --port 8000
 - ✅ CORS configured
 - ✅ Audit logging
 - ✅ Error handling
-- ✅ Security guardrails
-- ⏳ Ready for Heroku/Railway/Fly.io deployment (to be configured)
+- ✅ Security guardrails (RBAC stopgap — see §11, not real authentication)
+- ✅ Deployed and live on Render, auto-deploying from `main`
+- ⏳ `DATABASE_URL` not yet provisioned — sync health/audit log/datasets/reports run in-memory (lost on restart) until a Postgres database is set up via the Vercel Marketplace or a Render-native database
+- ⏳ `CRON_SECRET` not yet set on Render — the daily scheduled sync endpoint (triggered by Vercel Cron) will reject all requests, including Vercel's own scheduler, until it's configured there
 
 ---
 
@@ -839,6 +888,12 @@ uvicorn app.main:app --reload --port 8000
 - **Research datasets:** 6 global indices (WRI, INFORM, ND-GAIN, Hazard Rankings, Political Risk, Climate Risk)
 - **Official sources:** Government agency links for each profiled country
 - **Professional design:** Card-based layout, responsive, accessible
+
+### 7.5 Ambient Globe Visual
+- **Persistent background element** on every page except `/map` (which has its own real interactive MapLibre map)
+- Subtle, low-opacity, continuously rotating wireframe globe anchored bottom-right, never overlapping text (`pointer-events: none`, negative z-index)
+- Built on the app's existing `d3-geo`/`d3-timer`/`topojson-client` stack — no new dependency
+- Theme-reactive (light/dark/high-contrast), respects `prefers-reduced-motion`, pauses when the tab is backgrounded, hidden on small viewports
 
 ---
 
@@ -1011,16 +1066,19 @@ DeepSeek responds with context-aware risk explanation
 
 ### Known Limitations
 1. **Research dataset:** Only 25 countries in detailed reference data (249+ countries available but not yet parsed)
-2. **Backend deployment:** Currently local FastAPI; needs Heroku/Railway/Fly.io config
-3. **Database:** Supabase schema ready but not yet integrated (queries cached in-memory)
-4. **Authentication:** Persona selector only; full auth system to be added
-5. **Mobile:** Responsive design complete; native mobile app not planned
+2. **Backend deployment:** Live on Render (`resiliencemap-api.onrender.com`), free tier — spins down with inactivity, first request after idle can take 50s+; no staging environment
+3. **Database:** Repository layer (SQLAlchemy + Alembic) is Postgres-ready but `DATABASE_URL` is not yet provisioned — sync health, audit log, uploaded-dataset metadata, and reports all run in-memory and are lost on every restart
+4. **Authentication:** Still persona-selector only — no real login. A stopgap (`ADMIN_SHARED_SECRET`, added 2026-08-01) closes the previously-live exploit where any site visitor could reach RBAC-gated admin endpoints via the client-controlled `X-Role` header, but it is one static secret with no per-user identity, not real authentication. Full auth (JWT/OAuth) is still future work
+5. **Scheduled sync:** `CRON_SECRET` is not yet set on the live Render service — the daily sync endpoint (`GET /api/cron/sync-sources`, triggered by Vercel Cron) will reject all requests, including Vercel's own scheduler, until it's configured there. Manual sync via the admin UI works regardless
+6. **Live data sync coverage:** only 4 of the 45 registered sources (GDACS, NASA EONET, USGS Earthquake, ReliefWeb) have real connectors wired to the scheduler; the rest are registered for discoverability only
+7. **Mobile:** Responsive design complete; native mobile app not planned
 
 ### Future Enhancements
 - [x] ~~Export functionality (PDF reports, CSV downloads)~~ ✅ **COMPLETE** (b5c4bb6)
+- [x] ~~Wire live hazard feeds into scheduled sync~~ ✅ **COMPLETE for 4 sources** (b29b586) — GDACS, NASA EONET, USGS Earthquake, ReliefWeb; PAGASA/PHIVOLCS/NOAA and 40 others still registered without a connector
+- [x] ~~Add a real database layer~~ ✅ **schema/repository COMPLETE** (f1189b2), **provisioning still pending** — connect via the Vercel Marketplace or a Render-native Postgres to activate it
 - [ ] Expand risk-reference.json to all 249 countries
-- [ ] Integrate Supabase PostgreSQL for persistent user data
-- [ ] Add user authentication (Auth0 / Supabase Auth)
+- [ ] Add real user authentication (JWT/OAuth) — supersedes the `ADMIN_SHARED_SECRET` stopgap
 - [ ] Real-time hazard alerts (WebSocket integration)
 - [ ] Multi-language support (i18n)
 - [ ] API documentation (Swagger / GraphQL)
@@ -1028,7 +1086,7 @@ DeepSeek responds with context-aware risk explanation
 - [ ] Advanced analytics (heatmaps, trend analysis)
 - [ ] Collaboration features (shared reports, team workspaces)
 - [ ] Expand watchlist evidence to all regions
-- [ ] Integrate live hazard feeds (USGS, PAGASA, PHIVOLCS, NOAA)
+- [ ] Wire the remaining 41 registered sources to real connectors
 
 ---
 
@@ -1057,19 +1115,8 @@ npm install -g vercel
 vercel              # Interactive setup
 ```
 
-### Deploy Backend (Future)
-```bash
-# Option 1: Heroku
-heroku create resilience-map-ai
-git push heroku main
-
-# Option 2: Fly.io
-flyctl launch
-flyctl deploy
-
-# Option 3: Railway
-railway up
-```
+### Deploy Backend (Render — already live)
+The backend is already deployed and auto-deploys on every push to `main`, independent of the Vercel frontend deploy — no manual step needed for ordinary changes. Configured via the Render dashboard (`resiliencemap-api`, service `srv-d8mbaoernols73cdgj80`), not an in-repo `render.yaml`. To provision a database or update secrets, set env vars there directly (`DATABASE_URL`, `ALEMBIC_DATABASE_URL`, `CRON_SECRET`, `ADMIN_SHARED_SECRET`, `DEEPSEEK_API_KEY`, etc. — see `backend/.env.example` for the full list).
 
 ---
 
@@ -1079,7 +1126,7 @@ railway up
 - **AI Integration:** DeepSeek + OpenAI fallback chain
 - **Research Data:** ResilienceMap AI Research Dataset (25 countries, authoritative sources)
 - **Design System:** Custom Tailwind + glass-morphism components
-- **Deployment:** Vercel (frontend hosting)
+- **Deployment:** Vercel (frontend hosting) + Render (backend API hosting, `resiliencemap-api.onrender.com`)
 
 ---
 

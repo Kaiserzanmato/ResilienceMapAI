@@ -56,6 +56,11 @@ cd backend && .venv/bin/python -m pytest tests/ -q
 - **Reports** (`/reports`) — PDF briefs, CSV exports, executive summaries, share links
 - **Datasets** (`/admin/datasets`) — source provenance + metadata-validated registration (RBAC)
 - **Settings** (`/settings`) — theme (light/dark/system/high-contrast), persona, map defaults
+- **Ambient globe** — a subtle, continuously rotating background globe on every page
+  except `/map` (`frontend/components/globe/AmbientGlobe.tsx`), built on the existing
+  `d3-geo`/`d3-timer`/`topojson-client` stack (no new dependency). Theme-reactive,
+  respects `prefers-reduced-motion`, pauses when the tab is backgrounded, hidden on
+  small viewports.
 
 ## Security
 
@@ -89,11 +94,14 @@ without a connector yet, registered for discoverability, not sync
 
 - **Scheduling**: `vercel.json`'s `crons` entry hits
   `GET /api/cron/sync-sources` once daily (00:00 UTC), authenticated by
-  `CRON_SECRET` (required in production — the app refuses to start without
-  it there). Vercel's Hobby plan only allows daily cron jobs; upgrade to Pro
-  and shorten the schedule (e.g. `*/15 * * * *`) for more frequent sync.
-  `POST /api/data-sync` (RBAC-gated) triggers the same dispatch manually
-  anytime in between.
+  `CRON_SECRET`. If `CRON_SECRET` isn't set, the app still starts (it logs a
+  warning, not a fatal error — an earlier version of this check crashed the
+  whole backend on every deploy when the secret was missing; see commit
+  `b18f89b`) but the cron endpoint rejects every request, including Vercel's
+  own scheduler, until it's configured. Vercel's Hobby plan only allows daily
+  cron jobs; upgrade to Pro and shorten the schedule (e.g. `*/15 * * * *`)
+  for more frequent sync. `POST /api/data-sync` (RBAC-gated) triggers the
+  same dispatch manually anytime in between.
 - **Persistence**: sync health, the sync audit log, uploaded-dataset
   metadata, and shareable reports all live behind a repository interface
   (`backend/app/repositories/`) with two implementations — in-memory
@@ -112,6 +120,23 @@ of truth. `frontend/data-sources/registry/sources.registry.ts` is a
 generated file — regenerate it with
 `backend/.venv/bin/python backend/scripts/export_ts_registry.py` after
 editing the Python registry. Never hand-edit the `.ts` file.
+
+## Deployment
+
+- **Frontend**: Vercel, `https://resilience-map-ai.vercel.app`. Git-connected to
+  `main`, but auto-deploy-on-push has been unreliable in practice — after pushing,
+  confirm a new deployment actually appears (`vercel ls`) rather than assuming the
+  push alone was sufficient; `vercel deploy --prod` promotes manually if needed.
+- **Backend**: Render, `https://resiliencemap-api.onrender.com` — a separate service,
+  independent of Vercel, also auto-deploying from `main`. Free tier: spins down with
+  inactivity, first request after idle can take 50s+. Env vars (`DATABASE_URL`,
+  `CRON_SECRET`, `ADMIN_SHARED_SECRET`, `DEEPSEEK_API_KEY`, etc.) are configured in
+  the Render dashboard, not committed to the repo.
+- **Critical link**: the frontend's `NEXT_PUBLIC_API_URL` (Vercel env var) must point
+  at the Render backend URL above. If it's ever empty/unset, the frontend silently
+  falls back to same-origin relative API calls, which 404 — the map, dashboard, and
+  AI features all break with no obvious error. This exact misconfiguration shipped
+  unnoticed for 49+ days before being caught and fixed on 2026-08-01.
 
 ## AI provider routing
 
