@@ -310,8 +310,9 @@ export default function DatasetsPage() {
           )}
         </div>
       </div>
+    </div>
 
-      {/* Sync health alerts */}
+    {/* Sync health alerts */}
       {FLAGS.SOURCE_HEALTH_MONITORING && (staleSources.length > 0 || failedSources.length > 0) && (
         <div className="mb-4 space-y-2">
           {failedSources.length > 0 && (
