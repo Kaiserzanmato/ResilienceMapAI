@@ -30,10 +30,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <TopNav />
       <main
         id="main"
-        className={cn(
-          "pt-[calc(var(--banner-h)+var(--nav-h)+20px)] transition-[padding-right] duration-300",
-          aiOpen && "md:pr-[420px]"
-        )}
+        className="pt-[calc(var(--banner-h)+var(--nav-h)+20px)]"
+        style={{
+          paddingRight: isMounted && aiOpen ? "420px" : "0",
+          transition: "padding-right 300ms ease-in-out",
+        }}
       >
         {children}
       </main>

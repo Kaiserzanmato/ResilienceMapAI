@@ -109,11 +109,12 @@ export default function MapPage() {
       </div>
       {/* Risk summary desktop — top right, shifts left when AI panel opens */}
       <div
-        className={cn(
-          "pointer-events-none absolute z-20 hidden md:block transition-[right] duration-300",
-          isMounted && aiOpen ? "right-[760px]" : "right-3"
-        )}
-        style={{ top: "calc(var(--banner-h) + var(--nav-h) + 36px)" }}
+        className="pointer-events-none absolute z-20 hidden md:block"
+        style={{
+          top: "calc(var(--banner-h) + var(--nav-h) + 36px)",
+          right: isMounted && aiOpen ? "760px" : "12px",
+          transition: "right 300ms ease-in-out",
+        }}
       >
         <div className="pointer-events-auto">
           <RiskSummaryWidget />
