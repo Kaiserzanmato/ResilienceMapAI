@@ -11,7 +11,12 @@ import { API_BASE } from "@/lib/api";
 
 const getCachedDashboardStats = unstable_cache(
   async () => {
-    const res = await fetch(`${API_BASE}/api/dashboard-stats`);
+    // Generous timeout — long enough to survive a documented 50s+ Render
+    // free-tier cold start, but bounded so a genuinely dead backend (not
+    // just slow) doesn't hang the request for the platform's full budget.
+    const res = await fetch(`${API_BASE}/api/dashboard-stats`, {
+      signal: AbortSignal.timeout(55_000),
+    });
     if (!res.ok) throw new Error(`Backend responded ${res.status}`);
     return res.json();
   },

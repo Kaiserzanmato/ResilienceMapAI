@@ -2,27 +2,20 @@
 import maplibregl, { Map as MLMap, Popup } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
+import { getMapStyle } from "@/lib/mapStyles";
 import type { WeatherLayerKey } from "@/lib/weatherLayers";
-
-const BASE_STYLE: maplibregl.StyleSpecification = {
-  version: 8,
-  sources: {
-    "carto-dark": {
-      type: "raster",
-      tiles: [
-        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-      ],
-      tileSize: 256,
-      attribution: "© OpenStreetMap contributors © CARTO",
-    },
-  },
-  layers: [{ id: "carto-dark-layer", type: "raster", source: "carto-dark" }],
-};
 
 const WEATHER_SOURCE_ID = "owm-weather";
 const WEATHER_LAYER_ID = "owm-weather-layer";
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 interface CurrentWeather {
   name?: string;
@@ -42,7 +35,7 @@ export default function WeatherMap({ layer }: { layer: WeatherLayerKey }) {
     if (!containerRef.current || mapRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: BASE_STYLE,
+      style: getMapStyle("dark"),
       center: [122.5, 12.5],
       zoom: 4.2,
       attributionControl: { compact: true },
@@ -66,10 +59,11 @@ export default function WeatherMap({ layer }: { layer: WeatherLayerKey }) {
           );
           return;
         }
-        const desc = data.weather?.[0]?.description ?? "—";
+        const desc = escapeHtml(data.weather?.[0]?.description ?? "—");
+        const name = escapeHtml(data.name || "Selected point");
         popupRef.current?.setHTML(`
           <div style="font-size:13px;min-width:140px">
-            <strong>${data.name || "Selected point"}</strong>
+            <strong>${name}</strong>
             <div style="margin-top:4px;font-size:20px;font-weight:600">${Math.round(data.main.temp)}°C</div>
             <div style="opacity:.75;text-transform:capitalize">${desc}</div>
             <div style="opacity:.6;font-size:11px;margin-top:4px">

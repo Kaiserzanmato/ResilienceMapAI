@@ -6,7 +6,7 @@ import { clientKeyFromRequest, isRateLimited } from "@/lib/rateLimit";
 const OWM_API_KEY = process.env.OPENWEATHERMAP_API_KEY ?? "";
 
 export async function GET(request: Request) {
-  if (isRateLimited(clientKeyFromRequest(request))) {
+  if (isRateLimited(clientKeyFromRequest(request, "weather-current"))) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 

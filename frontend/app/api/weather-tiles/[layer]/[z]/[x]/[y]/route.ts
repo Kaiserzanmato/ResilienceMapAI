@@ -20,7 +20,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ layer: string; z: string; x: string; y: string }> }
 ) {
-  if (isRateLimited(clientKeyFromRequest(request), TILE_RATE_LIMIT_PER_MINUTE)) {
+  if (isRateLimited(clientKeyFromRequest(request, "weather-tiles"), TILE_RATE_LIMIT_PER_MINUTE)) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 

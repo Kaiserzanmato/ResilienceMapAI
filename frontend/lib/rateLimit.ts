@@ -12,11 +12,21 @@ export function isRateLimited(key: string, maxRequests = MAX_REQUESTS_PER_WINDOW
   const now = Date.now();
   const recent = (hits.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
   recent.push(now);
-  hits.set(key, recent);
+
+  if (recent.length === 0) hits.delete(key);
+  else hits.set(key, recent);
+
   return recent.length > maxRequests;
 }
 
-export function clientKeyFromRequest(request: Request): string {
+/** Namespaced per-route so different routes sharing this module don't share
+ * a bucket (e.g. panning the weather map shouldn't burn through the much
+ * tighter budget on the current-conditions lookup). */
+export function clientKeyFromRequest(request: Request, namespace: string): string {
+  // The last entry is the one appended by Vercel's own edge (the outermost,
+  // trusted hop) — earlier entries can be set by the client itself and are
+  // not a reliable identity signal.
   const forwardedFor = request.headers.get("x-forwarded-for");
-  return forwardedFor?.split(",")[0]?.trim() || "unknown";
+  const ip = forwardedFor?.split(",").pop()?.trim() || "unknown";
+  return `${namespace}:${ip}`;
 }

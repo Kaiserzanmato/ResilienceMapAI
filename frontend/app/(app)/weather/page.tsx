@@ -27,7 +27,8 @@ export default function WeatherPage() {
       .then((res) => {
         if (res.status === 503) setKeyStatus("missing");
         else if (res.status === 401) setKeyStatus("pending");
-        else setKeyStatus("ok");
+        else if (res.ok) setKeyStatus("ok");
+        else setKeyStatus("error");
       })
       .catch(() => setKeyStatus("error"));
   }, []);

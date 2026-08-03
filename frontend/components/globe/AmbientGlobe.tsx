@@ -11,6 +11,14 @@ const SIZE = 640;
 const ROTATE_DEG_PER_MS = 0.005;
 const ANIMATION_STATE_KEY = "__ambient_globe_start_time";
 
+// Single source of truth for routes that render their own full-screen map
+// (the decorative globe would be redundant/distracting behind them). Add
+// new full-screen pages here rather than inlining another pathname check.
+const FULL_SCREEN_ROUTES = ["/map", "/weather"];
+function isFullScreenRoute(pathname: string | null): boolean {
+  return FULL_SCREEN_ROUTES.some((r) => pathname === r || pathname?.startsWith(`${r}/`));
+}
+
 // Global animation tracking for seamless cross-tab consistency
 class GlobeAnimationState {
   private startTime: number;
@@ -144,10 +152,7 @@ export default function AmbientGlobe() {
     };
   }, [countries]);
 
-  const isFullScreenMapRoute =
-    pathname === "/map" || pathname?.startsWith("/map/") ||
-    pathname === "/weather" || pathname?.startsWith("/weather/");
-  if (isFullScreenMapRoute) return null;
+  if (isFullScreenRoute(pathname)) return null;
 
   return (
     <div className="ambient-globe" aria-hidden="true">
