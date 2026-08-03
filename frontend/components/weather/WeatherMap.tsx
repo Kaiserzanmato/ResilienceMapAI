@@ -103,7 +103,16 @@ export default function WeatherMap({ layer }: { layer: WeatherLayerKey }) {
         id: WEATHER_LAYER_ID,
         type: "raster",
         source: WEATHER_SOURCE_ID,
-        paint: { "raster-opacity": 0.75 },
+        paint: {
+          // Near-opaque, not 0.75 — a lower opacity blends the tile's own
+          // colors with the base map underneath and reads as washed out.
+          "raster-opacity": 0.92,
+          // OWM's free-tier tiles are inherently pale/low-contrast for
+          // typical (non-extreme) readings — boosting saturation/contrast
+          // here makes that same data read clearly instead of looking dull.
+          "raster-saturation": 0.6,
+          "raster-contrast": 0.3,
+        },
       });
     };
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, ExternalLink, Satellite } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { WeatherLayerControl } from "@/components/weather/WeatherLayerControl";
+import { WeatherLegend } from "@/components/weather/WeatherLegend";
 import { WEATHER_LAYERS, type WeatherLayerKey } from "@/lib/weatherLayers";
 
 // Lazy-load the map (heaviest bundle) — same pattern as the risk map page
@@ -106,6 +107,16 @@ export default function WeatherPage() {
       >
         <div className="pointer-events-auto">
           <WeatherLayerControl layer={layer} onChange={setLayer} />
+        </div>
+      </div>
+
+      {/* Color-scale legend — bottom-left, above footer */}
+      <div
+        className="pointer-events-none absolute left-3 z-20 hidden sm:block"
+        style={{ bottom: "calc(var(--footer-h) + 12px)" }}
+      >
+        <div className="pointer-events-auto">
+          <WeatherLegend layer={layer} />
         </div>
       </div>
 
