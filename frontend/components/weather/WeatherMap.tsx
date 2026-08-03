@@ -28,7 +28,14 @@ export default function WeatherMap({ layer }: { layer: WeatherLayerKey }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
   const popupRef = useRef<Popup | null>(null);
-  const pendingLayerApplyRef = useRef<(() => void) | null>(null);
+  // True once the map's one-time "load" event has fired. isStyleLoaded()
+  // looks like the right gate for "safe to addSource/addLayer", but it
+  // actually reports false whenever ANY tile is mid-fetch — which is true
+  // almost constantly during normal panning, long after the map is ready.
+  // Gating every layer switch on it routed most switches through
+  // map.once("load", ...) — but "load" only ever fires once, at map
+  // creation, so those switches silently never ran again.
+  const mapReadyRef = useRef(false);
 
   // ---- init map once
   useEffect(() => {
@@ -41,6 +48,9 @@ export default function WeatherMap({ layer }: { layer: WeatherLayerKey }) {
       attributionControl: { compact: true },
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+    map.once("load", () => {
+      mapReadyRef.current = true;
+    });
 
     map.on("click", async (e) => {
       const { lat, lng } = e.lngLat;
@@ -116,16 +126,12 @@ export default function WeatherMap({ layer }: { layer: WeatherLayerKey }) {
       });
     };
 
-    // If the base style is still loading, only the most recently selected
-    // layer should ever get applied — cancel any earlier pending listener
-    // instead of letting them all fire in sequence once "load" happens.
-    if (map.isStyleLoaded()) {
+    // Only the very first call (immediately on mount, before the map's
+    // one-time "load" event) needs to wait; every layer switch after that
+    // can call applyLayer() directly.
+    if (mapReadyRef.current) {
       applyLayer();
     } else {
-      if (pendingLayerApplyRef.current) {
-        map.off("load", pendingLayerApplyRef.current);
-      }
-      pendingLayerApplyRef.current = applyLayer;
       map.once("load", applyLayer);
     }
   }, [layer]);
