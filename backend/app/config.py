@@ -36,6 +36,16 @@ class Settings(BaseSettings):
     deepseek_base_url: str = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
     deepseek_model: str = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
 
+    # Together AI: hosts open-weight models (Qwen, Llama, etc.) behind an
+    # OpenAI-compatible API, with a managed fine-tuning API for the same
+    # checkpoints — no self-hosted inference server required. Default model
+    # is a well-established Together-hosted Qwen2.5 checkpoint (Apache 2.0,
+    # fine-tunable); verify the exact model slug in the Together dashboard
+    # before relying on a newer one (their catalog changes over time).
+    together_api_key: str = os.getenv("TOGETHER_API_KEY", "")
+    together_base_url: str = os.getenv("TOGETHER_BASE_URL", "https://api.together.xyz/v1")
+    together_model: str = os.getenv("TOGETHER_MODEL", "Qwen/Qwen2.5-72B-Instruct-Turbo")
+
     mimo_api_key: str = os.getenv("MIMO_API_KEY", "")
     mimo_base_url: str = os.getenv("MIMO_BASE_URL", "https://api.xiaomimimo.com/v1")
     mimo_model: str = os.getenv("MIMO_MODEL", "mimo-7b-rl")
@@ -73,11 +83,20 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     settings = Settings()
 
-    # Startup validation: ensure DeepSeek is configured for production
-    if settings.environment == "production" and not settings.deepseek_api_key:
-        raise ValueError(
-            "FATAL: DeepSeek API key is required in production. "
-            "Set DEEPSEEK_API_KEY environment variable and restart."
+    # Startup check: warn (don't crash) if no AI provider is configured in
+    # production. The app still works via the deterministic local-insight
+    # fallback either way — this used to hard-require DEEPSEEK_API_KEY
+    # specifically and would take down every route if it were unset, which
+    # stopped making sense once qwen/together became the primary providers
+    # and DeepSeek dropped to a low-priority fallback in pick_provider.
+    if settings.environment == "production" and not any([
+        settings.qwen_api_key, settings.together_api_key, settings.deepseek_api_key,
+        settings.mimo_api_key, settings.openai_api_key, settings.gemini_api_key,
+    ]):
+        logging.getLogger(__name__).warning(
+            "No AI provider API key is configured — running in deterministic "
+            "local-insight mode. Set QWEN_API_KEY, TOGETHER_API_KEY, or another "
+            "provider key to enable LLM-generated responses."
         )
 
     # The /api/cron/sync-sources endpoint itself already fails closed (403)

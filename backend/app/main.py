@@ -24,7 +24,7 @@ from .services.ai_router import DISCLAIMER, generate_insight
 from .services.exporters import (build_pdf_report, get_report, list_reports,
                                  risks_to_csv, store_report)
 from .services.risk_scoring import compare_locations, score_location
-from .services.providers import build_providers
+from .services.providers import build_providers, pick_provider
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version=settings.version)
@@ -44,14 +44,30 @@ def health():
             "time": datetime.now(timezone.utc).isoformat()}
 
 
+PROVIDER_DISPLAY_NAMES = {
+    "qwen": "Qwen", "deepseek": "DeepSeek", "together": "Together AI",
+    "mimo": "MiMo", "openai": "OpenAI", "gemini": "Gemini",
+    "local-insight": "Local (Deterministic)",
+}
+
+
 @app.get("/api/ai-provider-info")
 def ai_provider_info():
-    """Return configured AI provider and model information (non-secret)."""
+    """Return whichever AI provider/model will actually answer requests right
+    now, not a hardcoded default — so this stays correct as providers are
+    added, removed, or reordered in providers.pick_provider. Resolved using
+    the "agent" task specifically because that's what the AI Workspace chat
+    (the primary consumer of this endpoint) actually calls in /api/agent/query
+    — its routing chain includes "mimo", which other task chains omit, so
+    resolving against any other task could report a stale provider."""
+    provider = pick_provider("agent", build_providers())
+    display = PROVIDER_DISPLAY_NAMES.get(provider.name, provider.name.title())
+    model = getattr(provider, "model", None)
     return {
-        "provider": "deepseek",
-        "model": settings.deepseek_model,
-        "provider_display": "DeepSeek",
-        "model_display": f"DeepSeek {settings.deepseek_model.replace('deepseek-', '').title()}",
+        "provider": provider.name,
+        "model": model or provider.name,
+        "provider_display": display,
+        "model_display": f"{display} {model}" if model else display,
     }
 
 

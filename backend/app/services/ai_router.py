@@ -237,7 +237,7 @@ def _format_history_block(history: dict) -> str:
 
 SYSTEM_PROMPT = (
     "You are the ResilienceMap AI research agent — a disaster risk "
-    "intelligence analyst powered by DeepSeek. You explain calculated risk scores "
+    "intelligence analyst. You explain calculated risk scores "
     "and official disaster data with grounded, source-cited responses.\n\n"
     "Strict rules:\n"
     "- Use ONLY the structured risk context and historical records provided in the system context.\n"
@@ -630,7 +630,8 @@ async def generate_insight(task: str, risk: Optional[Dict], user_message: str,
                 + ", ".join(d["full_name"].split(",")[0] for d in LOCATION_HISTORY.values())
                 + ".\n\n"
                 "_Note: No external AI provider is configured — running in deterministic local mode. "
-                "To enable DeepSeek AI responses, configure DEEPSEEK_API_KEY in Vercel environment variables._"
+                "To enable full AI responses, configure an AI provider key (e.g. TOGETHER_API_KEY) "
+                "in Vercel environment variables._"
             )
         model_used = "local-insight (deterministic)"
     else:

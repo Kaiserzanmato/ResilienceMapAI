@@ -128,6 +128,8 @@ def build_providers() -> Dict[str, AIProvider]:
         "qwen": OpenAICompatibleProvider("qwen", s.qwen_api_key, s.qwen_base_url, s.qwen_model),
         "deepseek": OpenAICompatibleProvider("deepseek", s.deepseek_api_key,
                                              s.deepseek_base_url, s.deepseek_model),
+        "together": OpenAICompatibleProvider("together", s.together_api_key,
+                                             s.together_base_url, s.together_model),
         "mimo": OpenAICompatibleProvider("mimo", s.mimo_api_key, s.mimo_base_url, s.mimo_model),
         "openai": OpenAICompatibleProvider("openai", s.openai_api_key,
                                            s.openai_base_url, s.openai_model),
@@ -138,18 +140,21 @@ def build_providers() -> Dict[str, AIProvider]:
 
 def pick_provider(task: str, providers: Dict[str, AIProvider],
                   preferred: Optional[str] = None) -> AIProvider:
-    """Route by task per the build plan: Qwen for summaries/reports/personas,
-    DeepSeek for structured reasoning, MiMo for agentic workflows. Falls back
-    through the chain to the always-available local provider."""
+    """Route by task: Qwen (Model Studio/DashScope) first for summaries/
+    reports/reasoning — it's the platform with the confirmed fine-tuning
+    workflow — with Together (open-weight models) as fallback, MiMo for
+    agentic workflows, then DeepSeek/OpenAI/Gemini. Falls back through the
+    chain to the always-available local provider. Only providers with a
+    configured API key are ever selected."""
     if preferred and preferred in providers and providers[preferred].available():
         return providers[preferred]
     routing = {
-        "summary": ["qwen", "deepseek", "openai", "gemini"],
-        "report": ["qwen", "deepseek", "openai", "gemini"],
-        "agent": ["mimo", "deepseek", "qwen", "openai", "gemini"],
-        "reasoning": ["deepseek", "qwen", "openai", "gemini"],
+        "summary": ["qwen", "together", "deepseek", "openai", "gemini"],
+        "report": ["qwen", "together", "deepseek", "openai", "gemini"],
+        "agent": ["qwen", "mimo", "together", "deepseek", "openai", "gemini"],
+        "reasoning": ["qwen", "together", "deepseek", "openai", "gemini"],
     }
-    for name in routing.get(task, ["qwen", "deepseek", "mimo", "openai", "gemini"]):
+    for name in routing.get(task, ["qwen", "together", "deepseek", "mimo", "openai", "gemini"]):
         if providers[name].available():
             return providers[name]
     return providers["local"]

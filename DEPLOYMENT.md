@@ -46,7 +46,7 @@ Create a Web Service from the same repo with:
 - **Build command:** `pip install -r requirements.txt`
 - **Start command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 - **Environment variables:** `CORS_ORIGINS=https://<your-app>.vercel.app`
-  plus any AI keys (`QWEN_API_KEY`, `DEEPSEEK_API_KEY`, …) — all optional;
+  plus any AI keys (`QWEN_API_KEY`, `DEEPSEEK_API_KEY`, `TOGETHER_API_KEY`, …) — all optional;
   the deterministic local AI fallback works with zero keys.
 
 Note the resulting URL, e.g. `https://resiliencemap-api.onrender.com`.
@@ -58,6 +58,10 @@ Note the resulting URL, e.g. `https://resiliencemap-api.onrender.com`.
 - **Application Preset:** Next.js (auto-detected once the root is `frontend`)
 - Build/Output/Install commands: leave defaults
 - **Environment variable:** `NEXT_PUBLIC_API_URL = https://<your-backend-url>`
+- **Environment variable (optional):** `OPENWEATHERMAP_API_KEY` — powers the
+  live tile layers on the **Weather Map Forecast** tab (free tier, sign up at
+  https://openweathermap.org/api). Server-only — never exposed to the
+  browser. Without it the page still renders with a notice instead of tiles.
 - Click **Deploy**
 
 **CLI route:**
@@ -65,6 +69,7 @@ Note the resulting URL, e.g. `https://resiliencemap-api.onrender.com`.
 cd "/Users/oliveripsioco/Downloads/ResilienceMap AI Web Application/frontend"
 vercel link                                  # link to your Vercel account/project
 vercel env add NEXT_PUBLIC_API_URL production   # paste the backend URL when prompted
+vercel env add OPENWEATHERMAP_API_KEY production # optional — free key from openweathermap.org
 vercel --prod                                # public production deployment
 ```
 
