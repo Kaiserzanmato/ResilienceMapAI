@@ -273,6 +273,19 @@ Browser (WeatherMap.tsx, maplibre-gl)
 tile.openweathermap.org/map/{layer}/{z}/{x}/{y}.png
 ```
 
+The raw tiles from that free tier are genuinely pale/low-contrast for typical
+(non-extreme) readings. `WeatherMap.tsx` renders them via a MapLibre raster
+layer with `raster-opacity: 0.92`, `raster-saturation: 0.6`, and
+`raster-contrast: 0.3` — MapLibre-native paint properties that make the same
+data read as vividly as OpenWeatherMap's own reference map, with no new data
+source or paid tier. A `WeatherLegend` component shows the color scale +
+min/max for whichever layer is active. The layer-switching effect gates its
+very first `addSource`/`addLayer` call on the map's one-time `"load"` event
+(via a ref set exactly once), not on `isStyleLoaded()` — that method reports
+false whenever any tile is mid-fetch (true almost constantly during normal
+panning), and every layer switch after the first real interaction was
+silently discarded when gated on it.
+
 ```
 Browser (click on map)
   ↓ /api/weather-current?lat=..&lon=..
@@ -501,7 +514,10 @@ const canRefresh = (Date.now() - lastRefreshTime) >= REFRESH_RATE_LIMIT_MS;
 // frontend/lib/rateLimit.ts — best-effort in-memory sliding window, relies
 // on Vercel Fluid Compute reusing function instances (not distributed, but
 // enough to stop a single client or hot-linker from draining a shared,
-// quota-capped upstream key). Applied to the OpenWeatherMap proxy routes:
+// quota-capped upstream key). Key is namespaced per route (clientKeyFromRequest
+// takes a `namespace` arg) so different routes don't share one bucket, and
+// trusts the LAST X-Forwarded-For entry (Vercel's own edge), not the first
+// (client-spoofable). Applied to the OpenWeatherMap proxy routes:
 // weather-tiles/[layer]/[z]/[x]/[y]  → 300 req/min (a viewport pans/zooms
 //                                       across dozens of tiles at once)
 // weather-current                    → 50 req/min

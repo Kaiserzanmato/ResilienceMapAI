@@ -205,9 +205,9 @@
 
 | Document | Lines | Sections | Type | Status |
 |----------|-------|----------|------|--------|
-| README.md | 279 | 18 | Overview | ✅ Current |
-| PRD.md | 572 | 45 | Requirements | ✅ Current |
-| ARCHITECTURE.md | 703 | 50 | Technical | ✅ Current |
+| README.md | 311 | 19 | Overview | ✅ Current |
+| PRD.md | 574 | 45 | Requirements | ✅ Current |
+| ARCHITECTURE.md | 719 | 51 | Technical | ✅ Current |
 | DEPLOYMENT_GUIDE.md | 5,500+ | Many | Procedures | ✅ Current |
 | DEPLOYMENT_VERIFICATION.md | 357 | Multiple | Checklist | ✅ Current |
 | DEPLOYMENT_STATUS.md | 469 | Multiple | Status | ✅ Current |
@@ -223,6 +223,10 @@
 
 ### Latest Commits (Pushed to GitHub)
 ```
+e6e0356 - fix: weather layer permanently stuck after first tile source added
+6856a34 - fix: make Weather Map Forecast tiles vivid and add a color-scale legend
+18b323d - fix: address code-review findings on weather feature and rate limiting
+612cf7c - docs: update PRD, README, and architecture docs for Weather Forecast tab and AI provider changes
 d9f6430 - feat: add Weather Map Forecast tab, fix dashboard latency and ambient globe reliability
 20a9c04 - feat: add Qwen and Together AI providers, fix provider-info drift and startup crash
 bbabae7 - docs: Add comprehensive responsive design & device optimization guide
@@ -239,10 +243,14 @@ b648c51 - feat: Add search functionality and enhance refresh features
 ```
 
 ### Build Status
-- ✅ All 10 latest commits pushed to GitHub
-- ✅ Build now succeeds (fixed closing div tag issue)
-- ✅ Vercel auto-deploy triggered
-- ✅ All code changes tested locally
+- ✅ All commits above pushed to GitHub (`main` == `origin/main`, verified via `git fetch`)
+- ✅ Vercel auto-deployed from each push (confirmed live via direct HTTP checks after each)
+- ✅ Render backend confirmed live and healthy (no backend changes in the three most recent
+  commits — `18b323d`/`6856a34`/`e6e0356` are frontend-only, so nothing new to deploy there)
+- ✅ Backend test suite: 35/35 passing as of the latest commit
+- ✅ Full regression pass done across every page (not just changed ones) after the latest
+  commits — landing, dashboard, map (incl. click-to-assess + Ask AI round-trip), AI Workspace
+  (incl. live chat), reports, datasets, resources, settings (incl. theme toggle) all verified
 - ✅ All documentation comprehensive and current
 
 ---
@@ -262,6 +270,10 @@ b648c51 - feat: Add search functionality and enhance refresh features
 | Qwen + Together AI providers | ✅ PRD + ARCHITECTURE + README | ✅ Pushed | ✅ 35/35 backend | ✅ LIVE |
 | Dashboard latency fix (cached proxy) | ✅ PRD + ARCHITECTURE + README | ✅ Pushed | ✅ Verified live | ✅ LIVE |
 | Ambient globe reliability fix | ✅ ARCHITECTURE + README | ✅ Pushed | ✅ Verified live | ✅ LIVE |
+| Rate limiter bug fixes (shared bucket, IP spoofing, memory leak) | ✅ README | ✅ Pushed | ✅ Ready | ✅ LIVE |
+| XSS-safe popup rendering + map style dedup | ✅ README | ✅ Pushed | ✅ Ready | ✅ LIVE |
+| Weather tile vividness fix (raster-saturation/contrast) + legend | ✅ README | ✅ Pushed | ✅ Verified live | ✅ LIVE |
+| Weather layer permanently-stuck bug fix | ✅ README | ✅ Pushed | ✅ Verified live (repro'd + confirmed fixed) | ✅ LIVE |
 
 ---
 

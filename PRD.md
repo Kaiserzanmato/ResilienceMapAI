@@ -216,7 +216,9 @@ hazard map
 
 **Features**:
 - Live tile layers: Precipitation, Clouds, Wind, Temperature, Pressure
-  (OpenWeatherMap free tier)
+  (OpenWeatherMap free tier), rendered with boosted saturation/contrast so
+  the free tier's naturally pale colors read as clearly as a paid product's
+- Color-scale legend (gradient + min/max) for whichever layer is active
 - Click anywhere on the map for current conditions (temperature, feels-like,
   humidity, wind) at that point
 - Link-out card to Zoom.Earth for full satellite/storm-tracking view

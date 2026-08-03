@@ -228,7 +228,39 @@ specifically, which stopped making sense once Qwen/Together became primary.
 - **Shared quota protection**: the OpenWeatherMap proxy routes
   (`weather-tiles`, `weather-current`) had no rate limiting despite spending
   a shared, quota-capped key (60 calls/min, 1M/month free tier) — added
-  best-effort per-client limiting (`frontend/lib/rateLimit.ts`).
+  best-effort per-client limiting (`frontend/lib/rateLimit.ts`). A follow-up
+  code review then found the limiter itself had three bugs: both routes
+  shared one bucket per client (panning the map could burn through
+  precipitation's 300/min budget and then falsely 429 the unrelated 50/min
+  current-conditions lookup), it trusted the client-spoofable first entry of
+  `X-Forwarded-For` instead of the one Vercel's edge actually appends, and
+  spent-out entries were never deleted from the in-memory Map. All three
+  fixed — routes now use a namespaced key, trust the last `X-Forwarded-For`
+  entry, and clean up empty entries.
+- **Weather tiles read as "dull"**: OpenWeatherMap's free-tier tiles are
+  genuinely pale/low-contrast for typical (non-extreme) readings — confirmed
+  by downloading raw tiles directly. Fixed with MapLibre's native
+  `raster-saturation`/`raster-contrast` paint properties, which make the same
+  free data render as vividly as OWM's own reference map — no paid tier or
+  new data source needed. Also added a `WeatherLegend` component (color
+  gradient + min/max per layer) so values are interpretable at a glance.
+- **Weather layer permanently stuck after the first tile source**: a more
+  serious bug found while verifying the fix above — `map.isStyleLoaded()`
+  looks like the right gate for "safe to addSource/addLayer" but actually
+  returns false whenever *any* tile is mid-fetch, which is true almost
+  constantly during normal panning. Gating every layer switch on it routed
+  most switches through `map.once("load", applyLayer)` — but `"load"` is the
+  map's one-time creation event; it fires once, ever. In practice: switch
+  layers once on a fresh map and it works, pan at all and every subsequent
+  layer click is silently discarded, leaving the map stuck on whichever
+  layer's tiles loaded first regardless of which button is highlighted.
+  Fixed with a ref set once by the map's real `"load"` event, used only to
+  gate the very first call.
+- Also fixed in the same pass: unescaped OpenWeatherMap response text was
+  being interpolated directly into `Popup.setHTML()` (an HTML-injection
+  surface driven by data the app doesn't control — now escaped), and
+  `WeatherMap.tsx` was duplicating the exact dark-style tile URLs already
+  defined in `lib/mapStyles.ts` (now imports `getMapStyle("dark")` instead).
 
 ## Dataset Management Enhancement (Aug 2026)
 
