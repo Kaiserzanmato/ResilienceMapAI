@@ -4,8 +4,11 @@ import { feature } from "topojson-client";
 import type { Topology, GeometryCollection } from "topojson-specification";
 import type { FeatureCollection } from "geojson";
 
-const WORLD_ATLAS_URL =
-  "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+// Served from our own /public instead of a third-party CDN: the CDN fetch
+// was unreliable across page loads (blocked by ad/tracker blockers, slow, or
+// occasionally failing outright), which is why the globe didn't consistently
+// render. A same-origin static asset always resolves instantly.
+const WORLD_ATLAS_URL = "/countries-110m.json";
 
 interface WorldAtlasResult {
   countries: FeatureCollection | null;

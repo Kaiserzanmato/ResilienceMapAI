@@ -178,7 +178,7 @@ export default function AgentsPage() {
         role: "assistant",
         content: answer,
         meta: {
-          model: aiProvider?.model_display || "DeepSeek",
+          model: aiProvider?.model_display || "AI Engine",
           sources: insight.sources,
           confidence: insight.confidence_category,
           disclaimer: "Insights grounded in official disaster sources. Not an official advisory.",
@@ -273,7 +273,7 @@ export default function AgentsPage() {
           </span>
           <div className="min-w-0 flex-1">
             <h1 className="text-[15px] font-semibold leading-tight">
-              AI Research Agent — Powered by DeepSeek
+              AI Research Agent{aiProvider ? ` — Powered by ${aiProvider.provider_display}` : ""}
             </h1>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               {aiProvider && (

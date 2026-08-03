@@ -14,7 +14,6 @@ import {
 import { axisProps, ChartCard, tooltipStyle } from "@/components/dashboard/ChartCard";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { API_BASE } from "@/lib/api";
 import { formatNumber, riskColor } from "@/lib/utils";
 
 // Lazy load below-the-fold charts
@@ -43,7 +42,7 @@ export default function DashboardPage() {
   const { data, isLoading } = useQuery<Stats>({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/api/dashboard-stats`);
+      const res = await fetch("/api/dashboard-stats");
       if (!res.ok) throw new Error("Failed to load dashboard");
       return res.json();
     },

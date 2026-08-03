@@ -2,10 +2,10 @@
   position: fixed;
   z-index: -5; /* between .app-backdrop's -10 and real content's 0+ */
   pointer-events: none;
-  bottom: -17%;
-  right: -11%;
-  width: min(50vw, 700px);
-  height: min(50vw, 700px);
+  bottom: -22%;
+  right: -16%;
+  width: min(68vw, 980px);
+  height: min(68vw, 980px);
   opacity: 0.42;
 }
 

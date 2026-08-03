@@ -144,8 +144,10 @@ export default function AmbientGlobe() {
     };
   }, [countries]);
 
-  const isMapRoute = pathname === "/map" || pathname?.startsWith("/map/");
-  if (isMapRoute) return null;
+  const isFullScreenMapRoute =
+    pathname === "/map" || pathname?.startsWith("/map/") ||
+    pathname === "/weather" || pathname?.startsWith("/weather/");
+  if (isFullScreenMapRoute) return null;
 
   return (
     <div className="ambient-globe" aria-hidden="true">

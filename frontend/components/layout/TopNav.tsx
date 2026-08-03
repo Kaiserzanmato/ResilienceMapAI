@@ -1,5 +1,6 @@
 "use client";
 import {
+  CloudSun,
   Database,
   FileText,
   LayoutDashboard,
@@ -20,6 +21,7 @@ import { ThemeToggle } from "./ThemeToggle";
 const LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/map", label: "Map", icon: MapIcon },
+  { href: "/weather", label: "Weather Map Forecast", icon: CloudSun },
   { href: "/agents", label: "AI Workspace", icon: Sparkles },
   { href: "/reports", label: "Reports", icon: FileText },
   { href: "/admin/datasets", label: "Datasets", icon: Database },
