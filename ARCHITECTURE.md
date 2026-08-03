@@ -25,6 +25,7 @@ The AI explains calculated scores; it never invents them or overrides official a
 │  │  Pages:                                                            │ │
 │  │  ├─ Landing (/)                  - Marketing page                │ │
 │  │  ├─ Map (/map)                   - Interactive hazard mapping   │ │
+│  │  ├─ Weather (/weather)           - OWM tile layers + Zoom.Earth │ │
 │  │  ├─ Dashboard (/dashboard)       - Executive KPIs               │ │
 │  │  ├─ AI Workspace (/agents)       - Persona-based assistant     │ │
 │  │  ├─ Reports (/reports)           - PDF/CSV exports             │ │
@@ -32,10 +33,16 @@ The AI explains calculated scores; it never invents them or overrides official a
 │  │  ├─ Datasets (/admin/datasets)   - Data source management      │ │
 │  │  └─ Settings (/settings)         - User preferences            │ │
 │  │                                                                    │ │
+│  │  Same-origin API routes (frontend/app/api/):                      │ │
+│  │  ├─ dashboard-stats     - Cached proxy to backend (60s window)   │ │
+│  │  ├─ weather-tiles/[..]  - OWM tile proxy (key hidden, rate-limit)│ │
+│  │  ├─ weather-current     - OWM current-conditions proxy           │ │
+│  │  └─ admin/datasets/upload - RBAC-secret-holding upload proxy    │ │
+│  │                                                                    │ │
 │  │  Features:                                                         │ │
 │  │  ├─ MapLibre GL JS rendering                                     │ │
 │  │  ├─ Real-time hazard layer updates                               │ │
-│  │  ├─ Ambient globe with d3-geo                                    │ │
+│  │  ├─ Ambient globe with d3-geo (local static world-atlas asset)   │ │
 │  │  ├─ Dark/light theme toggle                                      │ │
 │  │  ├─ Search & filter (new)                                        │ │
 │  │  ├─ Rate-limited refresh (new)                                   │ │
@@ -129,6 +136,7 @@ frontend/
 ├── app/                           # Next.js App Router
 │   ├── (app)/                     # Authenticated routes
 │   │   ├── map/                   - Interactive mapping
+│   │   ├── weather/               - Weather Map Forecast (NEW)
 │   │   ├── dashboard/             - Executive dashboards
 │   │   ├── agents/                - AI workspace
 │   │   ├── reports/               - Report generation
@@ -136,22 +144,35 @@ frontend/
 │   │   ├── admin/datasets/        - Data management (enhanced)
 │   │   ├── settings/              - User preferences
 │   │   └── layout.tsx             - Shared layout
+│   ├── api/                       # Same-origin Route Handlers (NEW)
+│   │   ├── dashboard-stats/       - Cached proxy to backend (60s window)
+│   │   ├── weather-tiles/[layer]/[z]/[x]/[y]/ - OWM tile proxy, rate-limited
+│   │   ├── weather-current/       - OWM current-conditions proxy, rate-limited
+│   │   └── admin/datasets/upload/ - RBAC-secret-holding upload proxy
 │   ├── layout.tsx                 - Root layout
 │   └── page.tsx                   - Landing page
 ├── components/
-│   ├── globe/                     - Ambient globe component
+│   ├── globe/                     - Ambient globe (local world-atlas asset)
 │   ├── map/                       - MapLibre wrapper & layers
+│   ├── weather/                   - Weather map + layer control (NEW)
 │   ├── charts/                    - Recharts visualizations
 │   ├── ui/                        - Design system (GlassCard, etc.)
 │   └── ...                        - Other reusable components
 ├── lib/
 │   ├── api.ts                     - API client & endpoints
+│   ├── weatherLayers.ts           - OWM layer key/label definitions (NEW)
+│   ├── rateLimit.ts               - Best-effort in-memory rate limiter (NEW)
 │   ├── utils.ts                   - Utility functions
 │   ├── types.ts                   - TypeScript type definitions
 │   └── feature-flags.ts           - Feature toggles
-└── public/                        - Static assets
+└── public/
+    └── countries-110m.json        - World-atlas topology for the ambient
+                                      globe (local, not fetched from a CDN)
 
 Key Files (New/Enhanced):
+├── app/(app)/weather/page.tsx     - Weather Map Forecast page (NEW)
+├── components/weather/WeatherMap.tsx - MapLibre + OWM tile overlay (NEW)
+├── app/api/dashboard-stats/route.ts - Dashboard latency fix (NEW)
 ├── app/(app)/resources/page.tsx   - Documentation links (FIXED)
 ├── app/(app)/admin/datasets/page.tsx - Search & refresh (ENHANCED)
 └── lib/api.ts                     - API client for all endpoints
@@ -232,6 +253,41 @@ const STORAGE_KEY_SYNC_UPDATES = 'last_sync_updates';
 )}
 ```
 
+#### Weather Map Forecast (`/weather`, NEW)
+
+Entirely frontend-side — no FastAPI backend involvement. Zoom.Earth was the
+original integration target but has no public API and sends
+`X-Frame-Options: SAMEORIGIN` (blocks iframe embedding) plus a `robots.txt`
+disallowing its internal tile/data paths, so it's a link-out card instead;
+live map functionality comes from OpenWeatherMap's free tile API instead.
+
+```
+Browser (WeatherMap.tsx, maplibre-gl)
+  ↓ tile request: /api/weather-tiles/{layer}/{z}/{x}/{y}
+[frontend/lib/rateLimit.ts — 300 req/min per client]
+  ↓
+[frontend/app/api/weather-tiles/[layer]/[z]/[x]/[y]/route.ts]
+  - injects OPENWEATHERMAP_API_KEY server-side (never reaches the browser)
+  - Cache-Control: public, max-age=600 (OWM regenerates tiles ~every 10 min)
+  ↓
+tile.openweathermap.org/map/{layer}/{z}/{x}/{y}.png
+```
+
+```
+Browser (click on map)
+  ↓ /api/weather-current?lat=..&lon=..
+[frontend/lib/rateLimit.ts — 50 req/min per client]
+  ↓
+[frontend/app/api/weather-current/route.ts]
+  - same OPENWEATHERMAP_API_KEY, proxies OWM's Current Weather API
+  ↓
+[Page shows a status banner]
+  - 503 → key not configured
+  - 401 → key configured but not yet active (OWM keys take up to ~2h)
+  - network error → generic "couldn't reach" banner
+  - otherwise → live temperature/conditions popup
+```
+
 ---
 
 ## Backend Architecture
@@ -251,12 +307,16 @@ backend/
 │   │   ├── reliefweb.py           - ReliefWeb connector
 │   │   └── registry/
 │   │       └── sources_registry.py - Master source list (45 sources)
-│   ├── ai_providers/              - LLM abstraction
-│   │   ├── qwen.py
-│   │   ├── deepseek.py
-│   │   ├── openai.py
-│   │   ├── gemini.py
-│   │   └── fallback.py
+│   ├── services/
+│   │   ├── providers.py           - LLM abstraction (actual structure: one
+│   │   │                            OpenAICompatibleProvider class shared by
+│   │   │                            Qwen/DeepSeek/Together/MiMo/OpenAI, plus
+│   │   │                            GeminiProvider and the always-available
+│   │   │                            LocalInsightProvider — not separate
+│   │   │                            per-provider files)
+│   │   ├── ai_router.py           - Prompt construction, guardrails,
+│   │   │                            grounding, deterministic local insights
+│   │   └── dashboard.py           - Deterministic dashboard-stats aggregation
 │   ├── models/                    - Pydantic models
 │   │   ├── location.py
 │   │   ├── risk.py
@@ -339,7 +399,9 @@ Body: {lat, lng, name, persona}
 [Get location risk]
   ↓
 [Select AI provider chain]
-  Qwen → DeepSeek → OpenAI → Gemini → Local fallback
+  Qwen → Together → DeepSeek → OpenAI → Gemini → Local fallback
+  (per-task chains in providers.pick_provider; "agent" task additionally
+  tries MiMo before DeepSeek — see AI provider routing table in README.md)
   ↓
 [Generate grounded summary]
   (Uses risk scores + source data only)
@@ -434,28 +496,52 @@ const canRefresh = (Date.now() - lastRefreshTime) >= REFRESH_RATE_LIMIT_MS;
 # Standard budget for data endpoints (/api/location-risk, etc.)
 ```
 
+### Server-Side (Frontend Route Handlers)
+```typescript
+// frontend/lib/rateLimit.ts — best-effort in-memory sliding window, relies
+// on Vercel Fluid Compute reusing function instances (not distributed, but
+// enough to stop a single client or hot-linker from draining a shared,
+// quota-capped upstream key). Applied to the OpenWeatherMap proxy routes:
+// weather-tiles/[layer]/[z]/[x]/[y]  → 300 req/min (a viewport pans/zooms
+//                                       across dozens of tiles at once)
+// weather-current                    → 50 req/min
+```
+
 ---
 
 ## Environment Variables
 
-### Frontend (.env.local)
+### Frontend (.env.local / Vercel env vars)
 ```env
 NEXT_PUBLIC_API_URL=https://resiliencemap-api.onrender.com  # Backend URL
 NEXT_PUBLIC_MAP_STYLE=https://...                           # MapLibre style
+OPENWEATHERMAP_API_KEY=...                                  # Optional — server-only,
+                                                             # powers /weather tile layers.
+                                                             # Without it the page still
+                                                             # renders with a notice.
 ```
 
-### Backend (.env)
+### Backend (.env.local)
 ```env
 # Required for production
 DATABASE_URL=postgresql://...                               # PostgreSQL (Neon)
 CRON_SECRET=...                                             # Vercel cron auth
 ADMIN_SHARED_SECRET=...                                     # Admin operations
 
-# Optional: AI providers (fallback to local if absent)
+# Optional: AI providers (fallback to local if absent — no provider key is
+# actually "required"; get_settings() only warns if none at all is set)
+QWEN_API_KEY=...                                            # Alibaba Cloud Model
+QWEN_BASE_URL=...                                            # Studio/DashScope. Workspace-
+                                                             # scoped keys need a custom
+                                                             # QWEN_BASE_URL, not the
+                                                             # dashscope-intl.aliyuncs.com
+                                                             # default.
+TOGETHER_API_KEY=...                                        # Together AI — open-weight
+                                                             # models, managed fine-tuning API
 DEEPSEEK_API_KEY=...
 OPENAI_API_KEY=...
 GEMINI_API_KEY=...
-QWEN_API_KEY=...
+MIMO_API_KEY=...
 
 # Optional: Data source APIs
 GDACS_API_KEY=...
@@ -531,11 +617,16 @@ Returns:
 ## Performance Considerations
 
 ### Frontend
-- Lazy-load map (MapLibre GL) only when `/map` is visited
+- Lazy-load map (MapLibre GL) only when `/map` or `/weather` is visited
 - Code-split AI features (`/agents`, `/api/ai/*`)
 - Image optimization (Next.js Image component)
-- Ambient globe hidden on small viewports
+- Ambient globe hidden on small viewports; world-atlas data served from a
+  local static asset instead of an external CDN (was unreliable — see
+  "Recent fixes" in README.md)
 - Respects `prefers-reduced-motion`
+- `dashboard-stats` cached same-origin (`unstable_cache`, 60s window) so the
+  Render backend's cold/slow connection setup doesn't block every dashboard
+  load — only the first request per window pays that cost
 
 ### Backend
 - Endpoint-specific rate limiting (tighter for AI)

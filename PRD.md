@@ -1,8 +1,8 @@
 # ResilienceMap AI - Product Requirements Document (PRD)
 
-**Version**: 2.1 (Aug 2026)  
-**Status**: ACTIVE - Enhanced Dataset Management  
-**Last Updated**: 2026-08-01  
+**Version**: 2.2 (Aug 2026)  
+**Status**: ACTIVE - Weather Forecast Integration + AI Provider Diversification  
+**Last Updated**: 2026-08-04  
 **Owner**: DoCypher Labs  
 
 ---
@@ -12,6 +12,15 @@
 ResilienceMap AI is an AI-powered disaster risk intelligence platform that combines authoritative global hazard data with explainable AI insights. Users can assess geographic risk, compare locations, generate executive reports, and access a curated registry of 45+ disaster risk datasets.
 
 **August 2026 Enhancement**: Introduces smart data management features (search, rate-limited refresh, update transparency) to improve usability and protect backend infrastructure.
+
+**August 2026 Enhancement (cont'd)**: Adds a Weather Map Forecast tab (live
+OpenWeatherMap tile layers + current-conditions lookup), diversifies AI
+provider routing beyond DeepSeek (Qwen/Alibaba Cloud Model Studio and
+Together AI now lead the routing chain, both chosen for open-weight
+fine-tuning support), and fixes three reliability issues: dashboard load
+latency caused by the backend's free-tier cold starts, inconsistent ambient
+globe rendering caused by an external CDN dependency, and an AI-provider
+status display that was hardcoded regardless of actual configuration.
 
 ---
 
@@ -58,7 +67,12 @@ ResilienceMap AI is an AI-powered disaster risk intelligence platform that combi
 - Temporal charts (last 7 days, 30 days, 90 days)
 - Active event counter and severity breakdown
 
-**Technical**: Recharts, responsive grid layout, cached API responses
+**Technical**: Recharts, responsive grid layout. Stats are served through a
+same-origin cached proxy (`unstable_cache`, 60s window) rather than fetched
+directly from the backend on every load — the Render free tier's cold/slow
+connection setup (measured 3.0s → 1.0s → 0.07s across successive requests,
+occasionally 20s+ on a fully cold instance) was otherwise the dominant
+source of dashboard load latency.
 
 **Performance Target**: <1s page load, <100ms chart interaction
 
@@ -79,7 +93,13 @@ ResilienceMap AI is an AI-powered disaster risk intelligence platform that combi
 - **Analyst**: Technical detail, metrics, confidence intervals
 - **Policy Maker**: Strategic implications, options for action
 
-**Technical**: LLM routing (Qwen → DeepSeek → OpenAI → Gemini → local fallback)
+**Technical**: LLM routing (Qwen → MiMo → Together → DeepSeek → OpenAI →
+Gemini → local fallback for agent queries; see README.md for the full
+per-task routing table). Qwen (Alibaba Cloud Model Studio) and Together AI
+were added Aug 2026 specifically because both support fine-tuning
+open-weight models on custom data, unlike a closed hosted-only API. The
+displayed "AI Engine" label on this page reflects whichever provider will
+actually answer — it used to be hardcoded to always show "DeepSeek".
 
 **Performance Target**: <5s response (with streaming), <2s local fallback
 
@@ -187,6 +207,34 @@ ResilienceMap AI is an AI-powered disaster risk intelligence platform that combi
 **Technical**: Context + localStorage, CSS custom properties
 
 **Performance Target**: <100ms theme switch
+
+---
+
+### 8. Weather Map Forecast (`/weather`) **(NEW Aug 2026)**
+**Purpose**: Live satellite/weather visualization alongside the deterministic
+hazard map
+
+**Features**:
+- Live tile layers: Precipitation, Clouds, Wind, Temperature, Pressure
+  (OpenWeatherMap free tier)
+- Click anywhere on the map for current conditions (temperature, feels-like,
+  humidity, wind) at that point
+- Link-out card to Zoom.Earth for full satellite/storm-tracking view
+
+**Why a link-out instead of an embed**: Zoom.Earth has no public API and
+sends `X-Frame-Options: SAMEORIGIN`, which blocks iframe embedding outright;
+its `robots.txt` also disallows the internal paths its own map relies on.
+Building a real in-app map on a legitimate, documented free API
+(OpenWeatherMap) was the alternative, with Zoom.Earth linked out for users
+who want its specific storm-tracking view.
+
+**Technical**: MapLibre GL (same stack as `/map`), server-side tile/current-
+conditions proxies (`frontend/app/api/weather-tiles/`,
+`frontend/app/api/weather-current/`) keep `OPENWEATHERMAP_API_KEY` out of
+the browser and apply best-effort rate limiting to protect the shared,
+quota-capped key (free tier: 60 calls/min, 1M/month)
+
+**Performance Target**: <1s initial tile paint, <2s current-conditions lookup
 
 ---
 
@@ -410,8 +458,17 @@ Stakeholders open link, see:
 - ✅ Search & filter data sources (DONE - Aug 2026)
 - ✅ Rate-limited refresh (DONE - Aug 2026)
 - ✅ "What's New" transparency (DONE - Aug 2026)
+- ✅ Weather Map Forecast tab — OpenWeatherMap tiles + Zoom.Earth link-out
+  (DONE - Aug 2026)
+- ✅ AI provider diversification — Qwen (Model Studio) + Together AI added,
+  both with fine-tuning support on custom data (DONE - Aug 2026)
+- ✅ Dashboard latency fix — same-origin cached proxy insulates the app from
+  the Render free tier's cold-start behavior (DONE - Aug 2026)
 - [ ] Mobile app (React Native wrapper)
 - [ ] Real authentication (JWT/OAuth)
+- [ ] Fine-tune a Qwen model on ResilienceMap's own risk-summary data via
+  Model Studio or Together AI (infrastructure now in place; no training run
+  has been executed yet)
 
 ### Q4 2026
 - [ ] WebSocket for real-time sync notifications
@@ -481,6 +538,17 @@ Stakeholders open link, see:
 | POST /api/data-sync | Manual refresh | **Tight** |
 | GET /api/cron/sync-sources | Scheduled sync (daily) | Admin-only |
 
+Backend endpoints above are FastAPI (Render). The frontend also exposes its
+own same-origin Route Handlers (Vercel Functions) for caching and secret
+handling, not part of the FastAPI backend:
+
+| Endpoint (frontend) | Purpose | Rate Limit |
+|---|---|---|
+| GET /api/dashboard-stats | Cached proxy to backend dashboard stats | 60s cache window |
+| GET /api/weather-tiles/[layer]/[z]/[x]/[y] | OpenWeatherMap tile proxy | 300/min per client |
+| GET /api/weather-current | OpenWeatherMap current-conditions proxy | 50/min per client |
+| POST /api/admin/datasets/upload | RBAC-secret-holding upload proxy | Standard |
+
 ### D. Glossary
 
 - **Hazard**: Natural disaster type (earthquake, flood, etc.)
@@ -497,4 +565,8 @@ Stakeholders open link, see:
 - v1.0 (Jun 2026): Initial PRD
 - v2.0 (Jul 2026): Added dataset management features
 - v2.1 (Aug 2026): Enhanced with search, refresh rate limiting, "What's New" transparency
+- v2.2 (Aug 2026): Added Weather Map Forecast tab (`/weather`); diversified AI
+  provider routing with Qwen (Model Studio) and Together AI ahead of DeepSeek;
+  fixed dashboard load latency, ambient globe rendering reliability, and an
+  AI-provider status display that was hardcoded regardless of configuration
 

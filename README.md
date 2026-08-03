@@ -51,7 +51,22 @@ cd backend && .venv/bin/python -m pytest tests/ -q
 - **Map** (`/map`) — 6 map views (standard/satellite/terrain/hybrid/dark/light),
   hazard layers, heatmap, risk zones, active alerts, historical events, floating
   widgets, animated zoom-to-location, click-to-assess
-- **Dashboard** (`/dashboard`) — executive KPI cards + interactive charts
+- **Weather Map Forecast** (`/weather`) — live OpenWeatherMap tile layers
+  (precipitation/clouds/wind/temperature/pressure) on a MapLibre map, click
+  anywhere for current conditions, plus a link out to Zoom.Earth for full
+  storm tracking. Zoom.Earth has no public API and sends
+  `X-Frame-Options: SAMEORIGIN` (blocks iframe embedding), so its data isn't
+  embedded directly — see `frontend/components/weather/` and
+  `frontend/app/api/weather-tiles/`, `frontend/app/api/weather-current/`
+  (both server-side proxies keeping `OPENWEATHERMAP_API_KEY` out of the
+  browser, with best-effort rate limiting via `frontend/lib/rateLimit.ts`
+  to protect the free tier's shared quota).
+- **Dashboard** (`/dashboard`) — executive KPI cards + interactive charts.
+  Stats are served through a same-origin cache
+  (`frontend/app/api/dashboard-stats/route.ts`, `unstable_cache`, 60s
+  window) rather than fetched directly from the backend — the Render free
+  tier's cold/slow connection setup was otherwise blocking every dashboard
+  load; now only the first request per minute pays that cost.
 - **AI Workspace** (`/agents`) — persona-based, source-grounded assistant
 - **Reports** (`/reports`) — PDF briefs, CSV exports, executive summaries, share links
 - **Resources** (`/resources`) — documentation links, data sources, research datasets with
@@ -65,10 +80,14 @@ cd backend && .venv/bin/python -m pytest tests/ -q
   - **Rate limit transparency** — countdown timer shows when next refresh is available
 - **Settings** (`/settings`) — theme (light/dark/system/high-contrast), persona, map defaults
 - **Ambient globe** — a subtle, continuously rotating background globe on every page
-  except `/map` (`frontend/components/globe/AmbientGlobe.tsx`), built on the existing
-  `d3-geo`/`d3-timer`/`topojson-client` stack (no new dependency). Theme-reactive,
-  respects `prefers-reduced-motion`, pauses when the tab is backgrounded, hidden on
-  small viewports.
+  except `/map` and `/weather` (`frontend/components/globe/AmbientGlobe.tsx`), built on
+  the existing `d3-geo`/`d3-timer`/`topojson-client` stack (no new dependency).
+  Theme-reactive, respects `prefers-reduced-motion`, pauses when the tab is
+  backgrounded, hidden on small viewports. World-atlas data is served from a local
+  static asset (`frontend/public/countries-110m.json`) rather than an external
+  CDN — the CDN fetch used to fail inconsistently (ad-blockers, network variance),
+  which is why the globe didn't reliably render; it's also ~40% larger now
+  (`min(68vw, 980px)` vs. the previous `min(50vw, 700px)`).
 
 ## Security
 
@@ -141,9 +160,12 @@ editing the Python registry. Never hand-edit the `.ts` file.
   push alone was sufficient; `vercel deploy --prod` promotes manually if needed.
 - **Backend**: Render, `https://resiliencemap-api.onrender.com` — a separate service,
   independent of Vercel, also auto-deploying from `main`. Free tier: spins down with
-  inactivity, first request after idle can take 50s+. Env vars (`DATABASE_URL`,
-  `CRON_SECRET`, `ADMIN_SHARED_SECRET`, `DEEPSEEK_API_KEY`, etc.) are configured in
-  the Render dashboard, not committed to the repo. Python version is pinned in
+  inactivity, first request after idle can take 50s+ (Render's own dashboard
+  banner says as much) — this is exactly why `dashboard-stats` is now cached
+  same-origin on the frontend instead of hitting the backend on every load. Env
+  vars (`DATABASE_URL`, `CRON_SECRET`, `ADMIN_SHARED_SECRET`, `QWEN_API_KEY`,
+  `QWEN_BASE_URL`, `TOGETHER_API_KEY`, `DEEPSEEK_API_KEY`, etc.) are configured
+  in the Render dashboard, not committed to the repo. Python version is pinned in
   `backend/runtime.txt` — do not remove it; Render's unpinned default silently
   moved to a version that broke SQLAlchemy's declarative mapping (see `7659823`)
   and cost real production downtime to diagnose.
@@ -152,16 +174,61 @@ editing the Python registry. Never hand-edit the `.ts` file.
   falls back to same-origin relative API calls, which 404 — the map, dashboard, and
   AI features all break with no obvious error. This exact misconfiguration shipped
   unnoticed for 49+ days before being caught and fixed on 2026-08-01.
+- **Vercel env vars**: `NEXT_PUBLIC_API_URL` (above), plus `OPENWEATHERMAP_API_KEY`
+  (optional, server-only — powers `/weather`'s live tile layers; without it the
+  page still renders with a notice instead of tiles). Set via
+  `vercel env add <NAME> production` or the dashboard.
 
 ## AI provider routing
 
 | Task | Preferred chain |
 |---|---|
-| Summaries / reports / personas | Qwen → DeepSeek → OpenAI → Gemini → local |
-| Agent queries | MiMo → DeepSeek → Qwen → OpenAI → Gemini → local |
-| Structured reasoning | DeepSeek → Qwen → OpenAI → Gemini → local |
+| Summaries / reports | Qwen → Together → DeepSeek → OpenAI → Gemini → local |
+| Agent queries | Qwen → MiMo → Together → DeepSeek → OpenAI → Gemini → local |
+| Structured reasoning | Qwen → Together → DeepSeek → OpenAI → Gemini → local |
 
-Configure keys in `backend/.env`. The local fallback is always available.
+Configure keys in `backend/.env.local`. The local fallback is always available —
+`get_settings()` only *warns* (doesn't crash) in production if no provider key at
+all is configured; an earlier version hard-required `DEEPSEEK_API_KEY`
+specifically, which stopped making sense once Qwen/Together became primary.
+
+- **Qwen** (`QWEN_API_KEY`, `QWEN_BASE_URL`) — Alibaba Cloud Model Studio/DashScope.
+  Note: workspace-scoped API keys (from Model Studio's "Default Workspace" CSV
+  export) use a per-workspace host, not the generic `dashscope-intl.aliyuncs.com`
+  default — set `QWEN_BASE_URL` explicitly if so. Model Studio also supports
+  fine-tuning Qwen3-32B/14B and Qwen3-VL-8B on custom data.
+- **Together** (`TOGETHER_API_KEY`) — hosts open-weight models (Qwen, Llama, etc.)
+  behind an OpenAI-compatible API with a managed fine-tuning API for the same
+  checkpoints; no self-hosted inference server required.
+- `/api/ai-provider-info` reports whichever provider will actually answer right
+  now (resolved via the "agent" task chain, since that's what the AI Workspace
+  chat uses) — it used to be hardcoded to always report "DeepSeek" regardless
+  of configuration.
+
+## Recent fixes (Aug 2026)
+
+- **Dashboard latency**: root cause was the dashboard fetching `dashboard-stats`
+  directly from the Render backend on every load — measured connection setup
+  times of 3.0s → 1.0s → 0.07s across successive requests, the classic
+  free-tier cold-start pattern (and once, a cold first request that took
+  23.7s). Fixed with a same-origin cached proxy (`unstable_cache`, 60s
+  window) so only the first request per window pays that cost.
+- **Ambient globe inconsistent rendering**: `useWorldAtlas.ts` fetched its
+  world-atlas data from `cdn.jsdelivr.net` on every mount with no fallback —
+  if that request was slow, blocked, or failed, the globe silently didn't
+  render at all. Now served from a local static asset
+  (`frontend/public/countries-110m.json`); also made ~40% larger.
+- **AI provider drift**: `/api/ai-provider-info` was hardcoded to always
+  report `"DeepSeek"` regardless of what was actually configured or which
+  provider would really answer a request — fixed to resolve dynamically via
+  `pick_provider`. Separately, `get_settings()` used to hard-crash the entire
+  backend at startup if `DEEPSEEK_API_KEY` was unset in production; this
+  stopped making sense once other providers became primary, so it now only
+  warns if no provider key at all is configured.
+- **Shared quota protection**: the OpenWeatherMap proxy routes
+  (`weather-tiles`, `weather-current`) had no rate limiting despite spending
+  a shared, quota-capped key (60 calls/min, 1M/month free tier) — added
+  best-effort per-client limiting (`frontend/lib/rateLimit.ts`).
 
 ## Dataset Management Enhancement (Aug 2026)
 

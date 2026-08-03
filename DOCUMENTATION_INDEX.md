@@ -205,9 +205,9 @@
 
 | Document | Lines | Sections | Type | Status |
 |----------|-------|----------|------|--------|
-| README.md | 212 | 16 | Overview | ✅ Current |
-| PRD.md | 500 | 43 | Requirements | ✅ Current |
-| ARCHITECTURE.md | 612 | 48 | Technical | ✅ Current |
+| README.md | 279 | 18 | Overview | ✅ Current |
+| PRD.md | 572 | 45 | Requirements | ✅ Current |
+| ARCHITECTURE.md | 703 | 50 | Technical | ✅ Current |
 | DEPLOYMENT_GUIDE.md | 5,500+ | Many | Procedures | ✅ Current |
 | DEPLOYMENT_VERIFICATION.md | 357 | Multiple | Checklist | ✅ Current |
 | DEPLOYMENT_STATUS.md | 469 | Multiple | Status | ✅ Current |
@@ -223,6 +223,9 @@
 
 ### Latest Commits (Pushed to GitHub)
 ```
+d9f6430 - feat: add Weather Map Forecast tab, fix dashboard latency and ambient globe reliability
+20a9c04 - feat: add Qwen and Together AI providers, fix provider-info drift and startup crash
+bbabae7 - docs: Add comprehensive responsive design & device optimization guide
 f5313f4 - fix: Significantly improve Data Accuracy Notice visibility and spacing
 ef964de - fix: Fix missing closing div tag in datasets page
 e474bda - fix: Improve Data Accuracy Notice visibility and spacing
@@ -255,6 +258,10 @@ b648c51 - feat: Add search functionality and enhance refresh features
 | Ambient Globe Improvements | ✅ DEDICATED DOC | ✅ Pushed | ✅ Ready | ✅ LIVE |
 | Resources Page Fixes | ✅ README + FIXES | ✅ Pushed | ✅ Ready | ✅ LIVE |
 | Data Accuracy Notice | ✅ README | ✅ Pushed | ✅ Ready | ✅ LIVE |
+| Weather Map Forecast (`/weather`) | ✅ PRD + ARCHITECTURE + README | ✅ Pushed | ✅ 35/35 backend | ✅ LIVE |
+| Qwen + Together AI providers | ✅ PRD + ARCHITECTURE + README | ✅ Pushed | ✅ 35/35 backend | ✅ LIVE |
+| Dashboard latency fix (cached proxy) | ✅ PRD + ARCHITECTURE + README | ✅ Pushed | ✅ Verified live | ✅ LIVE |
+| Ambient globe reliability fix | ✅ ARCHITECTURE + README | ✅ Pushed | ✅ Verified live | ✅ LIVE |
 
 ---
 
