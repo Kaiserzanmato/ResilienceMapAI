@@ -296,4 +296,12 @@ def get_sources_for_hazard(hazard_type: str, is_philippines: bool = False) -> Li
         ph_sources = [s for s in sources if s in [DISASTER_SOURCES.get(sid) for sid in PHILIPPINES_SOURCE_PRIORITY]]
         other_sources = [s for s in sources if s not in ph_sources]
         sources = ph_sources + other_sources
+    else:
+        # Outside the Philippines, Philippines-scoped national sources
+        # (PAGASA, PHIVOLCS, HazardHunterPH, MGB, NDRRMC, OCD...) don't cover
+        # the location. Without this filter they'd still win the top-N cut
+        # downstream just from being declared first in DISASTER_SOURCES,
+        # crowding out the Global sources (GDACS, Copernicus, USGS, NOAA)
+        # that actually apply.
+        sources = [s for s in sources if "philippines" not in s["scope"].lower()]
     return sources

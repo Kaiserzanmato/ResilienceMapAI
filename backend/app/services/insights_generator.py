@@ -80,8 +80,17 @@ async def generate_insights(
             if isinstance(h, dict) and h.get("score") is not None and h.get("score") > 25
         ]
 
-    # Get approved sources for these hazards
-    is_philippines = "philippines" in location_name.lower() if location_name else False
+    # Get approved sources for these hazards. Prefer the country the scoring
+    # engine already resolved from the matched hazard zone (risk_data) — it's
+    # reliable regardless of display name. Fall back to a substring check on
+    # location_name only when there's no zone match (e.g. unrecognized area),
+    # since names like "Jakarta" or "Metro Manila" never contain the literal
+    # word "philippines" even when they are in the Philippines.
+    zone_country = (risk_data.get("nearest_zone") or {}).get("country")
+    if zone_country:
+        is_philippines = zone_country.lower() == "philippines"
+    else:
+        is_philippines = "philippines" in location_name.lower() if location_name else False
     applicable_sources = []
     for hazard in primary_hazards[:3]:  # Top 3 hazards
         applicable_sources.extend(get_sources_for_hazard(hazard, is_philippines=is_philippines))

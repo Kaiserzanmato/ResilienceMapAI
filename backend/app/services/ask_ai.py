@@ -110,10 +110,29 @@ async def ask_ai_guardrailed(
             "disclaimer": None,
         }
 
-    # 2. For in-scope queries, extract hazard types and location context
-    is_philippines = False
-    if location_name:
-        is_philippines = any(ph_term in location_name.lower() for ph_term in ["philippines", "ph", "manila", "davao", "cebu"])
+    # 2. Score the selected location if coordinates are provided — done before
+    # source selection so is_philippines can use the zone's resolved country
+    # rather than guessing from the display name.
+    risk = None
+    if lat is not None and lng is not None:
+        try:
+            risk = score_location(lat, lng, location_name)
+        except Exception:
+            pass
+
+    # 3. For in-scope queries, extract hazard types and location context.
+    # Prefer the country the scoring engine resolved from the matched hazard
+    # zone (reliable regardless of display name). Fall back to a substring
+    # check only when there's no zone match — e.g. "Quezon City", "Baguio",
+    # "Iloilo", "Tacloban" don't contain "ph"/"manila"/"davao"/"cebu" and
+    # would otherwise be misclassified as non-Philippine.
+    zone_country = (risk or {}).get("nearest_zone", {}).get("country") if risk else None
+    if zone_country:
+        is_philippines = zone_country.lower() == "philippines"
+    else:
+        is_philippines = False
+        if location_name:
+            is_philippines = any(ph_term in location_name.lower() for ph_term in ["philippines", "ph", "manila", "davao", "cebu"])
 
     # Identify hazard types mentioned in query
     hazard_types = _extract_hazard_types(query)
@@ -130,14 +149,6 @@ async def ask_ai_guardrailed(
 
     # Remove duplicates
     applicable_sources = list({s.get("source_name"): s for s in applicable_sources if s}.values())
-
-    # 3. Score the selected location if coordinates are provided
-    risk = None
-    if lat is not None and lng is not None:
-        try:
-            risk = score_location(lat, lng, location_name)
-        except Exception:
-            pass
 
     # 4. Call the AI router with full risk context + attribution
     try:

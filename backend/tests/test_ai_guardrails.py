@@ -123,6 +123,26 @@ async def test_ask_ai_guardrailed_in_scope():
 
 
 @pytest.mark.asyncio
+async def test_ask_ai_guardrailed_resolves_philippine_city_missed_by_name_heuristic():
+    """Regression: Quezon City/Baguio/Iloilo/Tacloban don't contain
+    "philippines"/"ph"/"manila"/"davao"/"cebu", so the old name-substring
+    heuristic misclassified them as non-Philippine — which, combined with
+    disaster_sources.get_sources_for_hazard's new PH-scope filter, silently
+    stripped all Philippine sources from real Philippine-city queries.
+    is_philippines must be resolved from the scored zone's country instead."""
+    result = await ask_ai_guardrailed(
+        query="Is there a flood risk here?",
+        lat=14.6760,
+        lng=121.0437,
+        location_name="Quezon City",
+        persona="citizen",
+    )
+    assert result["status"] == "in_scope"
+    source_names = {s["source_name"] for s in result["sources"]}
+    assert source_names & {"PAGASA Weather Forecast", "PAGASA Main Portal", "HazardHunterPH", "MGB Geohazard Maps"}
+
+
+@pytest.mark.asyncio
 async def test_ask_ai_guardrailed_includes_attribution():
     """All sources should include required attribution fields."""
     result = await ask_ai_guardrailed(
