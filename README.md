@@ -1,9 +1,84 @@
 # ResilienceMap AI
 
-Immersive AI-powered disaster risk intelligence platform — interactive hazard maps,
-executive dashboards, grounded AI insights, and exportable reports.
+ResilienceMap AI is a disaster-risk screening platform for location due diligence,
+home-buyer research, insurers, developers, schools, and public-sector teams. It
+combines global place search, an interactive multi-hazard map, evidence-aware
+assessments, grounded AI explanations, and report/export workflows.
 
-## Architecture
+## Executive Summary
+
+**Live application:** [resiliencemapai.online](https://resiliencemapai.online)
+
+**Map:** [resiliencemapai.online/map](https://resiliencemapai.online/map)
+
+**API health:** [resiliencemap-api.onrender.com/health](https://resiliencemap-api.onrender.com/health)
+
+### Current Capabilities
+
+- **Global map and search:** MapLibre-powered map with six basemaps, risk
+  zones, heatmaps, active alerts, historical events, coordinate search, and
+  server-side place search.
+- **Multi-hazard screening:** `POST /api/assessments` evaluates 13 hazard
+  categories through the coverage registry. Unsupported evidence remains
+  `null`; it is not represented as zero risk.
+- **Geocoding gateway:** Geoapify is the primary production provider,
+  LocationIQ is the fallback, Photon is optional, and the local gazetteer is a
+  degraded final fallback. Search candidates show their normalized addresses
+  before a user selects one.
+- **AI and reporting:** grounded summaries, an AI workspace, spatial map
+  analysis, PDF/CSV export, and shareable report records. AI explains
+  deterministic assessment data and does not override official advisories.
+- **Data and operations:** source registry, scheduled-source sync interfaces,
+  RBAC-ready dataset management, rate limits, quotas, audit logging, and
+  optional Postgres/PostGIS persistence.
+
+### Production Architecture
+
+```text
+User
+  |
+  v
+Next.js 16 / React 19 frontend on Vercel
+  - MapLibre map, dashboard, reports, AI workspace, settings
+  - https://resiliencemapai.online
+  |
+  | HTTPS: /api/geocode and /api/assessments
+  v
+FastAPI backend on Render
+  - deterministic multi-hazard engine and coverage registry
+  - AI provider abstraction, reports/exports, source registry
+  - https://resiliencemap-api.onrender.com
+  |
+  +--> Geocoder gateway: Geoapify -> LocationIQ -> Photon (configured) -> local gazetteer
+  +--> Hazard providers: global, national, and local source adapters
+  +--> AI providers: Qwen -> Together -> DeepSeek -> OpenAI -> Gemini -> local fallback
+  +--> Optional PostgreSQL/PostGIS via DATABASE_URL; in-memory repositories otherwise
+```
+
+### Framework And Integration Stack
+
+| Layer | Current implementation |
+|---|---|
+| Frontend | Next.js 16.3.0, React 19.2.4, TypeScript, Tailwind CSS v4, TanStack Query |
+| Mapping and charts | MapLibre GL, GeoJSON, Recharts, d3-geo, Framer Motion |
+| Backend | FastAPI 0.128.8, Pydantic 2.13.4, HTTPX 0.28.1, ReportLab |
+| Deployment | GitHub `main` -> Vercel frontend and Render FastAPI service |
+| Data | Coverage registry, GDACS, NASA EONET, USGS, ReliefWeb, optional PostgreSQL/PostGIS |
+| AI | Qwen, Together, DeepSeek, OpenAI, Gemini, deterministic local fallback |
+| Geocoding | Geoapify primary, LocationIQ fallback, optional Photon, local gazetteer fallback |
+
+### Important Limitations
+
+Global place search is not address verification. Provider coverage varies, and
+private-property or venue queries can produce broad or unrelated candidates.
+Verify the displayed address and coordinates before using an assessment. Hazard
+coverage also varies by country and provider; a `null` result means no evidence
+is available, not a low-risk result. See
+[`TECHNICAL_DOCUMENTATION.md`](TECHNICAL_DOCUMENTATION.md) and
+[`RELEASE_AUDIT_2026-08-07.md`](RELEASE_AUDIT_2026-08-07.md) for the live
+contract, deployment evidence, and release limitations.
+
+## Architecture Overview
 
 ```
 resiliencemap-ai/
