@@ -676,6 +676,15 @@ FIRECRAWL_API_KEY=...                                       # Optional — power
 - Auto-deploy on push (unreliable; use `vercel deploy --prod` for production)
 - Environment variables: NEXT_PUBLIC_API_URL
 - **Critical**: Must point to the backend URL; if empty, all API calls 404
+- **Page HTML caching (Aug 6, 2026)**: all page routes (excludes
+  `/_next/*`, `/api/*`, and any path with a file extension) get
+  `Cache-Control: no-cache, no-store, must-revalidate` via
+  `next.config.ts`'s `headers()` — deliberately stricter than Next's own
+  default `max-age=0, must-revalidate`, so no browser/proxy can serve a
+  cached HTML shell referencing removed `_next/static` chunk hashes from
+  a prior deployment. `_next/static/*` remains `immutable` (Next enforces
+  this, cannot be overridden) — only the HTML shell trades a cache hit for
+  guaranteed freshness on every navigation.
 
 ### Backend (Render)
 - Git-connected to `main` branch

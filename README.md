@@ -268,6 +268,20 @@ specifically, which stopped making sense once Qwen/Together became primary.
   if that request was slow, blocked, or failed, the globe silently didn't
   render at all. Now served from a local static asset
   (`frontend/public/countries-110m.json`); also made ~40% larger.
+  **Follow-up (Aug 6, 2026)**: the local-asset fix above still fetched the
+  file at runtime with `cache: "force-cache"`, which ignores the server's
+  own `must-revalidate` and can pin a stale/failed response in the
+  browser's HTTP cache indefinitely — reported as "globe only appears
+  after a hard refresh." Fixed by removing the runtime fetch entirely: the
+  topology JSON is now bundled directly as a JS module import
+  (`frontend/components/globe/countries-110m.json`), eliminating the
+  network/cache dependency outright. Separately hardened
+  `next.config.ts` to send `Cache-Control: no-cache, no-store,
+  must-revalidate` (+ legacy `Pragma`/`Expires`) on all page routes, so no
+  browser/proxy (Opera's compression proxy was the specific concern) can
+  ever serve a cached HTML shell referencing stale `_next/static` chunk
+  hashes from a prior deployment — verified this doesn't affect
+  `_next/static/*` (still `immutable`) or `/api/*`.
 - **AI provider drift**: `/api/ai-provider-info` was hardcoded to always
   report `"DeepSeek"` regardless of what was actually configured or which
   provider would really answer a request — fixed to resolve dynamically via

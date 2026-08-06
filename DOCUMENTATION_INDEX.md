@@ -6,8 +6,11 @@ below refreshed for the Spatial Vision / hover telemetry / Firecrawl QA audit
 production-verification follow-up, `AUDIT_REPORT.md` §6.7; README,
 ARCHITECTURE, and PRD updated again same day for the new per-IP usage-quota
 system (Insights 3/5h; AI Agent panel + AI Workspace chat 50/day shared) —
-see `backend/app/services/usage_quota.py`; other entries below this line
-unchanged since August 1, 2026)  
+see `backend/app/services/usage_quota.py`; README, ARCHITECTURE, and
+PROJECT_PLAN updated once more same day (v4.2) for branding integration, map
+UX fixes, and the ambient-globe reliability + cross-browser caching fix — see
+`frontend/components/globe/useWorldAtlas.ts` and `frontend/next.config.ts`;
+other entries below this line unchanged since August 1, 2026)  
 **Documentation Status**: ✅ COMPLETE AND COMPREHENSIVE  
 **Repository**: https://github.com/Kaiserzanmato/ResilienceMapAI
 

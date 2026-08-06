@@ -1151,6 +1151,7 @@ The backend is already deployed and auto-deploys on every push to `main`, indepe
 
 | Date | Version | Changes |
 |------|---------|---------|
+| Aug 6, 2026 | 4.2 | Branding integration (adaptive logo + favicon); map UX fixes (hover-jitter cancelling in-flight analysis, telemetry overlay positioning around the AI panel, markdown rendering for spatial-vision output); per-IP usage quotas (Insights 3/5h, AI Agent panel + AI Workspace chat 50/day shared) with UI meters; ambient globe reliability fix (bundled world-atlas data instead of runtime fetch) + cross-browser page-HTML caching hardening (`no-store`) — see README.md "Recent fixes" and `DOCUMENTATION_INDEX.md` |
 | Aug 6, 2026 | 4.1 | QA audit of Spatial Vision / hover telemetry / Firecrawl scraper — see "Audit Summary" below and `AUDIT_REPORT.md` |
 | Jul 6, 2026 | 4.0 | Phase 4 complete: Synchronized exports (PDF/CSV/Text/MD), design tokens, skeleton loading, July 2026 watchlist integration |
 | Jun 23, 2026 | 3.0 | Phase 3 complete: Research dataset + guardrails + Resources page + spacing fixes |
@@ -1224,5 +1225,7 @@ Qwen-VL endpoint, Firecrawl + PostGIS scraper worker), per
 
 ---
 
-**Last Updated:** Aug 6, 2026 (Audit Summary above) / July 6, 2026 16:45 UTC (rest of document)  
+**Last Updated:** Aug 6, 2026 (v4.2 row above — branding, map UX fixes, usage
+quotas, ambient globe + caching fix) / Aug 6, 2026 (Audit Summary, v4.1) /
+July 6, 2026 16:45 UTC (rest of document)  
 **Status:** ✅ Production Ready — Phase 4 Complete (Synchronized Exports & Knowledge Layer Live)
