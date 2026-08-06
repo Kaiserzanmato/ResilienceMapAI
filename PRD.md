@@ -95,6 +95,10 @@ source of dashboard load latency.
 - Source-grounded responses (all claims cite data)
 - Location context (current map view or typed address)
 - Export conversation to PDF
+- Shared 50/day usage quota with the map nav's AI Agent panel (both draw
+  from one budget, resets at UTC midnight); a usage meter shows remaining
+  requests and blocks new messages before sending once exhausted, rather
+  than failing silently or only after a wasted round-trip (NEW Aug 2026)
 
 **Personas**:
 - **Citizen**: Accessible language, focus on personal safety
@@ -405,6 +409,8 @@ Stakeholders open link, see:
 - CORS restricted to frontend origin
 - Pydantic validation on all inputs
 - Rate limiting on AI and refresh endpoints
+- Long-window usage quotas (separate from rate limiting), per-IP: Insights
+  3/5h; AI Agent panel + AI Workspace chat share 50/day
 - Audit logging on all data mutations
 
 ### Accessibility
@@ -553,10 +559,19 @@ Stakeholders open link, see:
 | GET /api/hazard-layers | Hazard data (GeoJSON) | Standard |
 | POST /api/ai/summary | AI-powered insights | **Tight** |
 | POST /api/ai/spatial-vision | Multimodal map-viewport analysis (NEW Aug 2026) | **Tight** |
-| POST /api/agent/query | Conversational assistant | **Tight** |
+| POST /api/agent/query | Conversational assistant (AI Workspace) | **Tight** + chat quota¹ |
+| POST /api/ask-ai | Conversational assistant (map nav AI Agent panel) | **Tight** + chat quota¹ |
+| POST /api/generate-insights | Location risk insights | insights quota¹ |
+| GET /api/usage-status | Current quota status (NEW Aug 2026) | Standard |
 | GET /api/sync-health | Sync status & timestamps | Standard |
 | POST /api/data-sync | Manual refresh | **Tight** |
 | GET /api/cron/sync-sources | Scheduled sync (daily) | Admin-only |
+
+¹ Usage quota (NEW Aug 2026): long-window, per-IP, separate from the
+short-window "Tight" burst limit above — see Security NFR and
+ARCHITECTURE.md's Rate Limiting section. Chat quota (50/day) is shared
+between `/api/ask-ai` and `/api/agent/query`; insights quota (3/5h) is
+independent.
 
 #### POST /api/ai/spatial-vision — detail
 

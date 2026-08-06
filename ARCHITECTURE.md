@@ -578,6 +578,22 @@ const canRefresh = (Date.now() - lastRefreshTime) >= REFRESH_RATE_LIMIT_MS;
 # Standard budget for data endpoints (/api/location-risk, etc.)
 ```
 
+### Usage Quotas (Backend, separate from rate limiting above)
+```python
+# app/services/usage_quota.py — long-window, per-IP, in-memory (same
+# single-instance caveat as RateLimitMiddleware; swap for Redis in
+# multi-instance deployments). Two tiers:
+#   "insights": sliding window, INSIGHTS_QUOTA_LIMIT per INSIGHTS_QUOTA_WINDOW
+#               seconds (default 3 per 5h). Enforced on
+#               POST /api/generate-insights.
+#   "chat":     calendar-day (UTC midnight reset), CHAT_QUOTA_LIMIT/day
+#               (default 50). Enforced on POST /api/ask-ai (AI Agent panel)
+#               AND POST /api/agent/query (AI Workspace) — same bucket,
+#               shared budget across both surfaces.
+# GET /api/usage-status reports both tiers' current status without
+# consuming a hit; drives the UsageMeter component shown in the UI.
+```
+
 ### Server-Side (Frontend Route Handlers)
 ```typescript
 // frontend/lib/rateLimit.ts — best-effort in-memory sliding window, relies
@@ -612,6 +628,12 @@ OPENWEATHERMAP_API_KEY=...                                  # Optional — serve
 DATABASE_URL=postgresql://...                               # PostgreSQL (Neon)
 CRON_SECRET=...                                             # Vercel cron auth
 ADMIN_SHARED_SECRET=...                                     # Admin operations
+
+# Usage quotas (long-window, per-IP — see Rate Limiting section above)
+INSIGHTS_QUOTA_LIMIT=3                                       # Insights generations per window
+INSIGHTS_QUOTA_WINDOW=18000                                  # Window in seconds (default 5h)
+CHAT_QUOTA_LIMIT=50                                          # AI Agent panel + AI Workspace,
+                                                              # shared daily cap (resets UTC midnight)
 
 # Optional: AI providers (fallback to local if absent — no provider key is
 # actually "required"; get_settings() only warns if none at all is set)

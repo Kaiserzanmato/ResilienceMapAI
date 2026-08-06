@@ -113,6 +113,12 @@ cd backend && .venv/bin/python -m pytest tests/ -q
   the pinned `starlette==0.52.1` and can be desynced from the actual routed
   path by a malformed header (PYSEC-2026-161/248), which could otherwise let
   a caller dodge the tighter AI-endpoint rate limit
+- Long-window usage quotas, separate from the burst rate limiter above
+  (`app/services/usage_quota.py`, per-IP): Insights is capped at 3
+  generations per 5h; the AI Agent panel and AI Workspace chat share one
+  50/day budget (resets at UTC midnight). `GET /api/usage-status` reports
+  current usage without consuming a hit — it drives the usage meters shown
+  in the UI next to each of those three features.
 - Audit logging on all `/api` routes
 - RBAC-ready role model (`public_user` → `super_admin`); dataset mutation requires `dataset_admin`
 - CORS restricted to the frontend origin
