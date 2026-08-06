@@ -4,6 +4,7 @@ import maplibregl, { Map as MLMap, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { Markdown, renderInline } from "@/components/ai/Markdown";
 import { cn } from "@/lib/utils";
 import { getMapStyle } from "@/lib/mapStyles";
 import { useAppStore } from "@/lib/store";
@@ -402,11 +403,11 @@ export default function RiskMap() {
           {vision?.error && <div className="rm-telemetry-error">{vision.error}</div>}
           {vision?.analysis && (
             <div className="rm-telemetry-analysis">
-              <p>{vision.analysis}</p>
+              <Markdown text={vision.analysis} />
               {vision.recommendations && vision.recommendations.length > 0 && (
                 <ul>
                   {vision.recommendations.map((rec, i) => (
-                    <li key={i}>{rec}</li>
+                    <li key={i}>{renderInline(rec)}</li>
                   ))}
                 </ul>
               )}
