@@ -15,6 +15,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/brand/Logo";
 import { PersonaSelector } from "./PersonaSelector";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -43,12 +44,7 @@ export function TopNav() {
           href="/"
           className="focus-ring mr-1 flex shrink-0 items-center gap-2 rounded-lg px-1"
         >
-          <span
-            aria-hidden="true"
-            className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] text-sm font-bold text-white shadow-[0_4px_16px_var(--accent-glow)]"
-          >
-            R
-          </span>
+          <Logo className="h-8 w-8" />
           <span className="hidden text-[15px] font-semibold tracking-tight md:block">
             ResilienceMap <span className="text-gradient">AI</span>
           </span>

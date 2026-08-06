@@ -14,6 +14,7 @@ import {
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import { Logo } from "@/components/brand/Logo";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { FLAGS } from "@/lib/feature-flags";
@@ -86,12 +87,7 @@ export default function LandingPage() {
       <header className="fixed inset-x-0 top-0 z-40 px-4 pt-3">
         <nav className="glass-strong mx-auto flex h-[var(--nav-h)] max-w-6xl items-center justify-between rounded-2xl px-4">
           <Link href="/" className="focus-ring flex items-center gap-2 rounded-lg">
-            <span
-              aria-hidden="true"
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] text-sm font-bold text-white"
-            >
-              R
-            </span>
+            <Logo className="h-8 w-8" />
             <span className="text-[15px] font-semibold tracking-tight">
               ResilienceMap <span className="text-gradient">AI</span>
             </span>
