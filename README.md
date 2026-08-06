@@ -31,6 +31,10 @@ assessments, grounded AI explanations, and report/export workflows.
 - **Data and operations:** source registry, scheduled-source sync interfaces,
   RBAC-ready dataset management, rate limits, quotas, audit logging, and
   optional Postgres/PostGIS persistence.
+- **Security and AI guardrails:** server-only credentials, Pydantic request
+  validation, prompt-injection detection, scope checks, approved-source
+  grounding, output redaction, per-IP rate limits and usage quotas, restricted
+  CORS, and validated spatial-vision image inputs.
 
 ### Production Architecture
 
