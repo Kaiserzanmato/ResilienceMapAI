@@ -1,6 +1,7 @@
 """Geospatial helpers: zone GeoJSON generation, heatmap points, gazetteer search."""
 import math
 import time
+import logging
 from typing import Dict, List
 
 import httpx
@@ -10,6 +11,7 @@ from ..data.sample_hazards import GAZETTEER, HAZARD_KEYS, HAZARD_ZONES
 from .risk_scoring import level_for_score
 
 _GEOCODE_CACHE: dict[str, tuple[float, List[Dict]]] = {}
+logger = logging.getLogger("resiliencemap.geocoder")
 
 
 def _circle_polygon(lat: float, lng: float, radius_km: float, points: int = 32) -> List[List[float]]:
@@ -104,11 +106,17 @@ async def _search_provider(provider: str, query: str, limit: int, settings) -> L
     try:
         async with httpx.AsyncClient(timeout=settings.geocoder_timeout_seconds) as client:
             if provider == "geoapify" and settings.geoapify_api_key:
-                response = await client.get(settings.geoapify_base_url, params={"text": query, "limit": limit, "apiKey": settings.geoapify_api_key})
+                base_url = settings.geoapify_base_url
+                if not base_url.endswith("/geocode/search"):
+                    base_url = f"{base_url}/geocode/search"
+                response = await client.get(base_url, params={"text": query, "limit": limit, "apiKey": settings.geoapify_api_key})
                 response.raise_for_status()
                 return [_normalized_geoapify(item) for item in response.json().get("features", []) if _normalized_geoapify(item)]
             if provider == "locationiq" and settings.locationiq_access_token:
-                response = await client.get(settings.locationiq_base_url, params={"q": query, "limit": limit, "format": "json", "key": settings.locationiq_access_token})
+                base_url = settings.locationiq_base_url
+                if not base_url.endswith("/search") and not base_url.endswith("/search.php"):
+                    base_url = f"{base_url}/search.php"
+                response = await client.get(base_url, params={"q": query, "limit": limit, "format": "json", "key": settings.locationiq_access_token})
                 response.raise_for_status()
                 return [_normalized_locationiq(item) for item in response.json() if _normalized_locationiq(item)]
             if provider != "photon" or not settings.photon_url:
@@ -133,7 +141,14 @@ async def _search_provider(provider: str, query: str, limit: int, settings) -> L
                 "lat": coords[1], "lng": coords[0], "country": props.get("country"), "countryAlpha2": (props.get("countrycode") or "").upper() or None,
             })
         return results[:limit]
-    except (httpx.HTTPError, ValueError, TypeError):
+    except httpx.HTTPStatusError as exc:
+        logger.warning("geocoder provider=%s status=%s", provider, exc.response.status_code)
+        return []
+    except httpx.TimeoutException:
+        logger.warning("geocoder provider=%s timeout", provider)
+        return []
+    except (httpx.HTTPError, ValueError, TypeError) as exc:
+        logger.warning("geocoder provider=%s failed type=%s", provider, type(exc).__name__)
         return []
 
 
