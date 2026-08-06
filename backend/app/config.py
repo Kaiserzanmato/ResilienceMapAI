@@ -31,6 +31,15 @@ class Settings(BaseSettings):
         "QWEN_BASE_URL", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
     )
     qwen_model: str = os.getenv("QWEN_MODEL", "qwen-plus")
+    # Vision-capable Qwen model for the multimodal spatial-vision endpoint
+    # (map screenshot + risk context in, grounded analysis out) — separate
+    # from qwen_model above, which is text-only.
+    qwen_vision_model: str = os.getenv("QWEN_VISION_MODEL", "qwen3-vl-flash")
+
+    # Firecrawl: scrapes unstructured hazard advisories (PAGASA/PHIVOLCS/JMA
+    # bulletins etc.) into hazard_events. Optional — the scraper worker
+    # no-ops when unset, same pattern as the AI provider keys above.
+    firecrawl_api_key: str = os.getenv("FIRECRAWL_API_KEY", "")
 
     deepseek_api_key: str = os.getenv("DEEPSEEK_API_KEY", "")
     deepseek_base_url: str = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")

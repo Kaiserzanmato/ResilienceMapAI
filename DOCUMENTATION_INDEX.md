@@ -1,14 +1,37 @@
 # ResilienceMap AI - Complete Documentation Index
 
-**Last Updated**: August 1, 2026  
+**Last Updated**: August 6, 2026 (README/ARCHITECTURE/PRD/PROJECT_PLAN entries
+below refreshed for the Spatial Vision / hover telemetry / Firecrawl QA audit
+— see `AUDIT_REPORT.md`; other entries below this line unchanged since
+August 1, 2026)  
 **Documentation Status**: ✅ COMPLETE AND COMPREHENSIVE  
 **Repository**: https://github.com/Kaiserzanmato/ResilienceMapAI
 
 ---
 
+## Audit-Tracked Documentation (per `AUDIT_AND_DEPLOY_SPEC.md`)
+
+Line counts below are exact (`wc -l`), not estimated, generated from the
+final files after all edits in this pass.
+
+| File | Updated | Verified (tests/build referenced within) | Line Count |
+|---|---:|---:|---:|
+| `README.md` | Yes | Yes | 402 |
+| `ARCHITECTURE.md` | Yes | Yes | 822 |
+| `PRD.md` | Yes | Yes | 625 |
+| `PROJECT_PLAN.md` | Yes | Yes | 1228 |
+| `DOCUMENTATION_INDEX.md` | Yes | Yes | ~421 *(self-referential — exact only as of the edit before this one; `wc -l DOCUMENTATION_INDEX.md` is authoritative)* |
+
+Commit hash, and this pass's push/deployment status, are recorded in
+`AUDIT_REPORT.md` §6.4 rather than duplicated here — check there for the
+authoritative, timestamped record rather than assuming this index is
+current beyond the line above.
+
+---
+
 ## 📚 Core Documentation (1,324+ Lines)
 
-### 1. README.md (212 lines)
+### 1. README.md (402 lines)
 **Purpose**: Project overview, quick start guide, and feature list  
 **Audience**: New users, developers, stakeholders  
 **Sections**: 16 major sections including:
@@ -27,12 +50,15 @@
 - "What's New" transparency feature
 - Full timestamp display
 - Ambient globe performance improvements
+- **Aug 6 QA audit**: Map hover telemetry, Spatial Vision, and Firecrawl
+  scraper features documented; security/regression findings and fixes
+  recorded (see `AUDIT_REPORT.md`)
 
 **Link**: https://github.com/Kaiserzanmato/ResilienceMapAI/blob/main/README.md
 
 ---
 
-### 2. PRD.md (500 lines)
+### 2. PRD.md (625 lines)
 **Purpose**: Complete product requirements and feature specifications  
 **Audience**: Product managers, stakeholders, development team  
 **Sections**: 43 major sections including:
@@ -59,12 +85,16 @@
 - "What's New" transparency panel
 - Timestamp display with timezone support
 - Time remaining countdown
+- **Aug 6 QA audit**: Spatial Vision endpoint fully specified in Appendix C
+  (purpose/inputs/outputs/auth/rate limits/error states/payload limits/
+  fallback/privacy); roadmap entries corrected to distinguish
+  verified-and-tested from code-complete-but-unverified-in-production
 
 **Link**: https://github.com/Kaiserzanmato/ResilienceMapAI/blob/main/PRD.md
 
 ---
 
-### 3. ARCHITECTURE.md (612 lines)
+### 3. ARCHITECTURE.md (822 lines)
 **Purpose**: Complete technical architecture and system design  
 **Audience**: Architects, senior engineers, technical leads  
 **Sections**: 48 major sections including:
@@ -89,7 +119,30 @@
 - Database schema
 - Deployment architecture
 
+**Aug 6 QA audit**: backend directory tree corrected to match the actual
+(monolithic `main.py`, not a `routes/` package) implementation; added the
+Spatial Vision data flow, a "Deterministic vs. Generative Separation"
+section, `QWEN_VISION_MODEL`/`FIRECRAWL_API_KEY` env vars, and two
+Future Improvements items (wiring the scraper into scheduled sync;
+the deferred starlette/fastapi dependency upgrade). Two stale env vars
+(`GDACS_API_KEY`, `RELIEFWEB_API_KEY` — neither connector nor `config.py`
+ever used them) were removed.
+
 **Link**: https://github.com/Kaiserzanmato/ResilienceMapAI/blob/main/ARCHITECTURE.md
+
+---
+
+### PROJECT_PLAN.md (1228 lines)
+**Purpose**: Living project status document — phases, deployment status,
+implementation details, and a revision history log  
+**Audience**: Project owner, engineering  
+**Aug 6 QA audit**: Added an "Audit Summary" entry to §15 Revision History
+covering the Spatial Vision / hover telemetry / Firecrawl scraper audit —
+completed phases, confirmed fixes, test outcomes, and deferred/unverified
+work. Full detail in `AUDIT_REPORT.md`; this file has the condensed,
+project-status-log version.
+
+**Link**: https://github.com/Kaiserzanmato/ResilienceMapAI/blob/main/PROJECT_PLAN.md
 
 ---
 

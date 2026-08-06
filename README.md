@@ -51,6 +51,19 @@ cd backend && .venv/bin/python -m pytest tests/ -q
 - **Map** (`/map`) — 6 map views (standard/satellite/terrain/hybrid/dark/light),
   hazard layers, heatmap, risk zones, active alerts, historical events, floating
   widgets, animated zoom-to-location, click-to-assess
+  - **Hover telemetry** — a debounced (40ms) card following pointer position,
+    reading whatever risk-zone/heatmap features are already rendered under the
+    cursor (no extra network calls): coordinates, zone name/country, hazard
+    score/level, population. See `frontend/lib/mapHoverTelemetry.ts`.
+  - **Spatial Vision ("Analyze with AI")** — downsamples the map canvas
+    (≤1024px, JPEG q0.7) and sends it with the deterministic risk context to
+    `POST /api/ai/spatial-vision`, which asks a vision-capable Qwen model
+    (`QWEN_VISION_MODEL`, default `qwen3-vl-flash`) to ground its analysis in
+    official sources. Requires `canvasContextAttributes: { preserveDrawingBuffer:
+    true }` on the map (already set, for PDF export). Falls back to a
+    deterministic local response when `QWEN_API_KEY` is unset. Requests are
+    cancellable and self-cancelling (`AbortController`) — a new hover or a
+    repeated click can never let a stale response overwrite a newer one.
 - **Weather Map Forecast** (`/weather`) — live OpenWeatherMap tile layers
   (precipitation/clouds/wind/temperature/pressure) on a MapLibre map, click
   anywhere for current conditions, plus a link out to Zoom.Earth for full
@@ -94,10 +107,22 @@ cd backend && .venv/bin/python -m pytest tests/ -q
 - All AI calls server-side; no keys in the browser
 - Pydantic input validation on every endpoint; output redaction
 - Prompt-injection detection (flagged input is treated as data, not instructions)
-- Sliding-window rate limiting (tighter budget for AI endpoints)
+- Sliding-window rate limiting (tighter budget for AI endpoints), keyed off
+  the raw ASGI-routed path (`request.scope["path"]`), not `request.url.path`
+  — the latter is reconstructed from the client-supplied `Host` header in
+  the pinned `starlette==0.52.1` and can be desynced from the actual routed
+  path by a malformed header (PYSEC-2026-161/248), which could otherwise let
+  a caller dodge the tighter AI-endpoint rate limit
 - Audit logging on all `/api` routes
 - RBAC-ready role model (`public_user` → `super_admin`); dataset mutation requires `dataset_admin`
 - CORS restricted to the frontend origin
+- Spatial-vision image input (`/api/ai/spatial-vision`) is validated before
+  ever reaching the AI provider: JPEG data-URL prefix, valid base64 syntax,
+  decoded size bounded (100 bytes–1.2MB), JPEG magic-byte check. Provider
+  errors are logged in full server-side but the client only ever sees a
+  generic message — raw provider response bodies are never echoed back.
+  Output runs through the same `validate_output()` guardrail (redacts
+  leaked-looking keys, blocks prompt-leak phrasing) as the text AI endpoints.
 
 **Known limitation — RBAC is not real authentication.** `X-Role` is a
 client-supplied header with no identity behind it; anyone can claim any role.
@@ -145,6 +170,18 @@ without a connector yet, registered for discoverability, not sync
   automatically inside the serverless function. Prefer setting
   `ALEMBIC_DATABASE_URL` to the direct/unpooled connection string for DDL.
 
+**Firecrawl advisory scraper** (`backend/app/data_sources/scrapers/firecrawl_worker.py`):
+scrapes unstructured hazard advisories (PAGASA/PHIVOLCS/JMA bulletins, etc.)
+and upserts them into a PostGIS-backed `hazard_events` table
+(`alembic/versions/0002_hazard_events.py`) via `AsyncFirecrawl` with Qwen-
+style schema-based extraction. Safely no-ops when `FIRECRAWL_API_KEY` is
+unset. **Not yet wired into scheduled sync** — `run_all_wired_sources()`
+doesn't call it; invoke `FirecrawlIngestionWorker().scrape_and_upsert(url,
+session)` directly until a registry entry exists (see ARCHITECTURE.md's
+Future Improvements). Bounded retry (3 attempts, exponential backoff) on
+transient scrape failures; rolls back the DB session on any failure so a
+bad scrape can't leave a half-written transaction behind.
+
 **Frontend/backend source-registry reconciliation**:
 `backend/app/data_sources/registry/sources_registry.py` is the single source
 of truth. `frontend/data-sources/registry/sources.registry.ts` is a
@@ -165,7 +202,9 @@ editing the Python registry. Never hand-edit the `.ts` file.
   same-origin on the frontend instead of hitting the backend on every load. Env
   vars (`DATABASE_URL`, `CRON_SECRET`, `ADMIN_SHARED_SECRET`, `QWEN_API_KEY`,
   `QWEN_BASE_URL`, `TOGETHER_API_KEY`, `DEEPSEEK_API_KEY`, etc.) are configured
-  in the Render dashboard, not committed to the repo. Python version is pinned in
+  in the Render dashboard, not committed to the repo — see `backend/.env.example`
+  for the full list including `QWEN_VISION_MODEL` and `FIRECRAWL_API_KEY`.
+  Python version is pinned in
   `backend/runtime.txt` — do not remove it; Render's unpinned default silently
   moved to a version that broke SQLAlchemy's declarative mapping (see `7659823`)
   and cost real production downtime to diagnose.
@@ -197,6 +236,11 @@ specifically, which stopped making sense once Qwen/Together became primary.
   export) use a per-workspace host, not the generic `dashscope-intl.aliyuncs.com`
   default — set `QWEN_BASE_URL` explicitly if so. Model Studio also supports
   fine-tuning Qwen3-32B/14B and Qwen3-VL-8B on custom data.
+- **Qwen Vision** (`QWEN_VISION_MODEL`, default `qwen3-vl-flash`) — separate
+  model slug used only by `POST /api/ai/spatial-vision`; shares
+  `QWEN_API_KEY`/`QWEN_BASE_URL`. Verified against the live DashScope API
+  during the 2026-08-06 audit — an earlier `qwen-vl-flash` default (no "3")
+  returned "Model not exist"; `qwen3-vl-flash` is the current slug.
 - **Together** (`TOGETHER_API_KEY`) — hosts open-weight models (Qwen, Llama, etc.)
   behind an OpenAI-compatible API with a managed fine-tuning API for the same
   checkpoints; no self-hosted inference server required.
@@ -261,6 +305,53 @@ specifically, which stopped making sense once Qwen/Together became primary.
   surface driven by data the app doesn't control — now escaped), and
   `WeatherMap.tsx` was duplicating the exact dark-style tile URLs already
   defined in `lib/mapStyles.ts` (now imports `getMapStyle("dark")` instead).
+
+## QA audit: Spatial Vision, hover telemetry, Firecrawl scraper (Aug 2026)
+
+Full findings, evidence, and test results are in `AUDIT_REPORT.md`. Summary
+of what changed while hardening the three features added in the prior
+session:
+
+- **Fixed**: telemetry card could unmount itself out from under the cursor
+  before "Analyze with AI" registered a click (canvas `mouseleave` fired on
+  entering the card, which sits on top of the canvas); pending debounced
+  telemetry updates weren't cancelled on unmount (map.queryRenderedFeatures
+  could run against an already-`map.remove()`'d map); no request
+  cancellation, so a stale spatial-vision response could overwrite a newer
+  one after a fast re-hover.
+- **Fixed**: `/api/ai/spatial-vision` echoed raw provider error bodies back
+  to the client, used a 20s timeout instead of the intended ~15s, and its
+  output skipped the `validate_output()` guardrail every other AI endpoint
+  runs through. Base64 image input wasn't validated (syntax, size, JPEG
+  magic bytes) before reaching the provider.
+- **Fixed**: `firecrawl_worker.py` called the *synchronous* `Firecrawl`
+  client's blocking `scrape()` from inside an `async def` — would have
+  stalled the event loop for every other request during a scrape. Switched
+  to `AsyncFirecrawl`. Also added URL scheme validation, bounded
+  exponential-backoff retry, and a DB rollback on failure (previously
+  missing — a failed scrape could leave a dirty session for the next call).
+- **Fixed**: `frontend/.env.local` was tracked in git (a non-standard
+  `!.env.local` override in `frontend/.gitignore` opted it back in).
+  Content was non-sensitive (only `NEXT_PUBLIC_*` feature flags, all
+  matching `lib/feature-flags.ts`'s built-in defaults) but the pattern was
+  fragile — reverted; `frontend/.env.example` added (previously missing).
+- **Verified, not assumed**: `qwen-vl-flash` (the model slug used when this
+  feature was first built) doesn't exist on DashScope — confirmed live
+  against the real API — corrected to `qwen3-vl-flash`. The Firecrawl v2
+  SDK shape (`formats=[{"type":"json","schema":...}]`, `result.json`) was
+  re-verified by installing the actual package and inspecting its real
+  types, not by re-trusting the original web-doc-sourced guess (which
+  happened to be correct, but hadn't been checked against installed code).
+- **Also hardened**: `RateLimitMiddleware`/`AuditLogMiddleware` switched
+  from `request.url.path` to `request.scope["path"]` — the pinned
+  `starlette==0.52.1` has published CVEs where a malformed `Host` header
+  can desync the two, which could let a caller dodge the tighter AI-endpoint
+  rate limit. `python-dotenv` bumped `1.0.0` → `1.2.2` (published CVE, not
+  exploitable in this app's read-only usage, but a trivial safe patch).
+- **Test coverage added**: 26 new backend tests (`test_spatial_vision.py`,
+  `test_firecrawl_worker.py`) covering validation, timeout, error, rate
+  limit, malformed-response, and successful-response paths for both
+  features — all mocked, no real network calls.
 
 ## Dataset Management Enhancement (Aug 2026)
 

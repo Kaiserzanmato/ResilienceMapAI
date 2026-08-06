@@ -1,8 +1,8 @@
 # ResilienceMap AI - Product Requirements Document (PRD)
 
-**Version**: 2.2 (Aug 2026)  
-**Status**: ACTIVE - Weather Forecast Integration + AI Provider Diversification  
-**Last Updated**: 2026-08-04  
+**Version**: 2.3 (Aug 2026)  
+**Status**: ACTIVE - Weather Forecast Integration + AI Provider Diversification + Map Spatial Vision  
+**Last Updated**: 2026-08-06  
 **Owner**: DocypherLabs  
 
 ---
@@ -50,6 +50,14 @@ status display that was hardcoded regardless of actual configuration.
 - Floating widget panels
 - Animated zoom-to-location
 - Search address bar
+- **Hover telemetry** — debounced (40ms) card showing coordinates and, when
+  hovering a rendered risk zone, its name/country/score/level/population
+  (`frontend/lib/mapHoverTelemetry.ts`) **(NEW Aug 2026)**
+- **Spatial Vision ("Analyze with AI")** — sends an optimized map snapshot
+  plus deterministic risk context to a vision-capable Qwen model
+  (`POST /api/ai/spatial-vision`) for a grounded, persona-tailored analysis;
+  falls back to a deterministic response when no provider key is configured
+  **(NEW Aug 2026)**
 
 **Technical**: MapLibre GL JS, GeoJSON hazard layers, vector tiles
 
@@ -466,6 +474,15 @@ Stakeholders open link, see:
   both with fine-tuning support on custom data (DONE - Aug 2026)
 - ✅ Dashboard latency fix — same-origin cached proxy insulates the app from
   the Render free tier's cold-start behavior (DONE - Aug 2026)
+- ✅ Map hover telemetry + Spatial Vision ("Analyze with AI") — code
+  complete, unit/integration tested, live-verified end-to-end against the
+  real Qwen VL API and in a browser against the local dev app; **not yet
+  deployed to production Vercel/Render at time of writing** (DONE - Aug 2026,
+  see `AUDIT_REPORT.md` for the verification evidence and what remains)
+- 🚧 Firecrawl advisory scraper — worker implemented, unit tested (mocked),
+  PostGIS migration written; **not wired into scheduled sync, and never run
+  against a live Firecrawl account or a real PostGIS database** — treat as
+  code-complete-but-unverified-in-production, not DONE (Aug 2026)
 - [ ] Mobile app (React Native wrapper)
 - [ ] Real authentication (JWT/OAuth)
 - [ ] Fine-tune a Qwen model on ResilienceMap's own risk-summary data via
@@ -535,10 +552,44 @@ Stakeholders open link, see:
 | POST /api/compare-locations | Multi-location comparison | Standard |
 | GET /api/hazard-layers | Hazard data (GeoJSON) | Standard |
 | POST /api/ai/summary | AI-powered insights | **Tight** |
+| POST /api/ai/spatial-vision | Multimodal map-viewport analysis (NEW Aug 2026) | **Tight** |
 | POST /api/agent/query | Conversational assistant | **Tight** |
 | GET /api/sync-health | Sync status & timestamps | Standard |
 | POST /api/data-sync | Manual refresh | **Tight** |
 | GET /api/cron/sync-sources | Scheduled sync (daily) | Admin-only |
+
+#### POST /api/ai/spatial-vision — detail
+
+- **Purpose**: Ground a vision-capable model's analysis in an actual
+  rendered map viewport (not just coordinates), for a persona-tailored,
+  source-cited assessment.
+- **Inputs**: `user_query`, `persona`, `map_image_base64` (JPEG data URL),
+  `lat`/`lng`, `deterministic_scores`, `active_layers`.
+- **Outputs**: `grounded_analysis` (text, passed through the same
+  `validate_output()` guardrail as other AI endpoints), `official_sources`,
+  optionally `actionable_recommendations`.
+- **Authentication**: none beyond the app's existing per-IP rate limiting —
+  same posture as the other public AI endpoints; no admin/RBAC gate.
+- **Rate limits**: shared "tight" AI-endpoint bucket
+  (`AI_RATE_LIMIT_REQUESTS`, default 20/60s per IP).
+- **Error states**: malformed/oversized/non-JPEG image → `422` before any
+  provider call; provider timeout/error/rate-limit/malformed response →
+  `502` with a generic message (raw provider output is logged server-side
+  only, never returned to the client).
+- **Payload limits**: request body capped at ~1.5MB of base64 (~1.1MB
+  decoded); server additionally rejects anything decoding outside
+  100 bytes–1.2MB or without a JPEG magic-byte prefix. Client-side, the
+  snapshot itself is capped at 1024px width / JPEG q0.7 before it's ever
+  sent — typically well under 150KB in practice, though that figure is
+  observed, not enforced.
+- **Provider fallback behavior**: when `QWEN_API_KEY` is unset, returns a
+  deterministic local response in the same shape (`engine:
+  "qwen-vl-local-fallback"`) rather than failing — matches the text AI
+  endpoints' fallback pattern.
+- **Privacy/security**: the map snapshot and query are sent to Alibaba
+  Cloud (DashScope) when a key is configured; no user PII is collected by
+  this endpoint beyond what's visible in the rendered map itself
+  (coordinates, hazard overlays).
 
 Backend endpoints above are FastAPI (Render). The frontend also exposes its
 own same-origin Route Handlers (Vercel Functions) for caching and secret

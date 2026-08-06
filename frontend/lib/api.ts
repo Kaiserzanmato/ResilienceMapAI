@@ -63,6 +63,31 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  spatialVision: (
+    body: {
+      user_query: string;
+      persona: string;
+      map_image_base64: string;
+      lat: number;
+      lng: number;
+      deterministic_scores: Record<string, unknown>;
+      active_layers: string[];
+    },
+    signal?: AbortSignal
+  ) =>
+    request<{
+      status: string;
+      persona: string;
+      engine: string;
+      grounded_analysis: string;
+      actionable_recommendations?: string[];
+      official_sources: string[];
+    }>("/api/ai/spatial-vision", {
+      method: "POST",
+      body: JSON.stringify(body),
+      signal,
+    }),
+
   generateInsights: (lat: number, lng: number, name?: string, hazardLayer: string = "overall", persona: string = "citizen") =>
     request<{ risk: RiskAssessment; insight: any }>(
       `/api/generate-insights?lat=${lat}&lng=${lng}${name ? `&name=${encodeURIComponent(name)}` : ""}&hazard_layer=${hazardLayer}&persona=${persona}`,

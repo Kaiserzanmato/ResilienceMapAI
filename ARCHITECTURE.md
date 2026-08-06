@@ -306,50 +306,71 @@ Browser (click on map)
 ## Backend Architecture
 
 ### Directory Structure
+
+This tree previously described an aspirational `routes/`-package layout that
+was never actually built — corrected below to match the real, monolithic
+`main.py` structure (verified by direct inspection during the 2026-08-06
+audit; see `AUDIT_REPORT.md`).
+
 ```
 backend/
 ├── app/
-│   ├── main.py                    - FastAPI app setup
-│   ├── security.py                - Auth & rate limiting
-│   ├── middleware.py              - CORS, logging, validation
-│   ├── scoring/                   - Risk calculation engine
-│   ├── data_sources/              - Data connectors
-│   │   ├── gdacs.py               - GDACS connector
-│   │   ├── nasa_eonet.py          - NASA EONET connector
-│   │   ├── usgs.py                - USGS earthquake connector
-│   │   ├── reliefweb.py           - ReliefWeb connector
-│   │   └── registry/
-│   │       └── sources_registry.py - Master source list (45 sources)
+│   ├── main.py                    - FastAPI app: every route is defined
+│   │                                 directly here (no routes/ package)
+│   ├── config.py                  - Settings — all env vars in one place
+│   ├── schemas.py                 - Pydantic request/response models,
+│   │                                 including input-validation boundaries
+│   │                                 (e.g. SpatialVisionRequest's Base64/
+│   │                                 JPEG/size checks)
+│   ├── security.py                - RateLimitMiddleware, AuditLogMiddleware,
+│   │                                 RBAC role resolution
+│   ├── models.py                  - SQLAlchemy ORM models (sync_health,
+│   │                                 sync_audit_log, uploaded_datasets, reports)
+│   ├── data/
+│   │   └── sample_hazards.py      - Curated MVP hazard/event data
+│   ├── data_sources/
+│   │   ├── connectors/            - Structured-API connectors: GDACS, NASA
+│   │   │                             EONET, NASA FIRMS, USGS earthquake,
+│   │   │                             ReliefWeb, manual upload
+│   │   ├── scrapers/
+│   │   │   └── firecrawl_worker.py - Firecrawl advisory scraper → hazard_events
+│   │   │                             (PostGIS). No-ops when FIRECRAWL_API_KEY
+│   │   │                             is unset. Not yet wired into scheduled
+│   │   │                             sync — call scrape_and_upsert() directly
+│   │   │                             until it is (see Future Improvements)
+│   │   ├── registry/
+│   │   │   └── sources_registry.py - Master source registry
+│   │   └── sync/                  - Scheduled sync dispatch, health, audit log
 │   ├── services/
-│   │   ├── providers.py           - LLM abstraction (actual structure: one
-│   │   │                            OpenAICompatibleProvider class shared by
-│   │   │                            Qwen/DeepSeek/Together/MiMo/OpenAI, plus
-│   │   │                            GeminiProvider and the always-available
-│   │   │                            LocalInsightProvider — not separate
-│   │   │                            per-provider files)
-│   │   ├── ai_router.py           - Prompt construction, guardrails,
-│   │   │                            grounding, deterministic local insights
+│   │   ├── providers.py           - LLM abstraction (one OpenAICompatible-
+│   │   │                             Provider class shared by Qwen/DeepSeek/
+│   │   │                             Together/MiMo/OpenAI, plus GeminiProvider
+│   │   │                             and the always-available LocalInsightProvider)
+│   │   ├── ai_router.py           - Prompt construction, guardrails
+│   │   │                             (validate_output), grounding, deterministic
+│   │   │                             local insights
+│   │   ├── ask_ai.py              - Ask AI scope guardrails + attribution
+│   │   ├── spatial_vision.py      - Multimodal spatial-vision analysis (Qwen-VL)
+│   │   │                             for POST /api/ai/spatial-vision — runs
+│   │   │                             output through the same validate_output
+│   │   │                             guardrail as the text AI endpoints
+│   │   ├── risk_scoring.py        - Deterministic risk engine — zero AI/
+│   │   │                             provider imports, cannot be influenced
+│   │   │                             by generative output (see "Deterministic
+│   │   │                             vs. Generative Separation" below)
+│   │   ├── geospatial_query.py    - Hazard layer / heatmap GeoJSON
+│   │   ├── query_processor.py     - Agent query intent classification
+│   │   ├── insights_generator.py  - Grounded risk intelligence insights
+│   │   ├── exporters.py           - PDF/CSV export, shareable report storage
 │   │   └── dashboard.py           - Deterministic dashboard-stats aggregation
-│   ├── models/                    - Pydantic models
-│   │   ├── location.py
-│   │   ├── risk.py
-│   │   └── report.py
-│   ├── repositories/              - Data access patterns
-│   │   ├── sync_health.py         - Sync status persistence
-│   │   ├── audit_log.py           - Event logging
-│   │   ├── datasets.py            - Dataset metadata
-│   │   └── reports.py             - Report storage
-│   └── routes/                    - API endpoints
-│       ├── risk.py                - Risk assessment endpoints
-│       ├── ai.py                  - AI/agent endpoints
-│       ├── datasets.py            - Dataset management
-│       ├── sync.py                - Data sync endpoints
-│       └── reports.py             - Report endpoints
-├── alembic/                       - Database migrations
-├── tests/                         - Test suite
-├── .env.example                   - Environment template
-├── requirements.txt               - Python dependencies
-└── runtime.txt                    - Python version (3.11)
+│   └── repositories/              - In-memory or Postgres-backed persistence,
+│                                     selected automatically by DATABASE_URL
+├── alembic/                       - Migrations: 0001 (foundation tables),
+│                                     0002 (hazard_events + PostGIS extension)
+├── tests/                         - pytest suite
+├── .env.example                   - Environment template (placeholders only)
+├── requirements.txt                - Python dependencies
+└── runtime.txt                    - Python version pin
 ```
 
 ### Data Flow
@@ -426,6 +447,54 @@ Body: {lat, lng, name, persona}
   "confidence": 0.85
 }
 ```
+
+#### 4. Spatial Vision Request (Multimodal)
+```
+POST /api/ai/spatial-vision
+Body: {user_query, persona, map_image_base64, lat, lng,
+       deterministic_scores, active_layers}
+  ↓
+[Pydantic validation — before any provider call]
+  ├─ data:image/jpeg;base64,... prefix required
+  ├─ base64 syntax must decode cleanly
+  ├─ decoded size bounded: 100 bytes – 1.2MB
+  └─ decoded bytes must start with JPEG magic bytes (FF D8)
+  ↓
+[QWEN_API_KEY unset?] → yes → deterministic local-fallback response,
+  same shape as a real one, engine="qwen-vl-local-fallback"
+  ↓ no
+[Call QWEN_VISION_MODEL via QWEN_BASE_URL, ~15s timeout]
+  ↓
+[Provider error/timeout/malformed response?] → generic client-safe
+  SpatialVisionError (raw provider body logged server-side only, never
+  returned to the client) → HTTP 502
+  ↓ success
+[validate_output() — same guardrail as ai_router's text endpoints]
+  ↓
+[Return grounded_analysis + official_sources]
+```
+
+Client side (`frontend/lib/spatialVision.ts` + `RiskMap.tsx`): the map
+canvas (`preserveDrawingBuffer: true`) is downsampled to ≤1024px width,
+JPEG-encoded at quality 0.7, and size-checked client-side before the
+request is even sent. Requests are cancellable and self-cancelling —  a new
+hover, a repeated click, or unmount aborts any prior in-flight request via
+`AbortController`, so a stale response can never overwrite a newer one.
+
+### Deterministic vs. Generative Separation
+
+Hazard scores, severity levels, risk categories, and map colors all come
+from `services/risk_scoring.py`, which has zero imports from `providers.py`,
+`ai_router.py`, or any AI service module — it cannot be influenced by
+generative output even in principle. Every AI endpoint (`/api/ai/summary`,
+`/api/ai/report`, `/api/agent/query`, `/api/ai/spatial-vision`) computes the
+deterministic risk first and merges it as `{"risk": risk, **ai_result}`;
+`ai_result` (from `generate_insight`/`analyze_spatial_viewport`) never
+contains a `risk` key, so AI output structurally cannot overwrite the scored
+result. Provider failures (timeout, error, malformed response) raise
+provider-specific exceptions that are caught and translated into safe HTTP
+responses — they never propagate into or block the scoring path, and
+`score_location()` itself makes no network calls.
 
 ### API Response Models
 
@@ -552,16 +621,28 @@ QWEN_BASE_URL=...                                            # Studio/DashScope.
                                                              # QWEN_BASE_URL, not the
                                                              # dashscope-intl.aliyuncs.com
                                                              # default.
+QWEN_VISION_MODEL=qwen3-vl-flash                            # Vision-capable Qwen model,
+                                                             # used only by POST /api/ai/
+                                                             # spatial-vision. Shares
+                                                             # QWEN_API_KEY/QWEN_BASE_URL.
 TOGETHER_API_KEY=...                                        # Together AI — open-weight
                                                              # models, managed fine-tuning API
 DEEPSEEK_API_KEY=...
 OPENAI_API_KEY=...
 GEMINI_API_KEY=...
 MIMO_API_KEY=...
+FIRECRAWL_API_KEY=...                                       # Optional — powers the Firecrawl
+                                                             # advisory scraper worker
+                                                             # (data_sources/scrapers/). Worker
+                                                             # safely no-ops when unset; also
+                                                             # requires DATABASE_URL with
+                                                             # PostGIS for the hazard_events
+                                                             # table it writes to.
 
-# Optional: Data source APIs
-GDACS_API_KEY=...
-RELIEFWEB_API_KEY=...
+# Note: GDACS and ReliefWeb connectors (data_sources/connectors/) fetch
+# public feeds and take no API key — a prior "GDACS_API_KEY"/
+# "RELIEFWEB_API_KEY" listing here didn't correspond to any actual
+# config.py setting or connector code; removed during the 2026-08-06 audit.
 ```
 
 ---
@@ -649,6 +730,14 @@ Returns:
 - Cached source registry (regenerate after `sources_registry.py` edits)
 - Prompt injection detection (flagged input treated as data)
 - Database connection pooling (if using Postgres)
+- **Spatial-vision token/payload mitigation** — image resizing (max
+  1024px width), JPEG compression (quality 0.7), client- and server-side
+  payload validation (decoded size bounded 100 bytes–1.2MB, JPEG magic-byte
+  check), a ~15s provider timeout, and request cancellation via
+  `AbortController` so an abandoned request doesn't keep consuming quota.
+  Typical viewport snapshots land well under 150KB at these settings — an
+  observed range from manual testing, not an enforced ceiling; nothing in
+  the code rejects a snapshot between 150KB and the 1.2MB hard limit.
 
 ### Network
 - Gzip compression (Next.js + FastAPI default)
@@ -716,4 +805,18 @@ cd backend
 5. **Offline Mode**: Service Worker caching for offline risk assessments
 6. **Mobile App**: React Native wrapper around existing API
 7. **Multi-Language**: i18n for international users
+8. **Wire the Firecrawl scraper into scheduled sync**: `firecrawl_worker.py`
+   is implemented and tested but not yet registered in
+   `data_sources/sync/run_source_sync.py` — currently must be invoked
+   directly. Wiring it in needs a registry entry, a real Firecrawl account,
+   and a live PostGIS-enabled database to verify end-to-end (none of which
+   were available during the 2026-08-06 audit — see `AUDIT_REPORT.md`).
+9. **Coordinated Starlette/FastAPI upgrade**: `starlette==0.52.1` (pulled in
+   by `fastapi==0.128.8`) has published CVEs around Host-header/path
+   reconstruction (PYSEC-2026-161/248/249/2280/2281). The one path this app
+   actually exercises (`request.url.path` for rate-limit tiering and audit
+   logging) was hardened directly (see `app/security.py` — now reads
+   `request.scope["path"]` instead), but the dependency itself remains
+   outdated; a coordinated upgrade to a compatible fastapi+starlette pair
+   was judged too broad for a targeted audit fix.
 

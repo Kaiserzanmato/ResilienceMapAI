@@ -2,10 +2,12 @@
 import { useQuery } from "@tanstack/react-query";
 import maplibregl, { Map as MLMap, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { getMapStyle } from "@/lib/mapStyles";
 import { useAppStore } from "@/lib/store";
+import { attachHoverTelemetry, type TelemetryPayload } from "@/lib/mapHoverTelemetry";
+import { getOptimizedCanvasSnapshot } from "@/lib/spatialVision";
 
 const RISK_FILL_COLORS: [string, string][] = [
   ["green", "#22c55e"],
@@ -24,6 +26,19 @@ export default function RiskMap() {
     mapView, activeLayer, showZones, showHeatmap, showAlerts, showEvents,
     selected, setSelected,
   } = useAppStore();
+
+  const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(null);
+  const [vision, setVision] = useState<{
+    loading: boolean;
+    error?: string;
+    analysis?: string;
+    recommendations?: string[];
+  } | null>(null);
+  // Guards against a stale spatial-vision response landing after the user
+  // has moved to a new location or fired another request: aborted requests
+  // never call setVision, so an in-flight response can't overwrite a newer
+  // (or cleared) card.
+  const visionAbortRef = useRef<AbortController | null>(null);
 
   const { data: zones } = useQuery({
     queryKey: ["zones", activeLayer],
@@ -146,14 +161,60 @@ export default function RiskMap() {
     map.on("mouseenter", "risk-zones-fill", () => (map.getCanvas().style.cursor = "pointer"));
     map.on("mouseleave", "risk-zones-fill", () => (map.getCanvas().style.cursor = ""));
 
+    const detachTelemetry = attachHoverTelemetry(map, (data) => {
+      visionAbortRef.current?.abort();
+      setTelemetry(data);
+      setVision(null);
+    });
+
     mapRef.current = map;
     return () => {
+      visionAbortRef.current?.abort();
+      detachTelemetry();
       map.remove();
       mapRef.current = null;
       styleReadyRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function handleAnalyzeViewport() {
+    const map = mapRef.current;
+    if (!map || !telemetry) return;
+    // Cancel any still-in-flight request before starting a new one — a
+    // double-click (or a click landing while a previous request hasn't
+    // resolved) must not fire concurrent requests or let an earlier
+    // response overwrite a later one.
+    visionAbortRef.current?.abort();
+    const controller = new AbortController();
+    visionAbortRef.current = controller;
+
+    setVision({ loading: true });
+    try {
+      const snapshot = getOptimizedCanvasSnapshot(map);
+      const result = await api.spatialVision(
+        {
+          user_query: "Evaluate site safety and resilience for this viewport.",
+          persona: useAppStore.getState().persona,
+          map_image_base64: snapshot,
+          lat: telemetry.lat,
+          lng: telemetry.lng,
+          deterministic_scores: { score: telemetry.score, level: telemetry.level },
+          active_layers: [activeLayer],
+        },
+        controller.signal
+      );
+      if (controller.signal.aborted) return;
+      setVision({
+        loading: false,
+        analysis: result.grounded_analysis,
+        recommendations: result.actionable_recommendations,
+      });
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      setVision({ loading: false, error: e instanceof Error ? e.message : "Analysis failed" });
+    }
+  }
 
   // ---- switch base style (smooth: overlays re-added on style.load)
   useEffect(() => {
@@ -257,6 +318,121 @@ export default function RiskMap() {
         role="application"
         aria-label="Risk intelligence map"
       />
+
+      {telemetry && (
+        <div className="rm-telemetry-card" role="status" aria-live="polite">
+          <button
+            type="button"
+            className="rm-telemetry-dismiss"
+            aria-label="Dismiss hover telemetry"
+            onClick={() => {
+              visionAbortRef.current?.abort();
+              setTelemetry(null);
+              setVision(null);
+            }}
+          >
+            ×
+          </button>
+          <div className="rm-telemetry-coords">
+            {telemetry.lat.toFixed(4)}, {telemetry.lng.toFixed(4)}
+          </div>
+          {telemetry.name && (
+            <div className="rm-telemetry-zone">
+              <strong>{telemetry.name}</strong>
+              {telemetry.country ? ` · ${telemetry.country}` : ""}
+              {typeof telemetry.score === "number" && (
+                <div className="rm-telemetry-score">
+                  {telemetry.hazard ?? "Overall"} risk: {Math.round(telemetry.score)}/100
+                  {telemetry.level ? ` (${telemetry.level})` : ""}
+                </div>
+              )}
+              {typeof telemetry.population === "number" && (
+                <div className="rm-telemetry-pop">
+                  Population: {telemetry.population.toLocaleString()}
+                </div>
+              )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="rm-telemetry-analyze"
+            onClick={handleAnalyzeViewport}
+            disabled={vision?.loading}
+          >
+            {vision?.loading ? "Analyzing…" : "Analyze with AI"}
+          </button>
+
+          {vision?.error && <div className="rm-telemetry-error">{vision.error}</div>}
+          {vision?.analysis && (
+            <div className="rm-telemetry-analysis">
+              <p>{vision.analysis}</p>
+              {vision.recommendations && vision.recommendations.length > 0 && (
+                <ul>
+                  {vision.recommendations.map((rec, i) => (
+                    <li key={i}>{rec}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <style jsx global>{`
+        .rm-telemetry-card {
+          position: absolute;
+          left: 50%;
+          top: calc(var(--banner-h, 0px) + var(--nav-h, 0px) + 92px);
+          transform: translateX(-50%);
+          z-index: 25;
+          max-width: 260px;
+          max-height: calc(100vh - var(--banner-h, 0px) - var(--nav-h, 0px) - 140px);
+          overflow-y: auto;
+          padding: 10px 28px 10px 12px;
+          border-radius: 10px;
+          background: color-mix(in srgb, var(--bg, #0b1220) 82%, transparent);
+          border: 1px solid color-mix(in srgb, var(--fg, #fff) 12%, transparent);
+          backdrop-filter: blur(8px);
+          font-size: 12px;
+          line-height: 1.4;
+          color: var(--fg, #fff);
+          pointer-events: auto;
+        }
+        .rm-telemetry-dismiss {
+          position: absolute;
+          top: 4px;
+          right: 6px;
+          width: 20px;
+          height: 20px;
+          border: none;
+          background: none;
+          color: var(--fg-muted, #94a3b8);
+          font-size: 15px;
+          line-height: 1;
+          cursor: pointer;
+        }
+        .rm-telemetry-dismiss:hover { color: var(--fg, #fff); }
+        .rm-telemetry-coords { opacity: 0.65; font-variant-numeric: tabular-nums; }
+        .rm-telemetry-zone { margin-top: 4px; }
+        .rm-telemetry-score { margin-top: 2px; opacity: 0.85; }
+        .rm-telemetry-pop { opacity: 0.65; }
+        .rm-telemetry-analyze {
+          margin-top: 8px;
+          width: 100%;
+          padding: 5px 8px;
+          border-radius: 6px;
+          border: 1px solid color-mix(in srgb, var(--accent, #38bdf8) 45%, transparent);
+          background: color-mix(in srgb, var(--accent, #38bdf8) 15%, transparent);
+          color: var(--fg, #fff);
+          font-size: 11.5px;
+          cursor: pointer;
+        }
+        .rm-telemetry-analyze:disabled { opacity: 0.6; cursor: default; }
+        .rm-telemetry-error { margin-top: 6px; color: #f87171; }
+        .rm-telemetry-analysis { margin-top: 8px; opacity: 0.9; }
+        .rm-telemetry-analysis ul { margin: 4px 0 0; padding-left: 16px; }
+      `}</style>
       <style jsx global>{`
         .rm-alert-marker { position: relative; width: 26px; height: 26px; background: none; border: none; cursor: pointer; }
         .rm-alert-marker .rm-dot { position: absolute; inset: 7px; border-radius: 999px; background: #f97316; box-shadow: 0 0 10px #f97316; }

@@ -1,5 +1,7 @@
 """Pydantic request/response schemas — input validation boundary."""
-from typing import Dict, List, Optional
+import base64
+import binascii
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -86,6 +88,51 @@ class AskAIRequest(BaseModel):
     @classmethod
     def persona_safe(cls, v: str) -> str:
         return "".join(c for c in v if c.isalnum() or c == "_")[:32] or "citizen"
+
+
+class SpatialVisionRequest(BaseModel):
+    """Multimodal AI request: a rendered map viewport snapshot plus
+    deterministic risk context, for the vision-capable model to ground its
+    analysis against (see services/spatial_vision.py)."""
+    user_query: str = Field(..., min_length=1, max_length=1000)
+    persona: str = Field("analyst", max_length=32)
+    # 1.5M chars of base64 bounds the request body to ~1.1MB decoded — well
+    # above the ~150KB a correctly-optimized snapshot (spatialVision.ts:
+    # 1024px max width, JPEG q=0.7) produces, while still rejecting grossly
+    # oversized payloads before they reach the provider.
+    map_image_base64: str = Field(..., min_length=1, max_length=1_500_000)
+    lat: float = Field(..., ge=-90, le=90)
+    lng: float = Field(..., ge=-180, le=180)
+    deterministic_scores: Dict[str, Any] = Field(default_factory=dict)
+    active_layers: List[str] = Field(default_factory=list)
+
+    @field_validator("persona")
+    @classmethod
+    def persona_safe(cls, v: str) -> str:
+        return "".join(c for c in v if c.isalnum() or c == "_")[:32] or "analyst"
+
+    @field_validator("map_image_base64")
+    @classmethod
+    def jpeg_data_url_only(cls, v: str) -> str:
+        prefix = "data:image/jpeg;base64,"
+        if not v.startswith(prefix):
+            raise ValueError("map_image_base64 must be a JPEG data URL (data:image/jpeg;base64,...)")
+        payload = v[len(prefix):]
+        if not payload:
+            raise ValueError("map_image_base64 payload is empty")
+        try:
+            decoded = base64.b64decode(payload, validate=True)
+        except binascii.Error as exc:
+            raise ValueError("map_image_base64 is not valid base64") from exc
+        # A blank/near-blank canvas snapshot is still a few hundred bytes of
+        # JPEG container overhead; anything smaller is truncated or bogus.
+        if len(decoded) < 100:
+            raise ValueError("map_image_base64 decodes to an implausibly small image")
+        if len(decoded) > 1_200_000:
+            raise ValueError("map_image_base64 exceeds the maximum allowed decoded size (1.2MB)")
+        if decoded[:2] != b"\xff\xd8":
+            raise ValueError("map_image_base64 does not decode to a valid JPEG (bad magic bytes)")
+        return v
 
 
 class DataStatusResponse(BaseModel):

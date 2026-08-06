@@ -1151,6 +1151,7 @@ The backend is already deployed and auto-deploys on every push to `main`, indepe
 
 | Date | Version | Changes |
 |------|---------|---------|
+| Aug 6, 2026 | 4.1 | QA audit of Spatial Vision / hover telemetry / Firecrawl scraper — see "Audit Summary" below and `AUDIT_REPORT.md` |
 | Jul 6, 2026 | 4.0 | Phase 4 complete: Synchronized exports (PDF/CSV/Text/MD), design tokens, skeleton loading, July 2026 watchlist integration |
 | Jun 23, 2026 | 3.0 | Phase 3 complete: Research dataset + guardrails + Resources page + spacing fixes |
 | Jun 23, 2026 | 2.0 | Phase 2 complete: Global data routing, AI alignment, agent context injection |
@@ -1181,7 +1182,47 @@ The backend is already deployed and auto-deploys on every push to `main`, indepe
 - **Solution:** Added explicit `"name": "resilience-map-ai"` to vercel.json before second deployment attempt
 - **Result:** Deployment succeeded on second attempt
 
+### Audit Summary (Aug 6, 2026)
+
+Full detail (findings, evidence, exact commands/results) in `AUDIT_REPORT.md`
+— this is a condensed pointer, not a duplicate.
+
+**Scope:** QA audit, security sweep, and regression test of the three
+features added in the prior session (map hover telemetry, Spatial Vision /
+Qwen-VL endpoint, Firecrawl + PostGIS scraper worker), per
+`AUDIT_AND_DEPLOY_SPEC.md`.
+
+**Completed:**
+- Phase 1 (secret hygiene): no real secrets in the working tree or git
+  history; one hygiene fix (a tracked `.env.local`, non-sensitive content).
+- Phase 2 (code review): 13 confirmed findings fixed across both features —
+  see `AUDIT_REPORT.md` §6.2 for severity/evidence/fix per item. Highlights:
+  a blocking synchronous call inside the Firecrawl worker's async method, a
+  UI race where the telemetry card could unmount itself before a click
+  registered, raw provider error bodies leaking to the client, an unverified
+  (and wrong) Qwen vision model slug, and a starlette CVE class with a
+  concretely exploitable path in this app's rate limiter — all fixed.
+- Phase 3 (regression): 64/64 backend tests pass (38 pre-existing + 26 new),
+  TypeScript clean, production build succeeds, ESLint failures confirmed
+  pre-existing (identical count before/after, verified via `git stash`).
+- Phase 4 (documentation): README.md, ARCHITECTURE.md, PRD.md, this file,
+  and DOCUMENTATION_INDEX.md updated to reflect verified implementation —
+  no capability marked DONE/ACTIVE without evidence.
+
+**Deferred / not verified (see `AUDIT_REPORT.md` §6.6 for full list):**
+- Firecrawl worker never run against a real Firecrawl account or a live
+  PostGIS database (no credentials available in this environment) —
+  correctness of the actual scrape→extract→upsert path against real data is
+  unverified, only its logic paths (mocked).
+- No coordinated fastapi/starlette dependency upgrade — the one
+  concretely-exploitable path was hardened directly instead (see
+  ARCHITECTURE.md's Future Improvements #9).
+- Production Vercel/Render deployment verification and live smoke test —
+  status depends on whether/how this audit's changes were pushed; see this
+  file's Deployment Status section and `AUDIT_REPORT.md` §6.4 for the
+  as-of-audit-time answer.
+
 ---
 
-**Last Updated:** July 6, 2026 16:45 UTC  
+**Last Updated:** Aug 6, 2026 (Audit Summary above) / July 6, 2026 16:45 UTC (rest of document)  
 **Status:** ✅ Production Ready — Phase 4 Complete (Synchronized Exports & Knowledge Layer Live)

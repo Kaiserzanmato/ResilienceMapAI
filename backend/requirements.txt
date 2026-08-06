@@ -3,7 +3,7 @@ httpx==0.28.1
 pydantic==2.13.4
 pydantic-settings==2.11.0
 pydantic_core==2.46.4
-python-dotenv==1.0.0
+python-dotenv==1.2.2
 pytest==8.4.2
 pytest-asyncio==0.24.0
 reportlab==4.5.1
@@ -20,3 +20,7 @@ uvicorn==0.39.0
 sqlalchemy[asyncio]==2.0.51
 asyncpg==0.30.0
 alembic==1.14.0
+
+# Firecrawl advisory scraper (optional — only used when FIRECRAWL_API_KEY is
+# set; see app/data_sources/scrapers/firecrawl_worker.py).
+firecrawl-py==4.34.0

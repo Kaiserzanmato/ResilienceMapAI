@@ -80,14 +80,21 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         now = time.time()
         window = s.rate_limit_window_seconds
 
-        is_ai = request.url.path.startswith(("/api/ai", "/api/agent"))
+        # scope["path"] (not request.url.path): starlette <1.1 rebuilds
+        # request.url by concatenating the Host header with the path and
+        # re-parsing — a malformed Host header can desync the two
+        # (PYSEC-2026-161/248), letting a caller dodge the tighter AI
+        # rate-limit bucket while still routing to an /api/ai endpoint.
+        # scope["path"] is the raw ASGI path the router itself dispatched
+        # on, unaffected by Host-header reconstruction.
+        is_ai = request.scope["path"].startswith(("/api/ai", "/api/agent"))
         bucket = self.ai_hits[ip] if is_ai else self.hits[ip]
         limit = s.ai_rate_limit_requests if is_ai else s.rate_limit_requests
 
         while bucket and bucket[0] < now - window:
             bucket.popleft()
         if len(bucket) >= limit:
-            audit_logger.info("RATE_LIMITED ip=%s path=%s", ip, request.url.path)
+            audit_logger.info("RATE_LIMITED ip=%s path=%s", ip, request.scope["path"])
             # Return directly: HTTPException raised inside BaseHTTPMiddleware
             # bypasses FastAPI's handlers and would surface as a 500.
 
@@ -119,11 +126,12 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start = time.time()
         response = await call_next(request)
-        if request.url.path.startswith("/api"):
+        path = request.scope["path"]  # see RateLimitMiddleware for why not request.url.path
+        if path.startswith("/api"):
             audit_logger.info(
                 "ip=%s role=%s method=%s path=%s status=%s ms=%d",
                 request.client.host if request.client else "unknown",
-                get_role(request), request.method, request.url.path,
+                get_role(request), request.method, path,
                 response.status_code, (time.time() - start) * 1000,
             )
         return response
