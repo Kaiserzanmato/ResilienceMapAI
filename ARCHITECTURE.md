@@ -61,7 +61,8 @@ The AI explains calculated scores; it never invents them or overrides official a
 │  │  API Endpoints:                                                    │ │
 │  │  ├─ GET  /api/location-risk      - Risk assessment              │ │
 │  │  ├─ POST /api/compare-locations  - Multi-location compare       │ │
-│  │  ├─ GET  /api/geocode            - Reverse geocoding            │ │
+│  │  ├─ GET  /api/geocode            - Global forward geocoding     │ │
+│  │  ├─ POST /api/assessments        - Registry hazard screening    │ │
 │  │  ├─ GET  /api/hazard-layers      - Hazard data (GeoJSON)        │ │
 │  │  ├─ GET  /api/hazard-events      - Active hazard events         │ │
 │  │  ├─ POST /api/ai/summary         - AI-powered insights          │ │
@@ -850,4 +851,3 @@ cd backend
    `request.scope["path"]` instead), but the dependency itself remains
    outdated; a coordinated upgrade to a compatible fastapi+starlette pair
    was judged too broad for a targeted audit fix.
-

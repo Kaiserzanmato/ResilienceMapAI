@@ -49,7 +49,15 @@ status display that was hardcoded regardless of actual configuration.
 - Historical event timeline
 - Floating widget panels
 - Animated zoom-to-location
-- Search address bar
+- Global location search through the server-side geocoder gateway. Geoapify is
+  the primary provider; LocationIQ is attempted when the primary has no result
+  or fails, with optional Photon and local-gazetteer fallback. Candidates show
+  their normalized address and require explicit user selection before
+  assessment. Property and venue results are provider-dependent and may be
+  broad or incorrect; the product must not claim address-verification quality.
+- Registry-driven multi-hazard screening through `POST /api/assessments`.
+  Each supported hazard exposes score, source, and confidence or an explicit
+  `null` no-data state. An overall score requires at least two numeric hazards.
 - **Hover telemetry** — debounced (40ms) card showing coordinates and, when
   hovering a rendered risk zone, its name/country/score/level/population
   (`frontend/lib/mapHoverTelemetry.ts`) **(NEW Aug 2026)**
@@ -62,6 +70,13 @@ status display that was hardcoded regardless of actual configuration.
 **Technical**: MapLibre GL JS, GeoJSON hazard layers, vector tiles
 
 **Performance Target**: <200ms layer render, <500ms zoom animation
+
+**Global-search acceptance criteria**:
+- A search request never exposes provider credentials.
+- The selected candidate's displayed address and coordinates are visible before
+  its risk assessment is used.
+- Provider failures yield a safe diagnostic and bounded fallback, not a 500.
+- Unsupported coverage remains `null`; it must never be shown as low risk.
 
 ---
 
@@ -637,4 +652,3 @@ handling, not part of the FastAPI backend:
   provider routing with Qwen (Model Studio) and Together AI ahead of DeepSeek;
   fixed dashboard load latency, ambient globe rendering reliability, and an
   AI-provider status display that was hardcoded regardless of configuration
-

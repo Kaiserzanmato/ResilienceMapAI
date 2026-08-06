@@ -197,7 +197,8 @@ editing the Python registry. Never hand-edit the `.ts` file.
 
 ## Deployment
 
-- **Frontend**: Vercel, `https://resilience-map-ai.vercel.app`. Git-connected to
+- **Frontend**: Vercel, `https://resiliencemapai.online` (with the Vercel
+  project domain as a secondary alias). Git-connected to
   `main`, but auto-deploy-on-push has been unreliable in practice — after pushing,
   confirm a new deployment actually appears (`vercel ls`) rather than assuming the
   push alone was sufficient; `vercel deploy --prod` promotes manually if needed.
@@ -223,6 +224,30 @@ editing the Python registry. Never hand-edit the `.ts` file.
   (optional, server-only — powers `/weather`'s live tile layers; without it the
   page still renders with a notice instead of tiles). Set via
   `vercel env add <NAME> production` or the dashboard.
+
+## Global Search And Multi-Hazard Screening
+
+The map search calls the Render backend's `GET /api/geocode` endpoint. Its
+provider gateway uses Geoapify first, LocationIQ when the primary provider
+returns no results or fails, optional Photon when configured, then the small
+local gazetteer as a degraded fallback. Results use one normalized schema
+(`name`, `formatted_address`, country, coordinates, geometry type, and
+provider). The chooser displays the normalized address so users can verify a
+candidate before selecting it for assessment.
+
+`POST /api/assessments` routes a selected coordinate through the coverage
+registry and returns 13 hazard records with source and confidence metadata.
+`null` means no evidence is available; it is never converted to a zero-risk
+score. An overall score is emitted only when at least two hazard scores are
+numeric.
+
+This is screening intelligence, not address verification. Provider coverage
+varies by place and region: property-style queries can return a nearby, broad,
+or unrelated candidate. Users must verify the full displayed address and
+coordinates before relying on a result. See
+[`TECHNICAL_DOCUMENTATION.md`](TECHNICAL_DOCUMENTATION.md) and
+[`RELEASE_AUDIT_2026-08-07.md`](RELEASE_AUDIT_2026-08-07.md) for the current
+contract, production evidence, and limitations.
 
 ## AI provider routing
 

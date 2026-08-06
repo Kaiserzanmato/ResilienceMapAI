@@ -1,6 +1,11 @@
 # ResilienceMap AI - Complete Documentation Index
 
-**Last Updated**: August 6, 2026 (README/ARCHITECTURE/PRD/PROJECT_PLAN entries
+**Last Updated**: August 7, 2026. The current production release audit is
+[`RELEASE_AUDIT_2026-08-07.md`](RELEASE_AUDIT_2026-08-07.md); the API,
+geocoder, coverage-registry, environment, and deployment contracts are in
+[`TECHNICAL_DOCUMENTATION.md`](TECHNICAL_DOCUMENTATION.md). Historical entries
+below retain their original dates and should not be read as current production
+status. (README/ARCHITECTURE/PRD/PROJECT_PLAN entries
 below refreshed for the Spatial Vision / hover telemetry / Firecrawl QA audit
 — see `AUDIT_REPORT.md`; README additionally updated same day with the
 production-verification follow-up, `AUDIT_REPORT.md` §6.7; README,
@@ -427,4 +432,3 @@ b648c51 - feat: Add search functionality and enhance refresh features
 
 **Generated**: August 1, 2026 18:30 UTC  
 **Status**: ✅ COMPLETE & VERIFIED
-
