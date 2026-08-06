@@ -2,12 +2,13 @@
 import { motion } from "framer-motion";
 import { AlertCircle, Loader2, X } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
+import type { InsightResponse } from "@/lib/types";
 
 interface InsightsPanelProps {
   isOpen: boolean;
   isLoading: boolean;
   error?: string | null;
-  insight?: any;
+  insight?: InsightResponse | null;
   locationName?: string;
   onClose: () => void;
 }
@@ -110,7 +111,7 @@ export function InsightsPanel({
               <section>
                 <h3 className="text-lg font-semibold mb-3">Official Sources</h3>
                 <div className="space-y-2">
-                  {insight.sources.map((source: any, idx: number) => (
+                  {insight.sources.map((source, idx) => (
                     <a
                       key={idx}
                       href={source.url}

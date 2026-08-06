@@ -11,6 +11,16 @@ import { getPersona, PERSONAS } from "@/lib/personas";
 import { useAppStore } from "@/lib/store";
 import { formatMapTargetForPrompt } from "@/lib/map-target-builder";
 import { cn } from "@/lib/utils";
+import type { InsightResponse } from "@/lib/types";
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error !== null && "detail" in error) {
+    const detail = (error as { detail?: unknown }).detail;
+    if (typeof detail === "string") return detail;
+  }
+  return "Unknown error";
+}
 
 interface AIProviderInfo {
   provider: string;
@@ -137,11 +147,11 @@ export default function AgentsPage() {
         meta: { model: res.model, sources: res.sources, confidence: res.confidence, disclaimer: res.disclaimer },
       });
     } catch (e) {
-      const errorMessage = (e as any)?.message || (e as any)?.detail || String(e) || "Unknown error";
+      const message = errorMessage(e);
       addMessage({
         id: crypto.randomUUID(),
         role: "assistant",
-        content: `Something went wrong: ${errorMessage}`,
+        content: `Something went wrong: ${message}`,
       });
     } finally {
       setLoading(false);
@@ -185,10 +195,10 @@ export default function AgentsPage() {
             : (body?.detail?.message ?? `Generate insights failed (${res.status})`);
         throw new Error(message);
       }
-      const data = await res.json();
+      const data = await res.json() as { insight: InsightResponse };
       const insight = data.insight;
       const sourcesList = (insight.sources || [])
-        .map((s: any) => `${s.source_name} (${s.confidence_category})`)
+        .map((s) => `${s.source_name} (${s.confidence_category})`)
         .join(" · ");
 
       const answer = `## ${insight.title}\n\n${insight.summary}\n\n**Data Status:** ${insight.notice || "Recently synced"}\n**Sources:** ${sourcesList || "Official registry"}`;
@@ -205,17 +215,23 @@ export default function AgentsPage() {
         content: answer,
         meta: {
           model: aiProvider?.model_display || "AI Engine",
-          sources: insight.sources,
-          confidence: insight.confidence_category,
+          sources: insight.sources.map((source) => ({
+            name: source.source_name,
+            agency: source.agency,
+            updated: insight.timestamp ?? "Not provided",
+            confidence: source.confidence_category,
+            url: source.url,
+          })),
+          confidence: insight.confidence_category ?? "model_response",
           disclaimer: "Insights grounded in official disaster sources. Not an official advisory.",
         },
       });
     } catch (e) {
-      const errorMessage = (e as any)?.message || (e as any)?.detail || String(e) || "Unknown error";
+      const message = errorMessage(e);
       addMessage({
         id: crypto.randomUUID(),
         role: "assistant",
-        content: `Could not generate insights: ${errorMessage}. Ensure data is synced and try again.`,
+        content: `Could not generate insights: ${message}. Ensure data is synced and try again.`,
       });
     } finally {
       setInsightsLoading(false);

@@ -11,9 +11,10 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { GlassCard } from "@/components/ui/GlassCard";
+import type { LucideIcon } from "lucide-react";
 
 interface DocumentationCard {
-  icon: any;
+  icon: LucideIcon;
   title: string;
   description: string;
   link?: string;

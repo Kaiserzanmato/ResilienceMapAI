@@ -2,6 +2,7 @@
 import { countryBelongsToRegion, getCountryByAlpha2 } from "@/lib/locations/country-search";
 import { RiskDomain } from "../registry/sources.registry";
 import { SOURCE_REGISTRY } from "../registry/sources.registry";
+import type { Region } from "@/lib/locations/country-types";
 
 export function selectSourcesForCountry(countryAlpha2: string, riskDomain: RiskDomain) {
   const country = getCountryByAlpha2(countryAlpha2);
@@ -19,7 +20,7 @@ export function selectSourcesForCountry(countryAlpha2: string, riskDomain: RiskD
 
     if (source.coverage === "regional") {
       const sourceRegions = source.regions || [];
-      return sourceRegions.some((region) => countryBelongsToRegion(countryAlpha2, region as any));
+      return sourceRegions.some((region) => countryBelongsToRegion(countryAlpha2, region as Region));
     }
 
     return false;
@@ -37,7 +38,7 @@ export function getCountrySources(countryAlpha2: string) {
 
   const regionalSources = SOURCE_REGISTRY.filter((s) => s.enabled && s.coverage === "regional");
   const regional = regionalSources.filter((s) =>
-    s.regions?.some((region) => countryBelongsToRegion(countryAlpha2, region as any))
+    s.regions?.some((region) => countryBelongsToRegion(countryAlpha2, region as Region))
   ).map((s) => s.id);
 
   return { global: globalSources, regional, countrySpecific };

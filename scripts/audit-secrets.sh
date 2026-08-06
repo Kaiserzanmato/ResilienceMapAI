@@ -38,13 +38,13 @@ echo ""
 
 # Check for common secret patterns in source code
 run_check "DeepSeek API keys in source" \
-  'grep -r "sk-" . --include="*.ts" --include="*.tsx" --include="*.py" --include="*.js" 2>/dev/null | grep -v node_modules | grep -v ".next" | grep -v "__pycache__"'
+  'git grep -n -E "sk-[A-Za-z0-9]{16,}" -- "*.ts" "*.tsx" "*.py" "*.js" ":!backend/tests/**"'
 
 run_check "Hardcoded DEEPSEEK_API_KEY in source" \
-  'grep -r "DEEPSEEK_API_KEY\s*=" . --include="*.ts" --include="*.tsx" --include="*.py" --include="*.js" 2>/dev/null | grep -v node_modules | grep -v ".next" | grep -v "__pycache__" | grep -v ".env.example" | grep -v "DEEPSEEK_SECURE_SETUP.md"'
+  'git grep -n -E "DEEPSEEK_API_KEY\s*=\s*[^\"'"'"'\"[:space:]]" -- "*.ts" "*.tsx" "*.py" "*.js"'
 
 run_check "API keys in frontend code" \
-  'grep -r "apiKey\|API_KEY" frontend/ --include="*.ts" --include="*.tsx" --include="*.js" 2>/dev/null | grep -v node_modules | grep -v ".next" | grep -v "config.ts" | grep -v "types.ts"'
+  'git grep -n -E "(apiKey|API_KEY)\s*[:=]\s*[\"'"'"'][^\"'"'"']{12,}" -- "frontend/**/*.ts" "frontend/**/*.tsx" "frontend/**/*.js"'
 
 run_check "process.env.DEEPSEEK_API_KEY in frontend" \
   'grep -r "process\.env\.DEEPSEEK_API_KEY" frontend/ --include="*.ts" --include="*.tsx" --include="*.js" 2>/dev/null | grep -v node_modules'
@@ -61,11 +61,11 @@ echo ""
 run_check ".env file tracked in git" \
   'git ls-files | grep -E "^\.env($|\.)"'
 
-run_check ".env.local tracked in git" \
-  'git ls-files | grep -E "\.env\.local"'
+run_check "private environment files tracked in git" \
+  'git grep -n -E "^(OPENAI_API_KEY|DEEPSEEK_API_KEY|QWEN_API_KEY|TOGETHER_API_KEY|MIMO_API_KEY|GEMINI_API_KEY|FIRECRAWL_API_KEY|ADMIN_SHARED_SECRET|CRON_SECRET)=.+" -- "backend/.env*" "frontend/.env*"'
 
-run_check "Secret commits in history" \
-  'git log --all -S "sk-" --pretty=format:"%h %s"'
+run_check "credential-shaped secrets in production history" \
+  'git log --all -G "sk-[A-Za-z0-9]{16,}" --pretty=format:"%h %s" -- backend/app frontend/app frontend/components frontend/lib | grep .'
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

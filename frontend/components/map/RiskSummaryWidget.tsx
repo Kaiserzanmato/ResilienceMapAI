@@ -14,6 +14,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { RiskBadge } from "@/components/ui/RiskBadge";
 import { UsageMeter } from "@/components/ui/UsageMeter";
 import { InsightsPanel } from "./InsightsPanel";
+import type { InsightResponse } from "@/lib/types";
 
 export function RiskSummaryWidget() {
   const { risk, selected, setSelected, setRisk, persona, setAiOpen, activeTarget } = useAppStore();
@@ -25,7 +26,7 @@ export function RiskSummaryWidget() {
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsError, setInsightsError] = useState<string | null>(null);
-  const [insightsData, setInsightsData] = useState<unknown>(null);
+  const [insightsData, setInsightsData] = useState<InsightResponse | null>(null);
   const [insightsUsage, setInsightsUsage] = useState<UsageStatus | null>(null);
 
   useEffect(() => {

@@ -2,8 +2,6 @@
  * When point-level data unavailable, uses INFORM Index and WorldBank climate data.
  */
 
-import { getCountryByAlpha2 } from "@/lib/locations/country-search";
-
 export interface GlobalRiskScore {
   flood: number;
   earthquake: number;
@@ -56,9 +54,7 @@ const COUNTRY_RISK_BASELINE: Record<string, Partial<GlobalRiskScore>> = {
 
 /** Score a location globally using country/region fallback. */
 export function scoreLocationGlobally(
-  countryAlpha2?: string,
-  _lat?: number,
-  _lng?: number
+  countryAlpha2?: string
 ): GlobalRiskScore {
   const baseline = countryAlpha2
     ? COUNTRY_RISK_BASELINE[countryAlpha2] || COUNTRY_RISK_BASELINE.DEFAULT

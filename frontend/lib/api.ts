@@ -1,4 +1,4 @@
-import type { AIResponse, Dataset, GeocodeResult, RiskAssessment } from "./types";
+import type { AIResponse, Dataset, GeocodeResult, InsightResponse, RiskAssessment } from "./types";
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -7,7 +7,7 @@ export class APIError extends Error {
   constructor(
     message: string,
     public status: number,
-    public response: any
+    public response: unknown
   ) {
     super(message);
   }
@@ -42,7 +42,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  post: <T,>(path: string, body: any) =>
+  post: <T,>(path: string, body: unknown) =>
     request<T>(path, {
       method: "POST",
       body: JSON.stringify(body),
@@ -104,7 +104,7 @@ export const api = {
     }),
 
   generateInsights: (lat: number, lng: number, name?: string, hazardLayer: string = "overall", persona: string = "citizen") =>
-    request<{ risk: RiskAssessment; insight: any }>(
+    request<{ risk: RiskAssessment; insight: InsightResponse }>(
       `/api/generate-insights?lat=${lat}&lng=${lng}${name ? `&name=${encodeURIComponent(name)}` : ""}&hazard_layer=${hazardLayer}&persona=${persona}`,
       { method: "POST" }
     ),

@@ -1,12 +1,11 @@
 "use client";
 import { memo } from "react";
 import {
-  Area, AreaChart, Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer,
+  Area, AreaChart, Bar, BarChart, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from "recharts";
 import { axisProps, ChartCard, tooltipStyle } from "./ChartCard";
 import { LocationComparisonCard } from "./LocationComparisonCard";
-import { GlassCard } from "@/components/ui/GlassCard";
 import { RiskBadge } from "@/components/ui/RiskBadge";
 import { formatNumber, riskColor } from "@/lib/utils";
 

@@ -7,7 +7,6 @@ import {
   getLocationsSortedByRisk,
 } from "@/lib/prioritized-locations";
 import { useAppStore } from "@/lib/store";
-import { riskColor } from "@/lib/utils";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { PrioritizedLocationInsight } from "./PrioritizedLocationInsight";
 

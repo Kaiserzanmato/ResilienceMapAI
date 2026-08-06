@@ -11,7 +11,8 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { api, type UsageStatus } from "@/lib/api";
+import { APIError, api, type UsageStatus } from "@/lib/api";
+import type { AIResponse } from "@/lib/types";
 import { formatMapTargetForPrompt } from "@/lib/map-target-builder";
 import { getPersona } from "@/lib/personas";
 import { useAppStore } from "@/lib/store";
@@ -72,7 +73,7 @@ export function AIAgentPanel() {
     addMessage({ id: crypto.randomUUID(), role: "user", content: q });
     setLoading(true);
     try {
-      const res = await api.post<any>("/api/ask-ai", {
+      const res = await api.post<Partial<AIResponse> & { status?: string; message?: string; confidence_category?: string }>("/api/ask-ai", {
         query: q,
         persona,
         lat: selected?.lat,
@@ -86,7 +87,7 @@ export function AIAgentPanel() {
         addMessage({
           id: crypto.randomUUID(),
           role: "assistant",
-          content: res.message,
+          content: res.message ?? "This question is outside the supported resilience-analysis scope.",
           meta: {
             model: "Resilience Map AI",
             sources: [],
@@ -106,17 +107,17 @@ export function AIAgentPanel() {
           model: "Resilience Map AI",
           sources: res.sources || [],
           confidence: res.confidence_category || "model_response",
-          disclaimer: res.disclaimer,
+          disclaimer: res.disclaimer ?? "AI responses are informational and not an official advisory.",
         },
       });
     } catch (e) {
-      const error = e as any;
+      const error = e instanceof APIError ? e : null;
       // Handle rate limiting with a user-friendly message. error.message is
       // always a plain string here (lib/api.ts normalizes both the burst
       // rate-limiter's string detail and the usage-quota's structured
       // detail object) — never render error.response.detail directly, it
       // may be an object and isn't valid as message content.
-      if (error.status === 429) {
+      if (error?.status === 429) {
         addMessage({
           id: crypto.randomUUID(),
           role: "assistant",

@@ -81,6 +81,20 @@ interface SyncHealthEntry {
   license_notes: string | null;
 }
 
+interface SyncUpdateSource {
+  name: string;
+  status: string | null;
+  records: number;
+  lastSync: string | null;
+}
+
+interface SyncUpdates {
+  timestamp: number;
+  previousCount: number;
+  currentCount: number;
+  changedSources: SyncUpdateSource[];
+}
+
 async function fetchSyncHealth(): Promise<{ sync_health: SyncHealthEntry[] }> {
   const res = await fetch(`${API_BASE}/api/sync-health`);
   if (!res.ok) throw new Error("Failed to load sync health");
@@ -102,22 +116,25 @@ export default function DatasetsPage() {
   const [activeTab, setActiveTab] = useState<"sources" | "datasets">(
     FLAGS.SOURCE_HEALTH_MONITORING ? "sources" : "datasets"
   );
-  const [lastRefreshTime, setLastRefreshTime] = useState<number | null>(null);
+  const [lastRefreshTime, setLastRefreshTime] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const value = localStorage.getItem(STORAGE_KEY_LAST_REFRESH);
+    const timestamp = value ? Number.parseInt(value, 10) : Number.NaN;
+    return Number.isFinite(timestamp) ? timestamp : null;
+  });
   const [timeUntilRefresh, setTimeUntilRefresh] = useState<number | null>(null);
   const [showUpdates, setShowUpdates] = useState(false);
-  const [lastUpdates, setLastUpdates] = useState<any>(null);
+  const [lastUpdates, setLastUpdates] = useState<SyncUpdates | null>(() => {
+    if (typeof window === "undefined") return null;
+    const value = localStorage.getItem(STORAGE_KEY_SYNC_UPDATES);
+    if (!value) return null;
+    try {
+      return JSON.parse(value) as SyncUpdates;
+    } catch {
+      return null;
+    }
+  });
   const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY_LAST_REFRESH);
-    if (stored) {
-      setLastRefreshTime(parseInt(stored));
-    }
-    const updates = localStorage.getItem(STORAGE_KEY_SYNC_UPDATES);
-    if (updates) {
-      setLastUpdates(JSON.parse(updates));
-    }
-  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -131,7 +148,7 @@ export default function DatasetsPage() {
     return () => clearInterval(interval);
   }, [lastRefreshTime]);
 
-  const canRefresh = !lastRefreshTime || (Date.now() - lastRefreshTime) >= REFRESH_RATE_LIMIT_MS;
+  const canRefresh = lastRefreshTime === null || timeUntilRefresh === 0;
 
   const handleRefresh = async () => {
     if (!canRefresh) return;
@@ -146,20 +163,20 @@ export default function DatasetsPage() {
 
       // Calculate what was updated
       setTimeout(() => {
-        const newData = qc.getQueryData(["sync-health"]) as any;
+        const newData = qc.getQueryData<{ sync_health: SyncHealthEntry[] }>(["sync-health"]);
         if (newData?.sync_health) {
           const updates = {
             timestamp: now,
             previousCount: prevData.length,
             currentCount: newData.sync_health.length,
-            changedSources: newData.sync_health.filter((s: any) => {
+            changedSources: newData.sync_health.filter((s) => {
               const prev = prevData.find(p => p.source_id === s.source_id);
               return prev && (
                 prev.last_sync_status !== s.last_sync_status ||
                 prev.records_synced !== s.records_synced ||
                 prev.last_successful_sync_at !== s.last_successful_sync_at
               );
-            }).map((s: any) => ({
+            }).map((s) => ({
               name: s.source_name,
               status: s.last_sync_status,
               records: s.records_synced,
@@ -255,7 +272,7 @@ export default function DatasetsPage() {
                   className="focus-ring glass flex h-10 cursor-pointer items-center gap-2 rounded-xl px-4 text-[13px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
                   title="View what data was updated"
                 >
-                  <Info size={14} aria-hidden="true" /> What's New
+                  <Info size={14} aria-hidden="true" /> What&apos;s New
                 </button>
               </div>
               {lastRefreshTime && (
@@ -340,7 +357,7 @@ export default function DatasetsPage() {
       {showUpdates && lastUpdates && (
         <GlassCard className="mb-4 p-5">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[14px] font-semibold">What's New</h3>
+            <h3 className="text-[14px] font-semibold">What&apos;s New</h3>
             <button
               onClick={() => setShowUpdates(false)}
               className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
@@ -359,7 +376,7 @@ export default function DatasetsPage() {
                   <strong>{lastUpdates.changedSources.length} data source(s) updated:</strong>
                 </p>
                 <ul className="space-y-2">
-                  {lastUpdates.changedSources.map((source: any, idx: number) => (
+                  {lastUpdates.changedSources.map((source, idx) => (
                     <li key={idx} className="flex items-start gap-2 p-2 rounded bg-[color-mix(in_srgb,var(--accent)_5%,transparent)]">
                       <CheckCircle2 size={14} className="text-[var(--risk-low)] mt-0.5 shrink-0" />
                       <div>
@@ -515,7 +532,7 @@ export default function DatasetsPage() {
             </div>
           ) : filteredSyncEntries.length === 0 && searchQuery ? (
             <GlassCard className="p-8 text-center">
-              <p className="text-[var(--fg-muted)]">No sources match your search for "{searchQuery}"</p>
+              <p className="text-[var(--fg-muted)]">No sources match your search for &quot;{searchQuery}&quot;</p>
             </GlassCard>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -677,7 +694,7 @@ export default function DatasetsPage() {
             </div>
           ) : filteredDatasets.length === 0 && searchQuery ? (
             <GlassCard className="p-8 text-center">
-              <p className="text-[var(--fg-muted)]">No datasets match your search for "{searchQuery}"</p>
+              <p className="text-[var(--fg-muted)]">No datasets match your search for &quot;{searchQuery}&quot;</p>
             </GlassCard>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

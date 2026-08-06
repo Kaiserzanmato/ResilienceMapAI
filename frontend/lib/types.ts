@@ -49,6 +49,24 @@ export interface AIResponse {
   risk?: RiskAssessment | null;
 }
 
+export interface InsightSource {
+  source_name: string;
+  agency: string;
+  url: string;
+  verified?: boolean;
+  confidence_category: string;
+}
+
+export interface InsightResponse {
+  title: string;
+  summary: string;
+  notice?: string;
+  hazard_type?: string;
+  sources: InsightSource[];
+  confidence_category?: string;
+  timestamp?: string;
+}
+
 export interface HazardEvent {
   id: string;
   name: string;

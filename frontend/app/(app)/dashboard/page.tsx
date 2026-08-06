@@ -1,7 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
-import { Suspense } from "react";
 import {
   Activity, AlertTriangle, Building2, GraduationCap, Hospital, MapPin,
   ShieldAlert, Users,

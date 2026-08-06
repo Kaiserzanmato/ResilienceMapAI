@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { DataSourceWidget } from "@/components/map/DataSourceWidget";
 import { IntelligenceMarkersWidget } from "@/components/map/IntelligenceMarkersWidget";
 import { LayerControlWidget } from "@/components/map/LayerControlWidget";
@@ -11,7 +11,6 @@ import { SearchBar } from "@/components/map/SearchBar";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { buildMapTarget, getOfficialSourcesByCountry } from "@/lib/map-target-builder";
-import { cn } from "@/lib/utils";
 
 // Lazy-load the map (heaviest bundle) per performance requirements
 const RiskMap = dynamic(() => import("@/components/map/RiskMap"), {
@@ -25,12 +24,6 @@ const RiskMap = dynamic(() => import("@/components/map/RiskMap"), {
 
 export default function MapPage() {
   const { selected, setRisk, setActiveTarget, aiOpen } = useAppStore();
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
   // Fetch risk whenever a location is selected (click or search)
   const { data: risk } = useQuery({
     queryKey: ["risk", selected?.lat, selected?.lng, selected?.name],
@@ -115,7 +108,7 @@ export default function MapPage() {
           // 64px (collapsed) clears the collapsed AI-agent vertical tab
           // (AIAgentPanel.tsx, ~42px wide, right-0) with a visible gap —
           // 12px let the widget's text overlap the tab.
-          right: isMounted && aiOpen ? "760px" : "64px",
+          right: aiOpen ? "760px" : "64px",
           transition: "right 300ms ease-in-out",
         }}
       >

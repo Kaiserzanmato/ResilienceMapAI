@@ -1,5 +1,5 @@
 /** Search and lookup helpers for country registry. */
-import { COUNTRY_REGISTRY, getCountryByAlpha2 as _getCountryByAlpha2 } from "./country-registry";
+import { COUNTRY_REGISTRY } from "./country-registry";
 import { CountryRegistryItem, Region } from "./country-types";
 
 export { getCountryByAlpha2 } from "./country-registry";
