@@ -10,7 +10,7 @@ from ..config import get_settings
 from ..data.sample_hazards import GAZETTEER, HAZARD_KEYS, HAZARD_ZONES
 from .risk_scoring import level_for_score
 
-_GEOCODE_CACHE: dict[str, tuple[float, List[Dict]]] = {}
+_GEOCODE_CACHE: dict[str, tuple[float, List[Dict], str]] = {}
 logger = logging.getLogger("resiliencemap.geocoder")
 
 
@@ -81,28 +81,33 @@ def search_locations(query: str, limit: int = 8) -> List[Dict]:
     return (starts + contains)[:limit]
 
 
-async def search_locations_global(query: str, limit: int = 8) -> List[Dict]:
+async def search_locations_global(query: str, limit: int = 8) -> Dict:
     """Use Geoapify, then LocationIQ, with bounded local fallback."""
     settings = get_settings()
     normalized = query.strip()
     if len(normalized) < settings.geocoder_min_query_length:
-        return []
+        return {"query": normalized, "provider": None, "fallback_used": False, "degraded": False, "provider_status": {"input": "query-too-short"}, "results": []}
     max_results = min(max(1, limit), settings.geocoder_max_results)
     cache_key = f"{normalized.lower()}:{max_results}"
     cached = _GEOCODE_CACHE.get(cache_key)
     if cached and cached[0] > time.monotonic():
-        return cached[1]
+        return {"query": normalized, "provider": cached[2], "fallback_used": cached[2] == "local-gazetteer", "degraded": cached[2] == "local-gazetteer", "cached": True, "provider_status": {cached[2]: "success"}, "results": cached[1]}
     providers = [settings.geocoder_provider, "locationiq", "photon"]
+    statuses: Dict[str, str] = {}
     for provider in dict.fromkeys(providers):
-        results = await _search_provider(provider, normalized, max_results, settings)
+        results, status = await _search_provider(provider, normalized, max_results, settings)
+        statuses[provider] = status
         if results:
-            _GEOCODE_CACHE[cache_key] = (time.monotonic() + settings.geocoder_cache_ttl_seconds, results)
-            return results
+            _GEOCODE_CACHE[cache_key] = (time.monotonic() + settings.geocoder_cache_ttl_seconds, results, provider)
+            return {"query": normalized, "provider": provider, "fallback_used": provider != settings.geocoder_provider, "degraded": False, "cached": False, "provider_status": statuses, "results": results}
     if settings.geocoder_enable_fallback:
-        return search_locations(query, limit)
+        results = search_locations(query, limit)
+        statuses["local-gazetteer"] = "success" if results else "no-result"
+        return {"query": normalized, "provider": "local-gazetteer" if results else None, "fallback_used": True, "degraded": True, "cached": False, "provider_status": statuses, "results": results}
+    return {"query": normalized, "provider": None, "fallback_used": False, "degraded": True, "cached": False, "provider_status": statuses, "results": []}
 
 
-async def _search_provider(provider: str, query: str, limit: int, settings) -> List[Dict]:
+async def _search_provider(provider: str, query: str, limit: int, settings) -> tuple[List[Dict], str]:
     try:
         async with httpx.AsyncClient(timeout=settings.geocoder_timeout_seconds) as client:
             if provider == "geoapify" and settings.geoapify_api_key:
@@ -111,16 +116,18 @@ async def _search_provider(provider: str, query: str, limit: int, settings) -> L
                     base_url = f"{base_url}/geocode/search"
                 response = await client.get(base_url, params={"text": query, "limit": limit, "apiKey": settings.geoapify_api_key})
                 response.raise_for_status()
-                return [_normalized_geoapify(item) for item in response.json().get("features", []) if _normalized_geoapify(item)]
+                results = [_normalized_geoapify(item) for item in response.json().get("features", []) if _normalized_geoapify(item)]
+                return results, "success" if results else "no-result"
             if provider == "locationiq" and settings.locationiq_access_token:
                 base_url = settings.locationiq_base_url
                 if not base_url.endswith("/search") and not base_url.endswith("/search.php"):
                     base_url = f"{base_url}/search.php"
                 response = await client.get(base_url, params={"q": query, "limit": limit, "format": "json", "key": settings.locationiq_access_token})
                 response.raise_for_status()
-                return [_normalized_locationiq(item) for item in response.json() if _normalized_locationiq(item)]
+                results = [_normalized_locationiq(item) for item in response.json() if _normalized_locationiq(item)]
+                return results, "success" if results else "no-result"
             if provider != "photon" or not settings.photon_url:
-                return []
+                return [], "not-configured"
             response = await client.get(f"{settings.photon_url}/api", params={"q": query, "limit": limit})
         response.raise_for_status()
         results = []
@@ -140,16 +147,18 @@ async def _search_provider(provider: str, query: str, limit: int, settings) -> L
                 # Backwards-compatible client aliases.
                 "lat": coords[1], "lng": coords[0], "country": props.get("country"), "countryAlpha2": (props.get("countrycode") or "").upper() or None,
             })
-        return results[:limit]
+        results = results[:limit]
+        return results, "success" if results else "no-result"
     except httpx.HTTPStatusError as exc:
+        status = "authentication-error" if exc.response.status_code in {401, 403} else ("rate-limited" if exc.response.status_code == 429 else "http-error")
         logger.warning("geocoder provider=%s status=%s", provider, exc.response.status_code)
-        return []
+        return [], status
     except httpx.TimeoutException:
         logger.warning("geocoder provider=%s timeout", provider)
-        return []
+        return [], "timeout"
     except (httpx.HTTPError, ValueError, TypeError) as exc:
         logger.warning("geocoder provider=%s failed type=%s", provider, type(exc).__name__)
-        return []
+        return [], "network-error"
 
 
 def _base_result(provider: str, name: str, lat: float, lng: float, country: str | None, country_code: str | None, address: str | None, region: str | None, city: str | None, external_id: str | None = None) -> Dict:

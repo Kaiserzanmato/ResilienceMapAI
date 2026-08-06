@@ -91,7 +91,7 @@ def compare(req: CompareRequest):
 
 @app.get("/api/geocode")
 async def geocode(q: str = Query(..., min_length=1, max_length=80)):
-    return {"results": await geo.search_locations_global(q)}
+    return await geo.search_locations_global(q)
 
 
 @app.post("/api/assessments")
