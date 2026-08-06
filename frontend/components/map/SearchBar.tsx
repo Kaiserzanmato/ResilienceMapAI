@@ -31,8 +31,8 @@ export function SearchBar() {
         return { results: [coordMatch] };
       }
 
-      // Server-side Photon/local-provider routing. Public Nominatim must not
-      // be called from interactive autocomplete.
+      // Server-side geocoder routing. Public Nominatim must not be called from
+      // interactive autocomplete.
       return api.geocode(debounced);
     },
     enabled: debounced.trim().length >= 2,
@@ -93,8 +93,12 @@ export function SearchBar() {
                 className="focus-ring flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_8%,transparent)]"
               >
                 <MapPin size={14} className="shrink-0 text-[var(--accent)]" aria-hidden="true" />
-                <span className="font-medium">{r.name}</span>
-                <span className="ml-auto text-xs text-[var(--fg-muted)]">{r.country}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{r.name}</span>
+                  <span className="block truncate text-xs text-[var(--fg-muted)]">
+                    {r.formatted_address || r.display_name || r.country || "Address unavailable"}
+                  </span>
+                </span>
               </button>
             </li>
           ))}

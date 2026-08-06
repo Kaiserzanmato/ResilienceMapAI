@@ -128,9 +128,12 @@ export interface Dataset {
 
 export interface GeocodeResult {
   name: string;
-  country: string;
+  country?: string;
   lat: number;
   lng: number;
+  countryAlpha2?: string;
+  formatted_address?: string;
+  display_name?: string;
 }
 
 export interface ChatMessage {

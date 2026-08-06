@@ -9,6 +9,7 @@ export interface GeocodedLocation {
   country?: string;
   countryAlpha2?: string;
   display_name?: string;
+  formatted_address?: string;
   type?: "city" | "region" | "country" | "coordinate";
   boundingbox?: [number, number, number, number];
 }
