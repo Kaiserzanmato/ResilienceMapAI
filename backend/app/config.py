@@ -66,10 +66,21 @@ class Settings(BaseSettings):
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
-    # Rate limiting (requests per window, per client IP)
+    # Rate limiting (requests per window, per client IP) — short-window
+    # burst/abuse protection, enforced by RateLimitMiddleware.
     rate_limit_requests: int = int(os.getenv("RATE_LIMIT_REQUESTS", "120"))
     rate_limit_window_seconds: int = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
     ai_rate_limit_requests: int = int(os.getenv("AI_RATE_LIMIT_REQUESTS", "20"))
+
+    # Long-window usage quotas (per client IP) — separate from the burst
+    # limiter above. "insights" is a tight sliding-window cap (each hit is
+    # one expensive full AI generation from a single button click);
+    # "chat" is a broader daily cap (resets at UTC midnight) shared by the
+    # AI Agent panel and AI Workspace chat, since messages are lighter and
+    # more frequent by nature. See app/services/usage_quota.py.
+    insights_quota_limit: int = int(os.getenv("INSIGHTS_QUOTA_LIMIT", "3"))
+    insights_quota_window_seconds: int = int(os.getenv("INSIGHTS_QUOTA_WINDOW", str(5 * 3600)))
+    chat_quota_limit: int = int(os.getenv("CHAT_QUOTA_LIMIT", "50"))
 
     # Database (RBAC/auth-ready; the MVP runs on curated sample datasets)
     database_url: str = os.getenv("DATABASE_URL", "")

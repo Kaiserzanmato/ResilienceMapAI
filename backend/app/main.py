@@ -27,6 +27,7 @@ from .services.exporters import (build_pdf_report, get_report, list_reports,
                                  risks_to_csv, store_report)
 from .services.risk_scoring import compare_locations, score_location
 from .services.providers import build_providers, pick_provider
+from .services import usage_quota
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version=settings.version)
@@ -160,7 +161,8 @@ async def ai_spatial_vision(req: SpatialVisionRequest):
 
 
 @app.post("/api/agent/query")
-async def agent_query(req: AgentQueryRequest):
+async def agent_query(req: AgentQueryRequest, request: Request):
+    usage_quota.consume("chat", usage_quota.client_key(request))
     import json as _json
     from .services.query_processor import (
         classify_query, QueryIntent, get_top_risk_locations,
@@ -245,13 +247,14 @@ async def agent_query(req: AgentQueryRequest):
 
 
 @app.post("/api/ask-ai")
-async def ask_ai(req: AskAIRequest):
+async def ask_ai(req: AskAIRequest, request: Request):
     """Ask AI with disaster intelligence guardrails.
 
     Enforces scope checking (disaster/hazard/resilience only), source attribution,
     and approved source usage. Returns grounded answers with citations or scope
     refusal message if query is unrelated to disasters/hazards.
     """
+    usage_quota.consume("chat", usage_quota.client_key(request))
     result = await ask_ai_guardrailed(
         query=req.query,
         lat=req.lat,
@@ -266,6 +269,7 @@ async def ask_ai(req: AskAIRequest):
 
 @app.post("/api/generate-insights")
 async def generate_insights_endpoint(
+    request: Request,
     lat: float = Query(..., ge=-90, le=90),
     lng: float = Query(..., ge=-180, le=180),
     name: str = Query(None, max_length=120),
@@ -282,6 +286,7 @@ async def generate_insights_endpoint(
 
     All sources are cited. Unsupported claims are blocked.
     """
+    usage_quota.consume("insights", usage_quota.client_key(request))
     risk = score_location(lat, lng, name)
     providers = build_providers()
     insight = await generate_insights(
@@ -292,6 +297,18 @@ async def generate_insights_endpoint(
         location_name=name or f"{lat}, {lng}",
     )
     return {"risk": risk, "insight": insight.to_dict()}
+
+
+@app.get("/api/usage-status")
+async def usage_status(request: Request):
+    """Read-only usage-quota status for the calling client — does not
+    consume a hit. Drives the usage meters shown in the UI (Insights,
+    AI Agent panel, AI Workspace)."""
+    key = usage_quota.client_key(request)
+    return {
+        "insights": usage_quota.get_status("insights", key).to_dict(),
+        "chat": usage_quota.get_status("chat", key).to_dict(),
+    }
 
 
 # ---------------------------------------------------------------- data sync & status

@@ -3,7 +3,7 @@ import type { AIResponse, Dataset, GeocodeResult, RiskAssessment } from "./types
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-class APIError extends Error {
+export class APIError extends Error {
   constructor(
     message: string,
     public status: number,
@@ -13,6 +13,15 @@ class APIError extends Error {
   }
 }
 
+export interface UsageStatus {
+  bucket: "insights" | "chat";
+  used: number;
+  limit: number;
+  remaining: number;
+  resets_in_seconds: number;
+  resets_at: string;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -20,11 +29,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const detail = await res.json().catch(() => null);
-    throw new APIError(
-      detail?.detail ?? `Request failed (${res.status})`,
-      res.status,
-      detail
-    );
+    // Most endpoints send detail as a plain string; usage-quota 429s send a
+    // structured object ({ message, bucket, resets_at, ... }) — see
+    // backend/app/services/usage_quota.py.
+    const message =
+      typeof detail?.detail === "string"
+        ? detail.detail
+        : (detail?.detail?.message ?? `Request failed (${res.status})`);
+    throw new APIError(message, res.status, detail);
   }
   return res.json();
 }
@@ -107,6 +119,9 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+
+  usageStatus: () =>
+    request<{ insights: UsageStatus; chat: UsageStatus }>("/api/usage-status"),
 
   datasets: () => request<{ datasets: Dataset[] }>("/api/datasets"),
 

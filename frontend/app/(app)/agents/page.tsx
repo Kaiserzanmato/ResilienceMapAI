@@ -5,7 +5,8 @@ import { Markdown } from "@/components/ai/Markdown";
 import { SourceGroundingCard } from "@/components/ai/SourceGroundingCard";
 import { SearchBar } from "@/components/map/SearchBar";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { api, API_BASE } from "@/lib/api";
+import { UsageMeter } from "@/components/ui/UsageMeter";
+import { api, API_BASE, type UsageStatus } from "@/lib/api";
 import { getPersona, PERSONAS } from "@/lib/personas";
 import { useAppStore } from "@/lib/store";
 import { formatMapTargetForPrompt } from "@/lib/map-target-builder";
@@ -44,10 +45,16 @@ export default function AgentsPage() {
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [aiProvider, setAiProvider] = useState<AIProviderInfo | null>(null);
   const [dataStatus, setDataStatus] = useState<DataStatus | null>(null);
+  const [chatUsage, setChatUsage] = useState<UsageStatus | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const active = getPersona(persona);
 
+  function refreshChatUsage() {
+    api.usageStatus().then((s) => setChatUsage(s.chat)).catch(() => {});
+  }
+
   useEffect(() => {
+    refreshChatUsage();
     // Fetch AI provider info and data status on mount
     (async () => {
       try {
@@ -78,6 +85,17 @@ export default function AgentsPage() {
   async function ask(question: string) {
     const q = question.trim();
     if (!q || loading) return;
+
+    if (chatUsage && chatUsage.remaining <= 0) {
+      addMessage({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content:
+          `You've used all ${chatUsage.limit} AI chat requests for today. ` +
+          `Try again after ${new Date(chatUsage.resets_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
+      });
+      return;
+    }
 
     // Validate coordinates if location is selected
     if (selected && (
@@ -127,6 +145,7 @@ export default function AgentsPage() {
       });
     } finally {
       setLoading(false);
+      refreshChatUsage();
     }
   }
 
@@ -158,7 +177,14 @@ export default function AgentsPage() {
         headers: { "Content-Type": "application/json" },
       });
 
-      if (!res.ok) throw new Error(`Generate insights failed (${res.status})`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message =
+          typeof body?.detail === "string"
+            ? body.detail
+            : (body?.detail?.message ?? `Generate insights failed (${res.status})`);
+        throw new Error(message);
+      }
       const data = await res.json();
       const insight = data.insight;
       const sourcesList = (insight.sources || [])
@@ -391,8 +417,13 @@ export default function AgentsPage() {
           )}
         </div>
 
+        {/* Usage meter — shared with the map nav's AI Agent panel, same "chat" bucket */}
+        <div className="border-t border-[var(--surface-border)] px-4 pt-3">
+          <UsageMeter label="daily AI usage" status={chatUsage} />
+        </div>
+
         <form
-          className="border-t border-[var(--surface-border)] p-4"
+          className="p-4"
           onSubmit={(e) => {
             e.preventDefault();
             ask(input);

@@ -11,13 +11,14 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
+import { api, type UsageStatus } from "@/lib/api";
 import { formatMapTargetForPrompt } from "@/lib/map-target-builder";
 import { getPersona } from "@/lib/personas";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Markdown } from "./Markdown";
 import { SourceGroundingCard } from "./SourceGroundingCard";
+import { UsageMeter } from "@/components/ui/UsageMeter";
 
 export function AIAgentPanel() {
   const {
@@ -27,8 +28,13 @@ export function AIAgentPanel() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [panelWidth, setPanelWidth] = useState(400);
+  const [chatUsage, setChatUsage] = useState<UsageStatus | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const activePersona = getPersona(persona);
+
+  useEffect(() => {
+    api.usageStatus().then((s) => setChatUsage(s.chat)).catch(() => {});
+  }, []);
 
   // Desktop resize: drag the left edge (spec §15 — resize on desktop)
   function startResize(e: React.PointerEvent) {
@@ -52,6 +58,16 @@ export function AIAgentPanel() {
   async function ask(question: string) {
     const q = question.trim();
     if (!q || loading) return;
+    if (chatUsage && chatUsage.remaining <= 0) {
+      addMessage({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content:
+          `You've used all ${chatUsage.limit} AI chat requests for today. ` +
+          `Try again after ${new Date(chatUsage.resets_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
+      });
+      return;
+    }
     setInput("");
     addMessage({ id: crypto.randomUUID(), role: "user", content: q });
     setLoading(true);
@@ -95,13 +111,16 @@ export function AIAgentPanel() {
       });
     } catch (e) {
       const error = e as any;
-      // Handle rate limiting with user-friendly message
+      // Handle rate limiting with a user-friendly message. error.message is
+      // always a plain string here (lib/api.ts normalizes both the burst
+      // rate-limiter's string detail and the usage-quota's structured
+      // detail object) — never render error.response.detail directly, it
+      // may be an object and isn't valid as message content.
       if (error.status === 429) {
-        const retryAfter = error.response?.retry_after_seconds || error.response?.window_seconds || 60;
         addMessage({
           id: crypto.randomUUID(),
           role: "assistant",
-          content: error.response?.detail || `Rate limit reached. Please wait ${retryAfter} seconds before trying again.`,
+          content: error.message || "Rate limit reached. Please wait a moment before trying again.",
           meta: {
             model: "Rate Limiter",
             sources: [],
@@ -118,6 +137,7 @@ export function AIAgentPanel() {
       }
     } finally {
       setLoading(false);
+      api.usageStatus().then((s) => setChatUsage(s.chat)).catch(() => {});
     }
   }
 
@@ -296,9 +316,14 @@ export function AIAgentPanel() {
               )}
             </div>
 
+            {/* Usage meter — shared with AI Workspace (/agents), same "chat" bucket */}
+            <div className="border-t border-[var(--surface-border)] px-3 pt-3">
+              <UsageMeter label="daily AI usage" status={chatUsage} />
+            </div>
+
             {/* Input */}
             <form
-              className="border-t border-[var(--surface-border)] p-3"
+              className="p-3"
               onSubmit={(e) => {
                 e.preventDefault();
                 ask(input);

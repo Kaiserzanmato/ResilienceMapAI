@@ -5,13 +5,14 @@ import {
   Link2, Loader2, Sparkles, Zap, X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { api, downloadExport } from "@/lib/api";
+import { api, downloadExport, type UsageStatus } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { captureMapSnapshot, formatNumber, riskColor } from "@/lib/utils";
 import { buildReportSnapshot, downloadTextFile } from "@/lib/report-snapshot";
 import { snapshotToText, snapshotToMarkdown, snapshotToCsv } from "@/lib/report-formats";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { RiskBadge } from "@/components/ui/RiskBadge";
+import { UsageMeter } from "@/components/ui/UsageMeter";
 import { InsightsPanel } from "./InsightsPanel";
 
 export function RiskSummaryWidget() {
@@ -25,6 +26,11 @@ export function RiskSummaryWidget() {
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const [insightsData, setInsightsData] = useState<unknown>(null);
+  const [insightsUsage, setInsightsUsage] = useState<UsageStatus | null>(null);
+
+  useEffect(() => {
+    api.usageStatus().then((s) => setInsightsUsage(s.insights)).catch(() => {});
+  }, []);
 
   // Close export menu on Escape or outside click
   useEffect(() => {
@@ -112,6 +118,14 @@ export function RiskSummaryWidget() {
 
   async function generateInsights() {
     if (!risk || !selected) return;
+    if (insightsUsage && insightsUsage.remaining <= 0) {
+      setInsightsError(
+        `You've used all ${insightsUsage.limit} Insights for this period. ` +
+          `Try again after ${new Date(insightsUsage.resets_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`
+      );
+      setInsightsOpen(true);
+      return;
+    }
     setInsightsLoading(true);
     setInsightsError(null);
     setBusy("insights");
@@ -132,6 +146,7 @@ export function RiskSummaryWidget() {
     } finally {
       setInsightsLoading(false);
       setBusy(null);
+      api.usageStatus().then((s) => setInsightsUsage(s.insights)).catch(() => {});
     }
   }
 
@@ -277,6 +292,13 @@ export function RiskSummaryWidget() {
               </p>
             )}
           </div>
+
+          <UsageMeter
+            label="Insights usage"
+            unitLabel="insights"
+            status={insightsUsage}
+            className="mt-3"
+          />
 
           <p className="mt-3 text-[10px] leading-snug text-[var(--fg-muted)]">
             Indicative scores from official datasets — not an official advisory.
