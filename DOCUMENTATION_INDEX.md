@@ -2,8 +2,9 @@
 
 **Last Updated**: August 6, 2026 (README/ARCHITECTURE/PRD/PROJECT_PLAN entries
 below refreshed for the Spatial Vision / hover telemetry / Firecrawl QA audit
-— see `AUDIT_REPORT.md`; other entries below this line unchanged since
-August 1, 2026)  
+— see `AUDIT_REPORT.md`; README additionally updated same day with the
+production-verification follow-up, `AUDIT_REPORT.md` §6.7; other entries
+below this line unchanged since August 1, 2026)  
 **Documentation Status**: ✅ COMPLETE AND COMPREHENSIVE  
 **Repository**: https://github.com/Kaiserzanmato/ResilienceMapAI
 
@@ -23,7 +24,9 @@ final files after all edits in this pass.
 | `DOCUMENTATION_INDEX.md` | Yes | Yes | ~421 *(self-referential — exact only as of the edit before this one; `wc -l DOCUMENTATION_INDEX.md` is authoritative)* |
 
 Commit hash, and this pass's push/deployment status, are recorded in
-`AUDIT_REPORT.md` §6.4 rather than duplicated here — check there for the
+`AUDIT_REPORT.md` §6.4 rather than duplicated here. Production verification
+(Vercel build, Render health, live smoke test) was completed in a same-day
+follow-up and is recorded in `AUDIT_REPORT.md` §6.7 — check there for the
 authoritative, timestamped record rather than assuming this index is
 current beyond the line above.
 

@@ -2,7 +2,7 @@
 **Date:** August 6, 2026
 **Scope:** Map Hover Telemetry, Spatial Vision (Qwen-VL) endpoint, Firecrawl + PostGIS scraper worker — the three features added in the prior session
 **Spec:** `AUDIT_AND_DEPLOY_SPEC.md`
-**Status:** Local audit/fix/test/documentation phases complete and verified. Committed and pushed to `origin/main` at `cd233b3849c6c20e7d6eec92e0edf5382cd2ea2f`. Production (Vercel/Render) deployment verification was **not performed** — no credentials/access to either platform in this environment; see §6.4.
+**Status:** Local audit/fix/test/documentation phases complete and verified. Committed and pushed to `origin/main` at `cd233b3849c6c20e7d6eec92e0edf5382cd2ea2f`. Production (Vercel/Render) deployment verification **has now been performed** — see §6.7.
 
 ---
 
@@ -10,9 +10,9 @@
 
 - **Overall result:** 20 findings identified across security, correctness, and test coverage; 17 fixed and verified, 2 mitigated at the application level with the underlying dependency upgrade explicitly deferred (documented, not silently skipped), 1 fixed as test-infrastructure only.
 - **Deployment readiness:** Backend and frontend are locally verified (tests, type-check, production build, live browser regression against a local dev server, and a real end-to-end call to the live Qwen VL API). Pushed to `origin/main` at `cd233b3` (fast-forward from `befc4f4`, confirmed clean — repo was 0 commits ahead/behind before pushing).
-- **Production verification status:** Not performed. Vercel and Render both auto-deploy from `main` on push, so a deployment should be in progress or complete by the time this is read — but this environment has no Vercel/Render session or credentials, so §5.3–§5.5 of the spec (build status, health endpoints, live smoke test against the deployed URLs) could not be executed here. The repository owner should verify directly (`vercel ls` / `vercel inspect`, the Render dashboard, and a manual visit to the production URLs) — see §6.6.
+- **Production verification status:** **Performed** in a follow-up session with Vercel CLI access. Vercel build for the pushed commit confirmed green; Render backend confirmed healthy; live smoke test against both production URLs passed, including the new `/api/ai/spatial-vision` surface. See §6.7 for full detail.
 - **High-risk findings:** two — (1) the Firecrawl worker was calling a blocking synchronous HTTP client from inside an `async def`, which would have stalled the FastAPI event loop for every other request during a scrape; (2) the spatial-vision endpoint was echoing raw external-provider error response bodies back to API clients. Both fixed and covered by new tests.
-- **Remaining blockers:** none for the local/code portion. For production sign-off: a decision on whether/how to push (direct to `main` vs. a branch+PR) and access to Vercel/Render to verify the actual deployment.
+- **Remaining blockers:** none. Local/code portion was already clean; the three production sign-off items (Vercel build verification, Render health verification, live smoke test) are now closed — see §6.7.
 
 ---
 
@@ -220,9 +220,9 @@ Live smoke test (LOCAL dev server only — see §6.4 for why not production):
 
 | Component | Platform | Commit | Build Status | Health Status | Smoke Test |
 |---|---|---:|---|---|---|
-| Frontend | Vercel | `cd233b3` | Not Verified (no Vercel access in this environment) | N/A | Not Verified in production (local dev server only, see above) |
-| Backend | Render | `cd233b3` | Not Verified (no Render access in this environment) | Not Verified | Not Verified in production (local dev server only, see above) |
-| Repository | GitHub | `cd233b3849c6c20e7d6eec92e0edf5382cd2ea2f` | Pushed (`origin/main`, fast-forward from `befc4f4`) | N/A | N/A |
+| Frontend | Vercel | `2d7f678` | ✅ Verified — `vercel inspect --logs`, compiled clean, TypeScript clean, 15/15 routes generated | `resiliencemapai.online` → 200 | ✅ `/` and `/map` → 200 in production |
+| Backend | Render | (auto-deployed from `main`) | ✅ Verified — `/health` reachable and `ok` | `{"status":"ok",...}` at `resiliencemap-api.onrender.com/health` | ✅ `/api/location-risk`, `/api/ai/spatial-vision` — correct 200/422 behavior in production |
+| Repository | GitHub | `cd233b3849c6c20e7d6eec92e0edf5382cd2ea2f` (+ `2d7f678` docs follow-up) | Pushed (`origin/main`, fast-forward from `befc4f4`) | N/A | N/A |
 
 ## Documentation Status
 
@@ -243,5 +243,53 @@ Live smoke test (LOCAL dev server only — see §6.4 for why not production):
 - **`pytest` has an unaddressed low-severity, dev-only CVE** (finding #8) — recommend revisiting when `pytest-asyncio` confirms 9.x compatibility.
 - **Mobile/tablet layout of the new telemetry card was not visually verified.** The automation tooling's window-resize call didn't produce a visibly different rendered layout in this session; the CSS approach (centered, `max-width`, `max-height`+`overflow-y:auto`) is inherently width-agnostic and consistent with the app's existing responsive patterns, but this is a design argument, not a verified screenshot at a mobile breakpoint.
 - **Frontend ESLint has 31 pre-existing errors / 15 warnings**, confirmed unrelated to this session (see Tests and Builds above) but unresolved. Out of scope for this audit's "minimal, targeted, reversible" mandate — flagged here rather than silently ignored.
-- **Production deployment verification (Vercel, Render, live smoke test) was not performed.** The commit (`cd233b3`) is pushed to `origin/main`, and both platforms auto-deploy from that branch, but this environment has no Vercel/Render credentials to confirm the resulting build actually succeeded, that `/health` responds, or that the live site works end-to-end. **Action needed from the repository owner**: check `vercel ls`/the Vercel dashboard for a new deployment of `cd233b3`, check the Render dashboard for the same, then manually verify the live site (especially `/api/ai/spatial-vision`, since it's new surface area).
+- ~~Production deployment verification (Vercel, Render, live smoke test) was not performed.~~ **Resolved 2026-08-06, see §6.7** — Vercel build, Render health, and a live smoke test (including `/api/ai/spatial-vision`) were all verified against production.
 - **Frontend has no automated test runner configured** (`npm test` doesn't exist) — all frontend verification here is type-check + build + manual/live browser checks, not unit tests.
+
+---
+
+## §6.7 Production Verification (Post-Push Follow-Up)
+
+**Date:** August 6, 2026 (same day, follow-up session with Vercel CLI access)
+**Purpose:** Close the three items §6.6 flagged as blocked on missing platform credentials.
+
+**1. Vercel build status**
+```
+$ vercel ls resilience-map-ai
+  3h ago  →  https://resilience-map-jupv92tz9-...vercel.app  ● Ready  Production
+
+$ vercel inspect <url> --logs
+  Cloning github.com/Kaiserzanmato/ResilienceMapAI (Branch: main, Commit: 2d7f678)
+  ✓ Compiled successfully in 14.4s
+  Finished TypeScript in 7.5s — clean
+  ✓ Generating static pages using 1 worker (15/15)
+```
+Confirms the production deployment built from `2d7f678` (which fast-forwards from `cd233b3`, i.e. includes every audit fix), with a clean TypeScript pass and all 15 routes generated. **No build failures, no missing env vars.**
+
+**2. Render backend health**
+```
+$ curl https://resiliencemap-api.onrender.com/health
+{"status":"ok","service":"ResilienceMap AI","version":"0.1.0","time":"2026-08-06T09:38:16Z"}
+→ HTTP 200 (first hit took ~32s — Render free-tier cold start, not a regression)
+
+$ curl -o /dev/null -w '%{http_code}' https://resiliencemap-api.onrender.com/docs
+→ HTTP 200
+```
+
+**3. Live smoke test against production URLs**
+```
+Frontend:
+  https://resiliencemapai.online       → 200
+  https://resiliencemapai.online/map   → 200
+
+Backend:
+  GET  /api/location-risk?lat=10.3157&lng=123.8854
+       → 200, real deterministic scored response (Cebu City, overall score 49/Medium)
+  POST /api/ai/spatial-vision  (missing required fields)
+       → 422 with field-level validation errors, not 500 — confirms finding #4's
+         pre-provider input validation is live in production
+  GET  /api/location-risk  (wrong query param name, `lon` instead of `lng`)
+       → 422, not 500 — confirms input validation active in production
+```
+
+**Result:** All three §6.6 action items are closed. Frontend and backend are both live, healthy, and behaving per the audit's fixes (validation-before-provider-call, no 500s on malformed input). No further action needed from the repository owner on deployment verification.

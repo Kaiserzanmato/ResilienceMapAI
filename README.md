@@ -352,6 +352,14 @@ session:
   `test_firecrawl_worker.py`) covering validation, timeout, error, rate
   limit, malformed-response, and successful-response paths for both
   features — all mocked, no real network calls.
+- **Production verification (Aug 6, 2026, follow-up pass)**: the local-only
+  audit above was pushed (`cd233b3`, then `2d7f678`) and verified live —
+  Vercel build inspected via `vercel inspect --logs` (confirmed building
+  `2d7f678`, clean TypeScript, 15/15 routes), Render `/health` returns
+  `200 {"status":"ok"}`, and a production smoke test confirmed
+  `/api/location-risk` and `/api/ai/spatial-vision` both return correct
+  200/422 responses (no 500s) against `resiliencemapai.online` and
+  `resiliencemap-api.onrender.com`. Full detail in `AUDIT_REPORT.md` §6.7.
 
 ## Dataset Management Enhancement (Aug 2026)
 
