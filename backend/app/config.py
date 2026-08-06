@@ -89,7 +89,16 @@ class Settings(BaseSettings):
     # Geocoding is server-side only. Configure a self-hosted Photon instance
     # for autocomplete; the backend returns local curated results when unset.
     photon_url: str = os.getenv("PHOTON_URL", "").rstrip("/")
+    geocoder_provider: str = os.getenv("GEOCODER_PROVIDER", "geoapify").lower()
+    geoapify_api_key: str = os.getenv("GEOAPIFY_API_KEY", "")
+    geoapify_base_url: str = os.getenv("GEOAPIFY_BASE_URL", "https://api.geoapify.com/v1/geocode/search").rstrip("/")
+    locationiq_access_token: str = os.getenv("LOCATIONIQ_ACCESS_TOKEN", "")
+    locationiq_base_url: str = os.getenv("LOCATIONIQ_BASE_URL", "https://us1.locationiq.com/v1/search").rstrip("/")
     geocoder_timeout_seconds: float = float(os.getenv("GEOCODER_TIMEOUT_SECONDS", "3"))
+    geocoder_max_results: int = int(os.getenv("GEOCODER_MAX_RESULTS", "8"))
+    geocoder_cache_ttl_seconds: int = int(os.getenv("GEOCODER_CACHE_TTL_SECONDS", "300"))
+    geocoder_min_query_length: int = int(os.getenv("GEOCODER_MIN_QUERY_LENGTH", "3"))
+    geocoder_enable_fallback: bool = os.getenv("GEOCODER_ENABLE_FALLBACK", "true").lower() == "true"
 
     # Shared secret for the Vercel Cron-triggered sync endpoint. Not a
     # per-user credential — it only proves the caller is Vercel's scheduler

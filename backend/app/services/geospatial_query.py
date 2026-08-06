@@ -1,5 +1,6 @@
 """Geospatial helpers: zone GeoJSON generation, heatmap points, gazetteer search."""
 import math
+import time
 from typing import Dict, List
 
 import httpx
@@ -7,6 +8,8 @@ import httpx
 from ..config import get_settings
 from ..data.sample_hazards import GAZETTEER, HAZARD_KEYS, HAZARD_ZONES
 from .risk_scoring import level_for_score
+
+_GEOCODE_CACHE: dict[str, tuple[float, List[Dict]]] = {}
 
 
 def _circle_polygon(lat: float, lng: float, radius_km: float, points: int = 32) -> List[List[float]]:
@@ -77,16 +80,39 @@ def search_locations(query: str, limit: int = 8) -> List[Dict]:
 
 
 async def search_locations_global(query: str, limit: int = 8) -> List[Dict]:
-    """Search a configured self-hosted Photon instance, then local data.
-
-    This keeps public Nominatim out of the interactive autocomplete path and
-    ensures provider outages degrade to clearly bounded local results.
-    """
+    """Use Geoapify, then LocationIQ, with bounded local fallback."""
     settings = get_settings()
-    if not settings.photon_url:
+    normalized = query.strip()
+    if len(normalized) < settings.geocoder_min_query_length:
+        return []
+    max_results = min(max(1, limit), settings.geocoder_max_results)
+    cache_key = f"{normalized.lower()}:{max_results}"
+    cached = _GEOCODE_CACHE.get(cache_key)
+    if cached and cached[0] > time.monotonic():
+        return cached[1]
+    providers = [settings.geocoder_provider, "locationiq", "photon"]
+    for provider in dict.fromkeys(providers):
+        results = await _search_provider(provider, normalized, max_results, settings)
+        if results:
+            _GEOCODE_CACHE[cache_key] = (time.monotonic() + settings.geocoder_cache_ttl_seconds, results)
+            return results
+    if settings.geocoder_enable_fallback:
         return search_locations(query, limit)
+
+
+async def _search_provider(provider: str, query: str, limit: int, settings) -> List[Dict]:
     try:
         async with httpx.AsyncClient(timeout=settings.geocoder_timeout_seconds) as client:
+            if provider == "geoapify" and settings.geoapify_api_key:
+                response = await client.get(settings.geoapify_base_url, params={"text": query, "limit": limit, "apiKey": settings.geoapify_api_key})
+                response.raise_for_status()
+                return [_normalized_geoapify(item) for item in response.json().get("features", []) if _normalized_geoapify(item)]
+            if provider == "locationiq" and settings.locationiq_access_token:
+                response = await client.get(settings.locationiq_base_url, params={"q": query, "limit": limit, "format": "json", "key": settings.locationiq_access_token})
+                response.raise_for_status()
+                return [_normalized_locationiq(item) for item in response.json() if _normalized_locationiq(item)]
+            if provider != "photon" or not settings.photon_url:
+                return []
             response = await client.get(f"{settings.photon_url}/api", params={"q": query, "limit": limit})
         response.raise_for_status()
         results = []
@@ -108,7 +134,27 @@ async def search_locations_global(query: str, limit: int = 8) -> List[Dict]:
             })
         return results[:limit]
     except (httpx.HTTPError, ValueError, TypeError):
-        return search_locations(query, limit)
+        return []
+
+
+def _base_result(provider: str, name: str, lat: float, lng: float, country: str | None, country_code: str | None, address: str | None, region: str | None, city: str | None, external_id: str | None = None) -> Dict:
+    return {"provider": provider, "external_id": external_id, "name": name, "formatted_address": address or name, "country_code": country_code.upper() if country_code else None, "admin_levels": {"region": region, "city": city}, "latitude": lat, "longitude": lng, "geometry_type": "point", "bounding_box": None, "confidence": "medium", "lat": lat, "lng": lng, "country": country, "countryAlpha2": country_code.upper() if country_code else None}
+
+
+def _normalized_geoapify(feature: Dict) -> Dict | None:
+    props = feature.get("properties", {})
+    try:
+        return _base_result("geoapify", props.get("name") or props.get("formatted") or "Unknown location", float(props["lat"]), float(props["lon"]), props.get("country"), props.get("country_code"), props.get("formatted"), props.get("state"), props.get("city"), props.get("place_id"))
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _normalized_locationiq(item: Dict) -> Dict | None:
+    address = item.get("address", {})
+    try:
+        return _base_result("locationiq", item.get("name") or item.get("display_name") or "Unknown location", float(item["lat"]), float(item["lon"]), address.get("country"), address.get("country_code"), item.get("display_name"), address.get("state"), address.get("city") or address.get("town"), item.get("place_id"))
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 def available_layers() -> List[Dict]:
