@@ -4,7 +4,7 @@ import { Loader2, MapPin, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
-import { geocodeLocation, parseCoordinates, getLocationCountryAlpha2 } from "@/lib/locations/geocoding";
+import { parseCoordinates, getLocationCountryAlpha2 } from "@/lib/locations/geocoding";
 
 export function SearchBar() {
   const [query, setQuery] = useState("");
@@ -31,9 +31,9 @@ export function SearchBar() {
         return { results: [coordMatch] };
       }
 
-      // Fall back to global geocoding
-      const results = await geocodeLocation(debounced, 8);
-      return { results };
+      // Server-side Photon/local-provider routing. Public Nominatim must not
+      // be called from interactive autocomplete.
+      return api.geocode(debounced);
     },
     enabled: debounced.trim().length >= 2,
   });

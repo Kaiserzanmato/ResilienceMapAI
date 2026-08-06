@@ -86,6 +86,11 @@ class Settings(BaseSettings):
     database_url: str = os.getenv("DATABASE_URL", "")
     redis_url: str = os.getenv("REDIS_URL", "")
 
+    # Geocoding is server-side only. Configure a self-hosted Photon instance
+    # for autocomplete; the backend returns local curated results when unset.
+    photon_url: str = os.getenv("PHOTON_URL", "").rstrip("/")
+    geocoder_timeout_seconds: float = float(os.getenv("GEOCODER_TIMEOUT_SECONDS", "3"))
+
     # Shared secret for the Vercel Cron-triggered sync endpoint. Not a
     # per-user credential — it only proves the caller is Vercel's scheduler
     # (or another holder of the secret), not a real identity.

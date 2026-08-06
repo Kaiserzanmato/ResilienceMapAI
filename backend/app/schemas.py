@@ -12,6 +12,18 @@ class LocationQuery(BaseModel):
     name: Optional[str] = Field(None, max_length=120)
 
 
+class GlobalAssessmentRequest(LocationQuery):
+    country_code: Optional[str] = Field(None, min_length=2, max_length=2)
+    geometry_type: str = Field("point", max_length=32)
+
+    @field_validator("country_code")
+    @classmethod
+    def country_code_safe(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.isalpha():
+            raise ValueError("country_code must be an ISO alpha-2 code")
+        return v.upper() if v else None
+
+
 class CompareRequest(BaseModel):
     locations: List[LocationQuery] = Field(..., min_length=2, max_length=6)
 

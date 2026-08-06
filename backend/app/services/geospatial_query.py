@@ -2,6 +2,9 @@
 import math
 from typing import Dict, List
 
+import httpx
+
+from ..config import get_settings
 from ..data.sample_hazards import GAZETTEER, HAZARD_KEYS, HAZARD_ZONES
 from .risk_scoring import level_for_score
 
@@ -71,6 +74,41 @@ def search_locations(query: str, limit: int = 8) -> List[Dict]:
         elif q in name or q in place["country"].lower():
             contains.append(place)
     return (starts + contains)[:limit]
+
+
+async def search_locations_global(query: str, limit: int = 8) -> List[Dict]:
+    """Search a configured self-hosted Photon instance, then local data.
+
+    This keeps public Nominatim out of the interactive autocomplete path and
+    ensures provider outages degrade to clearly bounded local results.
+    """
+    settings = get_settings()
+    if not settings.photon_url:
+        return search_locations(query, limit)
+    try:
+        async with httpx.AsyncClient(timeout=settings.geocoder_timeout_seconds) as client:
+            response = await client.get(f"{settings.photon_url}/api", params={"q": query, "limit": limit})
+        response.raise_for_status()
+        results = []
+        for feature in response.json().get("features", []):
+            props = feature.get("properties", {})
+            coords = feature.get("geometry", {}).get("coordinates", [])
+            if len(coords) < 2:
+                continue
+            results.append({
+                "provider": "photon", "external_id": props.get("osm_id"),
+                "name": props.get("name") or props.get("city") or props.get("country") or "Unknown location",
+                "formatted_address": props.get("name") or props.get("label"),
+                "country_code": (props.get("countrycode") or "").upper() or None,
+                "admin_levels": {"region": props.get("state"), "city": props.get("city")},
+                "latitude": coords[1], "longitude": coords[0], "geometry_type": feature.get("geometry", {}).get("type", "Point").lower(),
+                "bounding_box": None, "confidence": "medium",
+                # Backwards-compatible client aliases.
+                "lat": coords[1], "lng": coords[0], "country": props.get("country"), "countryAlpha2": (props.get("countrycode") or "").upper() or None,
+            })
+        return results[:limit]
+    except (httpx.HTTPError, ValueError, TypeError):
+        return search_locations(query, limit)
 
 
 def available_layers() -> List[Dict]:

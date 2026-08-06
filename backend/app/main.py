@@ -15,7 +15,7 @@ from .repositories.dataset_repo import get_dataset_repo
 from .schemas import (AgentQueryRequest, AIReportRequest, AISummaryRequest,
                       AskAIRequest, CompareRequest, DatasetUpload, DataStatusResponse,
                       ExportCSVRequest, ExportPDFRequest, ShareLinkRequest,
-                      SpatialVisionRequest)
+                      SpatialVisionRequest, GlobalAssessmentRequest)
 from .security import AuditLogMiddleware, RateLimitMiddleware, require_permission
 from .services import geospatial_query as geo
 from .services.ask_ai import ask_ai_guardrailed
@@ -26,6 +26,7 @@ from .services.spatial_vision import SpatialVisionError, analyze_spatial_viewpor
 from .services.exporters import (build_pdf_report, get_report, list_reports,
                                  risks_to_csv, store_report)
 from .services.risk_scoring import compare_locations, score_location
+from .services.global_assessment import assess_location
 from .services.providers import build_providers, pick_provider
 from .services import usage_quota
 
@@ -89,8 +90,14 @@ def compare(req: CompareRequest):
 
 
 @app.get("/api/geocode")
-def geocode(q: str = Query(..., min_length=1, max_length=80)):
-    return {"results": geo.search_locations(q)}
+async def geocode(q: str = Query(..., min_length=1, max_length=80)):
+    return {"results": await geo.search_locations_global(q)}
+
+
+@app.post("/api/assessments")
+def global_assessment(req: GlobalAssessmentRequest):
+    """Registry-routed, evidence-aware multi-hazard screening contract."""
+    return assess_location(req.lat, req.lng, req.name, req.country_code, req.geometry_type)
 
 
 # ---------------------------------------------------------------- hazards

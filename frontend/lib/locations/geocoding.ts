@@ -1,10 +1,6 @@
-/** Global geocoding service using Nominatim (OpenStreetMap).
- * Supports: city, state/province, country, and coordinates worldwide.
- * Falls back to local gazetteer for known high-risk areas.
- */
+/** Location helpers for results resolved by the backend provider gateway. */
 
-import { getCountryByAlpha2, searchCountries } from "./country-search";
-import { CountryRegistryItem } from "./country-types";
+import { searchCountries } from "./country-search";
 
 export interface GeocodedLocation {
   name: string;
@@ -17,105 +13,6 @@ export interface GeocodedLocation {
   boundingbox?: [number, number, number, number];
 }
 
-const NOMINATIM_API = "https://nominatim.openstreetmap.org/search";
-const REVERSE_API = "https://nominatim.openstreetmap.org/reverse";
-
-/** Search for locations globally using Nominatim. */
-export async function geocodeLocation(query: string, limit: number = 8): Promise<GeocodedLocation[]> {
-  if (!query.trim()) return [];
-
-  try {
-    const params = new URLSearchParams({
-      q: query,
-      format: "json",
-      limit: limit.toString(),
-      "accept-language": "en",
-      addressdetails: "1",
-    });
-
-    const res = await fetch(`${NOMINATIM_API}?${params}`, {
-      headers: { "User-Agent": "ResilienceMapAI" },
-    });
-
-    if (!res.ok) return [];
-
-    const results = await res.json() as Array<{
-      name?: string;
-      lat?: string;
-      lon?: string;
-      address?: Record<string, string>;
-      display_name?: string;
-      type?: string;
-      boundingbox?: string[];
-    }>;
-
-    return results
-      .filter((r) => r.lat && r.lon)
-      .map((r) => ({
-        name: r.name || r.display_name || "Unknown",
-        lat: parseFloat(r.lat!),
-        lng: parseFloat(r.lon!),
-        country: r.address?.country,
-        countryAlpha2: r.address?.country_code?.toUpperCase(),
-        display_name: r.display_name,
-        type: (r.type as any) || "city",
-        boundingbox: r.boundingbox
-          ? ([
-              parseFloat(r.boundingbox[0]),
-              parseFloat(r.boundingbox[1]),
-              parseFloat(r.boundingbox[2]),
-              parseFloat(r.boundingbox[3]),
-            ] as [number, number, number, number])
-          : undefined,
-      }));
-  } catch (error) {
-    console.error("[geocoding] Search failed:", error);
-    return [];
-  }
-}
-
-/** Reverse geocode coordinates to get location name. */
-export async function reverseGeocode(lat: number, lng: number): Promise<GeocodedLocation | null> {
-  try {
-    const params = new URLSearchParams({
-      lat: lat.toString(),
-      lon: lng.toString(),
-      format: "json",
-      "accept-language": "en",
-      addressdetails: "1",
-    });
-
-    const res = await fetch(`${REVERSE_API}?${params}`, {
-      headers: { "User-Agent": "ResilienceMapAI" },
-    });
-
-    if (!res.ok) return null;
-
-    const data = await res.json() as {
-      name?: string;
-      lat?: string;
-      lon?: string;
-      address?: Record<string, string>;
-      display_name?: string;
-      type?: string;
-    };
-
-    if (!data.lat || !data.lon) return null;
-
-    return {
-      name: data.name || data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-      lat: parseFloat(data.lat),
-      lng: parseFloat(data.lon),
-      country: data.address?.country,
-      countryAlpha2: data.address?.country_code?.toUpperCase(),
-      display_name: data.display_name,
-      type: "coordinate",
-    };
-  } catch (error) {
-    console.error("[reverse-geocoding] Failed:", error);
-    return null;
-  }
-}
 
 /** Parse coordinates if query is a lat/lng pair (e.g., "40.7128, -74.0060"). */
 export function parseCoordinates(query: string): GeocodedLocation | null {

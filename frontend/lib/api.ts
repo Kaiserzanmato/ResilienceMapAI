@@ -62,6 +62,9 @@ export const api = {
   geocode: (q: string) =>
     request<{ results: GeocodeResult[] }>(`/api/geocode?q=${encodeURIComponent(q)}`),
 
+  assessLocation: (body: { lat: number; lng: number; name?: string; country_code?: string; geometry_type?: string }) =>
+    request<Record<string, unknown>>("/api/assessments", { method: "POST", body: JSON.stringify(body) }),
+
   hazardLayers: (layer: string, format: "geojson" | "heatmap" = "geojson") =>
     request<GeoJSON.FeatureCollection>(`/api/hazard-layers?layer=${layer}&format=${format}`),
 
