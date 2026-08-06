@@ -437,13 +437,13 @@ export default function RiskMap() {
         }
         @media (min-width: 768px) {
           /* When the AI Research Agent panel is open it pushes the risk
-             summary widget left (see app/(app)/map/page.tsx), into the
-             centered telemetry card's space. Shift the card right instead,
-             clear of the widget and sitting just left of the panel (default
-             400px wide + 12px right margin) with a clean gap. */
+             summary widget left (see app/(app)/map/page.tsx: right: 760px),
+             into the centered telemetry card's space. Anchor the card to
+             that same 760px offset so it hugs the widget's right edge with
+             a clean gap, instead of floating centered in open map space. */
           .rm-telemetry-card--ai-open {
-            left: auto;
-            right: 428px;
+            left: calc(100% - 760px + 16px);
+            right: auto;
             transform: none;
           }
         }
