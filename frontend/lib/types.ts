@@ -30,6 +30,29 @@ export interface RiskAssessment {
   engine_version: string;
 }
 
+export interface AssessmentHazard {
+  hazard: string;
+  label: string;
+  classification: string;
+  score: number | null;
+  confidence: "none" | "low" | "medium" | "high";
+  coverage_status: string;
+  sources: Array<{ name: string; publication_date?: string; reliability?: string }>;
+  evidence: Array<{ source: string; timestamp: string }>;
+  limitations: string[];
+}
+
+export interface GlobalAssessment {
+  location: { name: string; latitude: number; longitude: number; country_code: string | null };
+  assessment_geometry: { type: string; fallback_used: boolean; confidence: string; default_buffers_m: number[] };
+  hazards: Record<string, AssessmentHazard>;
+  multi_hazard_summary: { highest_priority_hazards: string[]; coverage_score: number };
+  scoring_version: string;
+  coverage_registry_version: string;
+  generated_at: string;
+  disclaimer: string;
+}
+
 export interface GroundingSource {
   name: string;
   agency: string;

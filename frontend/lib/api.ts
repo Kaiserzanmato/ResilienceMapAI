@@ -1,4 +1,4 @@
-import type { AIResponse, Dataset, GeocodeResult, InsightResponse, RiskAssessment } from "./types";
+import type { AIResponse, Dataset, GeocodeResult, GlobalAssessment, InsightResponse, RiskAssessment } from "./types";
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -63,7 +63,7 @@ export const api = {
     request<{ results: GeocodeResult[] }>(`/api/geocode?q=${encodeURIComponent(q)}`),
 
   assessLocation: (body: { lat: number; lng: number; name?: string; country_code?: string; geometry_type?: string }) =>
-    request<Record<string, unknown>>("/api/assessments", { method: "POST", body: JSON.stringify(body) }),
+    request<GlobalAssessment>("/api/assessments", { method: "POST", body: JSON.stringify(body) }),
 
   hazardLayers: (layer: string, format: "geojson" | "heatmap" = "geojson") =>
     request<GeoJSON.FeatureCollection>(`/api/hazard-layers?layer=${layer}&format=${format}`),

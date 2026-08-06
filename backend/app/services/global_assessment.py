@@ -11,6 +11,10 @@ from .coverage_registry import providers_for, registry, supported_hazards
 from .risk_scoring import ENGINE_VERSION, level_for_score, score_location
 
 LEGACY_TO_GLOBAL = {"storm_surge": "coastal_exposure"}
+# The registry only permits a legacy modelled value where the assessment
+# contract explicitly supports it. Other configured connectors must return
+# their own verified observations before they can produce a numeric score.
+MODELLED_LEGACY_HAZARDS = {"earthquake"}
 
 
 def _geometry(kind: str | None) -> dict[str, Any]:
@@ -30,7 +34,8 @@ def assess_location(lat: float, lng: float, name: str | None = None, country_cod
         providers, uses_global_fallback = providers_for(country_code, hazard)
         legacy_key = next((key for key, value in LEGACY_TO_GLOBAL.items() if value == hazard), hazard)
         legacy_value = legacy["hazards"].get(legacy_key, {})
-        score = legacy_value.get("score") if legacy_key in HAZARD_LABELS else None
+        score = (legacy_value.get("score") if hazard in MODELLED_LEGACY_HAZARDS
+                 and legacy_key in HAZARD_LABELS else None)
         selected = next((provider for provider in providers if provider["status"] == "configured"), None)
         limitations = []
         if not providers:

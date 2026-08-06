@@ -24,3 +24,10 @@ def test_country_source_fallback_is_visible():
     assert earthquake["score"] is not None
     assert any("global fallback" in item.lower() for item in earthquake["limitations"])
     assert result["scoring_version"]
+
+
+def test_configured_connector_without_verified_wildfire_evidence_is_not_zero():
+    result = assess_location(14.5995, 120.9842, "Metro Manila", "PH")
+    wildfire = result["hazards"]["wildfire"]
+    assert wildfire["score"] is None
+    assert wildfire["classification"] == "no-data"
