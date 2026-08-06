@@ -39,6 +39,16 @@ export default function RiskMap() {
   // never call setVision, so an in-flight response can't overwrite a newer
   // (or cleared) card.
   const visionAbortRef = useRef<AbortController | null>(null);
+  // Mirrors telemetry/vision into refs so the hover handler (registered
+  // once, on map init) can read current values without a stale closure.
+  const telemetryRef = useRef<TelemetryPayload | null>(null);
+  const visionRef = useRef<typeof vision>(null);
+  useEffect(() => {
+    telemetryRef.current = telemetry;
+  }, [telemetry]);
+  useEffect(() => {
+    visionRef.current = vision;
+  }, [vision]);
 
   const { data: zones } = useQuery({
     queryKey: ["zones", activeLayer],
@@ -162,6 +172,27 @@ export default function RiskMap() {
     map.on("mouseleave", "risk-zones-fill", () => (map.getCanvas().style.cursor = ""));
 
     const detachTelemetry = attachHoverTelemetry(map, (data) => {
+      // The telemetry card renders at a fixed screen position, not at the
+      // cursor, and the canvas stays hoverable around/under it. That means
+      // moving the mouse toward the "Analyze with AI" button — or just
+      // resting it over the map while a request is in flight or its result
+      // is showing — fires more hover ticks for essentially the same spot.
+      // Treating every tick as "a new hover" (the original behavior) killed
+      // the user's own just-started or just-finished analysis with no
+      // visible error, which read as the button silently not working. Only
+      // actually reset when the hover has moved somewhere meaningfully
+      // different (~1km) from what's currently shown.
+      const prev = telemetryRef.current;
+      const hasActiveAnalysis = !!(visionRef.current?.loading || visionRef.current?.analysis);
+      const samePoint =
+        !!prev &&
+        Math.abs(prev.lat - data.lat) < 0.01 &&
+        Math.abs(prev.lng - data.lng) < 0.01;
+
+      if (hasActiveAnalysis && samePoint) {
+        setTelemetry(data);
+        return;
+      }
       visionAbortRef.current?.abort();
       setTelemetry(data);
       setVision(null);
