@@ -112,7 +112,10 @@ export default function MapPage() {
         className="pointer-events-none absolute z-20 hidden md:block"
         style={{
           top: "calc(var(--banner-h) + var(--nav-h) + 36px)",
-          right: isMounted && aiOpen ? "760px" : "12px",
+          // 64px (collapsed) clears the collapsed AI-agent vertical tab
+          // (AIAgentPanel.tsx, ~42px wide, right-0) with a visible gap —
+          // 12px let the widget's text overlap the tab.
+          right: isMounted && aiOpen ? "760px" : "64px",
           transition: "right 300ms ease-in-out",
         }}
       >
