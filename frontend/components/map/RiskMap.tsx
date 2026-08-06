@@ -4,6 +4,7 @@ import maplibregl, { Map as MLMap, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { getMapStyle } from "@/lib/mapStyles";
 import { useAppStore } from "@/lib/store";
 import { attachHoverTelemetry, type TelemetryPayload } from "@/lib/mapHoverTelemetry";
@@ -24,7 +25,7 @@ export default function RiskMap() {
 
   const {
     mapView, activeLayer, showZones, showHeatmap, showAlerts, showEvents,
-    selected, setSelected,
+    selected, setSelected, aiOpen,
   } = useAppStore();
 
   const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(null);
@@ -351,7 +352,11 @@ export default function RiskMap() {
       />
 
       {telemetry && (
-        <div className="rm-telemetry-card" role="status" aria-live="polite">
+        <div
+          className={cn("rm-telemetry-card", aiOpen && "rm-telemetry-card--ai-open")}
+          role="status"
+          aria-live="polite"
+        >
           <button
             type="button"
             className="rm-telemetry-dismiss"
@@ -429,6 +434,18 @@ export default function RiskMap() {
           line-height: 1.4;
           color: var(--fg, #fff);
           pointer-events: auto;
+        }
+        @media (min-width: 768px) {
+          /* When the AI Research Agent panel is open it pushes the risk
+             summary widget left (see app/(app)/map/page.tsx), into the
+             centered telemetry card's space. Shift the card right instead,
+             clear of the widget and sitting just left of the panel (default
+             400px wide + 12px right margin) with a clean gap. */
+          .rm-telemetry-card--ai-open {
+            left: auto;
+            right: 428px;
+            transform: none;
+          }
         }
         .rm-telemetry-dismiss {
           position: absolute;
