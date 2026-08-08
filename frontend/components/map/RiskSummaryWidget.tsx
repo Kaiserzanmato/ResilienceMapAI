@@ -174,8 +174,12 @@ export function RiskSummaryWidget() {
         exit={{ opacity: 0, y: 24 }}
         transition={{ type: "spring", damping: 26, stiffness: 300 }}
       >
-        <GlassCard strong className="w-full p-4 md:w-[340px]">
-          <div className="flex items-start gap-2">
+        <GlassCard
+          strong
+          className="flex w-full flex-col p-4 md:w-[340px]"
+          style={{ maxHeight: "min(640px, calc(100vh - var(--nav-h) - var(--banner-h) - var(--footer-h) - 32px))" }}
+        >
+          <div className="flex shrink-0 items-start gap-2">
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-[15px] font-semibold">{risk.location_name}</h2>
               <p className="text-[11px] text-[var(--fg-muted)]">
@@ -196,52 +200,54 @@ export function RiskSummaryWidget() {
             </button>
           </div>
 
-          {/* Hazard bars */}
-          <ul className="mt-3 space-y-2">
-            {Object.entries(risk.hazards).map(([key, h]) => (
-              <li key={key}>
-                <div className="mb-0.5 flex items-center justify-between text-[12px]">
-                  <span className="font-medium">{h.label}</span>
-                  <span className="font-semibold" style={{ color: riskColor(h.color) }}>
-                    {h.score === null ? "No data" : `${h.score} · ${h.level}`}
-                  </span>
-                </div>
-                <div
-                  role="progressbar"
-                  aria-label={`${h.label} risk score`}
-                  aria-valuenow={h.score ?? 0}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  className="h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]"
-                >
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${h.score ?? 0}%` }}
-                    transition={{ duration: 0.7, ease: "easeOut" }}
-                    className="h-full rounded-full"
-                    style={{ background: riskColor(h.color) }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
+          {/* Scrollable hazard data — header and actions stay pinned outside this region */}
+          <div className="scroll-visible mt-3 min-h-0 flex-1 overflow-y-auto pr-2 -mr-2">
+            <ul className="space-y-2">
+              {Object.entries(risk.hazards).map(([key, h]) => (
+                <li key={key}>
+                  <div className="mb-0.5 flex items-center justify-between text-[12px]">
+                    <span className="font-medium">{h.label}</span>
+                    <span className="font-semibold" style={{ color: riskColor(h.color) }}>
+                      {h.score === null ? "No data" : `${h.score} · ${h.level}`}
+                    </span>
+                  </div>
+                  <div
+                    role="progressbar"
+                    aria-label={`${h.label} risk score`}
+                    aria-valuenow={h.score ?? 0}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    className="h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]"
+                  >
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${h.score ?? 0}%` }}
+                      transition={{ duration: 0.7, ease: "easeOut" }}
+                      className="h-full rounded-full"
+                      style={{ background: riskColor(h.color) }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
 
-          {risk.main_drivers.length > 0 && (
-            <p className="mt-3 text-[11.5px] text-[var(--fg-muted)]">
-              <span className="font-semibold text-[var(--fg)]">Main drivers:</span>{" "}
-              {risk.main_drivers.join(", ")}
-            </p>
-          )}
+            {risk.main_drivers.length > 0 && (
+              <p className="mt-3 text-[11.5px] text-[var(--fg-muted)]">
+                <span className="font-semibold text-[var(--fg)]">Main drivers:</span>{" "}
+                {risk.main_drivers.join(", ")}
+              </p>
+            )}
 
-          {risk.nearest_zone && (
-            <p className="mt-1.5 text-[11.5px] text-[var(--fg-muted)]">
-              Pop. {formatNumber(risk.nearest_zone.population)} ·{" "}
-              {risk.nearest_zone.critical_facilities} critical facilities ·{" "}
-              {risk.nearest_zone.hospitals} hospitals
-            </p>
-          )}
+            {risk.nearest_zone && (
+              <p className="mt-1.5 text-[11.5px] text-[var(--fg-muted)]">
+                Pop. {formatNumber(risk.nearest_zone.population)} ·{" "}
+                {risk.nearest_zone.critical_facilities} critical facilities ·{" "}
+                {risk.nearest_zone.hospitals} hospitals
+              </p>
+            )}
+          </div>
 
-          <div ref={exportMenuRef} className="relative mt-3.5">
+          <div ref={exportMenuRef} className="relative mt-3.5 shrink-0">
             {/* Export dropdown menu — opens above the action row */}
             {exportOpen && (
               <div
@@ -298,10 +304,10 @@ export function RiskSummaryWidget() {
             label="Insights usage"
             unitLabel="insights"
             status={insightsUsage}
-            className="mt-3"
+            className="mt-3 shrink-0"
           />
 
-          <p className="mt-3 text-[10px] leading-snug text-[var(--fg-muted)]">
+          <p className="mt-3 shrink-0 text-[10px] leading-snug text-[var(--fg-muted)]">
             Indicative scores from official datasets — not an official advisory.
             Updated {new Date(risk.generated_at).toLocaleDateString()}.
           </p>
