@@ -4,12 +4,10 @@ import maplibregl, { Map as MLMap, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { Markdown, renderInline } from "@/components/ai/Markdown";
 import { cn } from "@/lib/utils";
 import { getMapStyle } from "@/lib/mapStyles";
 import { useAppStore } from "@/lib/store";
 import { attachHoverTelemetry, type TelemetryPayload } from "@/lib/mapHoverTelemetry";
-import { getOptimizedCanvasSnapshot } from "@/lib/spatialVision";
 
 const RISK_FILL_COLORS: [string, string][] = [
   ["green", "#22c55e"],
@@ -30,27 +28,12 @@ export default function RiskMap() {
   } = useAppStore();
 
   const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(null);
-  const [vision, setVision] = useState<{
-    loading: boolean;
-    error?: string;
-    analysis?: string;
-    recommendations?: string[];
-  } | null>(null);
-  // Guards against a stale spatial-vision response landing after the user
-  // has moved to a new location or fired another request: aborted requests
-  // never call setVision, so an in-flight response can't overwrite a newer
-  // (or cleared) card.
-  const visionAbortRef = useRef<AbortController | null>(null);
-  // Mirrors telemetry/vision into refs so the hover handler (registered
-  // once, on map init) can read current values without a stale closure.
+  // Mirrors telemetry into a ref so the hover handler (registered once, on
+  // map init) can read the current value without a stale closure.
   const telemetryRef = useRef<TelemetryPayload | null>(null);
-  const visionRef = useRef<typeof vision>(null);
   useEffect(() => {
     telemetryRef.current = telemetry;
   }, [telemetry]);
-  useEffect(() => {
-    visionRef.current = vision;
-  }, [vision]);
 
   const { data: zones } = useQuery({
     queryKey: ["zones", activeLayer],
@@ -174,35 +157,11 @@ export default function RiskMap() {
     map.on("mouseleave", "risk-zones-fill", () => (map.getCanvas().style.cursor = ""));
 
     const detachTelemetry = attachHoverTelemetry(map, (data) => {
-      // The telemetry card renders at a fixed screen position, not at the
-      // cursor, and the canvas stays hoverable around/under it. That means
-      // moving the mouse toward the "Analyze with AI" button — or just
-      // resting it over the map while a request is in flight or its result
-      // is showing — fires more hover ticks for essentially the same spot.
-      // Treating every tick as "a new hover" (the original behavior) killed
-      // the user's own just-started or just-finished analysis with no
-      // visible error, which read as the button silently not working. Only
-      // actually reset when the hover has moved somewhere meaningfully
-      // different (~1km) from what's currently shown.
-      const prev = telemetryRef.current;
-      const hasActiveAnalysis = !!(visionRef.current?.loading || visionRef.current?.analysis);
-      const samePoint =
-        !!prev &&
-        Math.abs(prev.lat - data.lat) < 0.01 &&
-        Math.abs(prev.lng - data.lng) < 0.01;
-
-      if (hasActiveAnalysis && samePoint) {
-        setTelemetry(data);
-        return;
-      }
-      visionAbortRef.current?.abort();
       setTelemetry(data);
-      setVision(null);
     });
 
     mapRef.current = map;
     return () => {
-      visionAbortRef.current?.abort();
       detachTelemetry();
       map.remove();
       mapRef.current = null;
@@ -210,44 +169,6 @@ export default function RiskMap() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  async function handleAnalyzeViewport() {
-    const map = mapRef.current;
-    if (!map || !telemetry) return;
-    // Cancel any still-in-flight request before starting a new one — a
-    // double-click (or a click landing while a previous request hasn't
-    // resolved) must not fire concurrent requests or let an earlier
-    // response overwrite a later one.
-    visionAbortRef.current?.abort();
-    const controller = new AbortController();
-    visionAbortRef.current = controller;
-
-    setVision({ loading: true });
-    try {
-      const snapshot = getOptimizedCanvasSnapshot(map);
-      const result = await api.spatialVision(
-        {
-          user_query: "Evaluate site safety and resilience for this viewport.",
-          persona: useAppStore.getState().persona,
-          map_image_base64: snapshot,
-          lat: telemetry.lat,
-          lng: telemetry.lng,
-          deterministic_scores: { score: telemetry.score, level: telemetry.level },
-          active_layers: [activeLayer],
-        },
-        controller.signal
-      );
-      if (controller.signal.aborted) return;
-      setVision({
-        loading: false,
-        analysis: result.grounded_analysis,
-        recommendations: result.actionable_recommendations,
-      });
-    } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return;
-      setVision({ loading: false, error: e instanceof Error ? e.message : "Analysis failed" });
-    }
-  }
 
   // ---- switch base style (smooth: overlays re-added on style.load)
   useEffect(() => {
@@ -362,11 +283,7 @@ export default function RiskMap() {
             type="button"
             className="rm-telemetry-dismiss"
             aria-label="Dismiss hover telemetry"
-            onClick={() => {
-              visionAbortRef.current?.abort();
-              setTelemetry(null);
-              setVision(null);
-            }}
+            onClick={() => setTelemetry(null)}
           >
             ×
           </button>
@@ -387,29 +304,6 @@ export default function RiskMap() {
                 <div className="rm-telemetry-pop">
                   Population: {telemetry.population.toLocaleString()}
                 </div>
-              )}
-            </div>
-          )}
-
-          <button
-            type="button"
-            className="rm-telemetry-analyze"
-            onClick={handleAnalyzeViewport}
-            disabled={vision?.loading}
-          >
-            {vision?.loading ? "Analyzing…" : "Analyze with AI"}
-          </button>
-
-          {vision?.error && <div className="rm-telemetry-error">{vision.error}</div>}
-          {vision?.analysis && (
-            <div className="rm-telemetry-analysis">
-              <Markdown text={vision.analysis} />
-              {vision.recommendations && vision.recommendations.length > 0 && (
-                <ul>
-                  {vision.recommendations.map((rec, i) => (
-                    <li key={i}>{renderInline(rec)}</li>
-                  ))}
-                </ul>
               )}
             </div>
           )}
@@ -466,21 +360,6 @@ export default function RiskMap() {
         .rm-telemetry-zone { margin-top: 4px; }
         .rm-telemetry-score { margin-top: 2px; opacity: 0.85; }
         .rm-telemetry-pop { opacity: 0.65; }
-        .rm-telemetry-analyze {
-          margin-top: 8px;
-          width: 100%;
-          padding: 5px 8px;
-          border-radius: 6px;
-          border: 1px solid color-mix(in srgb, var(--accent, #38bdf8) 45%, transparent);
-          background: color-mix(in srgb, var(--accent, #38bdf8) 15%, transparent);
-          color: var(--fg, #fff);
-          font-size: 11.5px;
-          cursor: pointer;
-        }
-        .rm-telemetry-analyze:disabled { opacity: 0.6; cursor: default; }
-        .rm-telemetry-error { margin-top: 6px; color: #f87171; }
-        .rm-telemetry-analysis { margin-top: 8px; opacity: 0.9; }
-        .rm-telemetry-analysis ul { margin: 4px 0 0; padding-left: 16px; }
       `}</style>
       <style jsx global>{`
         .rm-alert-marker { position: relative; width: 26px; height: 26px; background: none; border: none; cursor: pointer; }

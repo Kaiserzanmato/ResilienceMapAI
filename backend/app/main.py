@@ -22,7 +22,6 @@ from .services.ask_ai import ask_ai_guardrailed
 from .services.dashboard import dashboard_stats
 from .services.insights_generator import generate_insights
 from .services.ai_router import DISCLAIMER, generate_insight
-from .services.spatial_vision import SpatialVisionError, analyze_spatial_viewport
 from .services.exporters import (build_pdf_report, get_report, list_reports,
                                  risks_to_csv, store_report)
 from .services.risk_scoring import compare_locations, score_location
@@ -150,21 +149,9 @@ async def ai_report(req: AIReportRequest):
 
 @app.post("/api/ai/spatial-vision")
 async def ai_spatial_vision(req: SpatialVisionRequest):
-    """Multimodal viewport analysis: a downsampled map screenshot plus
-    deterministic scores, evaluated by a vision-capable model and grounded
-    in the same official-source directives as the text AI endpoints."""
-    try:
-        return await analyze_spatial_viewport(
-            user_query=req.user_query,
-            persona=req.persona,
-            map_image_base64=req.map_image_base64,
-            lat=req.lat,
-            lng=req.lng,
-            deterministic_scores=req.deterministic_scores,
-            active_layers=req.active_layers,
-        )
-    except SpatialVisionError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+    """Multimodal viewport analysis ("Analyze with AI"). Disabled — the
+    qwen3-vl-flash vision model this endpoint depended on was turned off."""
+    raise HTTPException(status_code=404, detail="Spatial-vision analysis is currently disabled.")
 
 
 @app.post("/api/agent/query")

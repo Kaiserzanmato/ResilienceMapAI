@@ -197,23 +197,10 @@ async def test_successful_provider_response_returns_grounded_analysis(monkeypatc
     assert result["engine"] == get_settings().qwen_vision_model
 
 
-def test_endpoint_success_end_to_end(monkeypatch):
+def test_endpoint_disabled(monkeypatch):
+    """The route no longer calls the qwen3-vl-flash provider at all —
+    it's disabled regardless of API key/provider state."""
     monkeypatch.setattr(get_settings(), "qwen_api_key", "dummy-key")
-    good_response = _FakeResponse(200, json_data={
-        "choices": [{"message": {"content": "Grounded analysis text."}}]
-    })
-    _mock_provider(monkeypatch, response=good_response)
     client = TestClient(app)
     resp = client.post("/api/ai/spatial-vision", json=_VALID_PAYLOAD)
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["grounded_analysis"] == "Grounded analysis text."
-
-
-def test_endpoint_provider_failure_returns_controlled_502(monkeypatch):
-    monkeypatch.setattr(get_settings(), "qwen_api_key", "dummy-key")
-    _mock_provider(monkeypatch, response=_FakeResponse(500, text="raw provider internals"))
-    client = TestClient(app)
-    resp = client.post("/api/ai/spatial-vision", json=_VALID_PAYLOAD)
-    assert resp.status_code == 502
-    assert "raw provider internals" not in resp.text
+    assert resp.status_code == 404
