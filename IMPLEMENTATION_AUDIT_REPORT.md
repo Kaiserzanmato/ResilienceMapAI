@@ -51,6 +51,14 @@ Original command: `bash ../scripts/audit-secrets.sh` from `backend/`; exit code:
 - `scripts/test-audit-secrets.sh` builds disposable Git repositories and proves failures for synthetic OpenAI/Qwen/DeepSeek keys, bearer token, database URI, JWT, private key, tracked `.env`, and removed runtime-history secret. It proves passes for safe placeholders and `.env.example` templates.
 - Final secret audit: PASS from both repository root and `backend/`.
 
+## Production Deployment Record
+
+- Release commit: `29efe64` (`feat: add guarded realtime event intelligence`), pushed to `main` on 2026-08-13.
+- Vercel production deployment: `Ready` in 38 seconds. `https://resiliencemapai.online/` returned `200`.
+- Render backend: `https://resiliencemap-api.onrender.com/health` returned `200`.
+- Default-safe event verification: `GET /api/events?limit=1` returned `200` with `enabled: false`, an empty event list, and no provider activity.
+- Realtime events remain disabled until explicitly enabled in backend and frontend production environment configuration.
+
 ## Known limitations / rollback
 
 The event cache is instance-local and is not durable across restarts. Rollback is immediate by setting both current-event flags false; core product paths continue operating independently. Deployment remains gated on this report's final production deployment record.
