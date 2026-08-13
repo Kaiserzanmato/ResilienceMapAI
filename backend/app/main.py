@@ -3,7 +3,7 @@
 All AI calls are server-side; risk scoring is deterministic; every /api route
 is rate-limited and audit-logged.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
 from .data.sample_hazards import ACTIVE_ALERTS, DATASETS, HAZARD_EVENTS
 from .data_sources.sync.run_source_sync import run_all_wired_sources
+from .data_sources.event_intelligence import get_event_intelligence_service
 from .repositories.dataset_repo import get_dataset_repo
 from .schemas import (AgentQueryRequest, AIReportRequest, AISummaryRequest,
                       AskAIRequest, CompareRequest, DatasetUpload, DataStatusResponse,
@@ -124,6 +125,40 @@ def dashboard():
 @app.get("/api/hazard-events")
 def hazard_events():
     return {"events": HAZARD_EVENTS, "alerts": ACTIVE_ALERTS}
+
+
+@app.get("/api/events")
+async def current_events(
+    hazard_type: str | None = Query(None, max_length=64),
+    provider: str | None = Query(None, max_length=32),
+    authority: str | None = Query(None, pattern="^(official|supplemental)$"),
+    severity: str | None = Query(None, max_length=32),
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+    bbox: str | None = Query(None, max_length=100),
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0, le=10_000),
+):
+    """Read-only normalized current events. Provider endpoints are never
+    selected or queried by browser input; this reads the shared cache only."""
+    if start_time and end_time and end_time < start_time:
+        raise HTTPException(422, "end_time must be after start_time")
+    if start_time and end_time and end_time - start_time > timedelta(days=31):
+        raise HTTPException(422, "time window cannot exceed 31 days")
+    parsed_bbox = None
+    if bbox:
+        try:
+            parts = tuple(float(part) for part in bbox.split(","))
+        except ValueError as exc:
+            raise HTTPException(422, "bbox must be west,south,east,north") from exc
+        if len(parts) != 4 or not (-180 <= parts[0] <= 180 and -90 <= parts[1] <= 90 and -180 <= parts[2] <= 180 and -90 <= parts[3] <= 90 and parts[0] <= parts[2] and parts[1] <= parts[3]):
+            raise HTTPException(422, "bbox is invalid")
+        parsed_bbox = parts
+    return await get_event_intelligence_service().list_events(
+        hazard_type=hazard_type, provider=provider, authority=authority,
+        severity=severity, start_time=start_time, end_time=end_time,
+        bbox=parsed_bbox, offset=offset, limit=limit,
+    )
 
 
 # ---------------------------------------------------------------- AI

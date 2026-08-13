@@ -78,6 +78,22 @@ def test_is_scrapeable_url_rejects_missing_host():
     assert not is_scrapeable_url("not-a-url")
 
 
+def test_is_scrapeable_url_rejects_private_network_targets():
+    assert not is_scrapeable_url("http://localhost/admin")
+    assert not is_scrapeable_url("http://127.0.0.1/admin")
+    assert not is_scrapeable_url("http://[::1]/admin")
+    assert not is_scrapeable_url("http://10.0.0.1/admin")
+    assert not is_scrapeable_url("http://172.16.0.1/admin")
+    assert not is_scrapeable_url("http://169.254.169.254/latest/meta-data")
+    assert not is_scrapeable_url("http://192.168.1.10/advisory")
+
+
+def test_is_scrapeable_url_enforces_configured_source_allowlist():
+    allowed = "pagasa.dost.gov.ph,phivolcs.dost.gov.ph"
+    assert is_scrapeable_url("https://www.pagasa.dost.gov.ph/advisory/123", allowed)
+    assert not is_scrapeable_url("https://example.com/advisory", allowed)
+
+
 # ---------------------------------------------------------------- key / no-op
 @pytest.mark.asyncio
 async def test_missing_firecrawl_key_is_safe_noop(monkeypatch):

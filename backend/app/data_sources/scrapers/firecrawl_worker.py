@@ -15,6 +15,7 @@ scrape_and_upsert() directly (e.g. from an admin/cron task) until it is.
 """
 import asyncio
 import logging
+import ipaddress
 import random
 from datetime import datetime, timezone
 from urllib.parse import urlparse
@@ -59,7 +60,7 @@ UPSERT_HAZARD_EVENT = text("""
 """)
 
 
-def is_scrapeable_url(url: str) -> bool:
+def is_scrapeable_url(url: str, allowed_hosts: str | None = None) -> bool:
     """Reject non-http(s) schemes (file://, javascript:, etc.) and anything
     without a host before it ever reaches Firecrawl. Firecrawl's own
     infrastructure — not this process — performs the actual outbound
@@ -69,7 +70,24 @@ def is_scrapeable_url(url: str) -> bool:
         parsed = urlparse(url)
     except ValueError:
         return False
-    return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        return False
+    if parsed.hostname.lower().rstrip(".") == "localhost":
+        return False
+    try:
+        address = ipaddress.ip_address(parsed.hostname)
+        return not (address.is_private or address.is_loopback or address.is_link_local or address.is_reserved)
+    except ValueError:
+        # DNS resolution is performed by Firecrawl, not this process. Rejecting
+        # literal internal addresses here prevents obvious unsafe targets while
+        # source registration remains the authority/allowlist boundary.
+        if parsed.username is not None or parsed.password is not None:
+            return False
+        if not allowed_hosts:
+            return True
+        host = parsed.hostname.lower().rstrip(".")
+        permitted = [item.strip().lower().lstrip(".") for item in allowed_hosts.split(",") if item.strip()]
+        return any(host == item or host.endswith(f".{item}") for item in permitted)
 
 
 class FirecrawlIngestionWorker:
@@ -109,7 +127,12 @@ class FirecrawlIngestionWorker:
     async def scrape_and_upsert(self, url: str, db_session: AsyncSession) -> None:
         if not self.app:
             return
-        if not is_scrapeable_url(url):
+        settings = get_settings()
+        # Production is fail-closed to the explicit authority allowlist.
+        # Keeping local/test hosts permissive makes isolated connector tests
+        # possible without widening the deployed fetch boundary.
+        allowed_hosts = settings.firecrawl_allowed_hosts if settings.environment == "production" else None
+        if not is_scrapeable_url(url, allowed_hosts):
             logger.warning("Firecrawl ingestion skipped: not a scrapeable http(s) URL: %r", url)
             return
 

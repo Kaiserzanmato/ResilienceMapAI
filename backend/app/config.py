@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     # bulletins etc.) into hazard_events. Optional — the scraper worker
     # no-ops when unset, same pattern as the AI provider keys above.
     firecrawl_api_key: str = os.getenv("FIRECRAWL_API_KEY", "")
+    firecrawl_allowed_hosts: str = os.getenv(
+        "FIRECRAWL_ALLOWED_HOSTS",
+        "pagasa.dost.gov.ph,phivolcs.dost.gov.ph,ndrrmc.gov.ph,jma.go.jp",
+    )
 
     deepseek_api_key: str = os.getenv("DEEPSEEK_API_KEY", "")
     deepseek_base_url: str = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
@@ -111,6 +115,16 @@ class Settings(BaseSettings):
     # exists to stop opportunistic third-party abuse of the spoofable X-Role
     # header until real auth (JWT/OAuth) is built.
     admin_shared_secret: str = os.getenv("ADMIN_SHARED_SECRET", "")
+
+    # Current-event intelligence is opt-in until a deployment has completed
+    # the provider, regression, and production verification gates.
+    enable_realtime_events: bool = os.getenv("ENABLE_REALTIME_EVENTS", "false").lower() == "true"
+    enable_usgs_events: bool = os.getenv("ENABLE_USGS_EVENTS", "true").lower() == "true"
+    enable_gdacs_events: bool = os.getenv("ENABLE_GDACS_EVENTS", "true").lower() == "true"
+    enable_eonet_enrichment: bool = os.getenv("ENABLE_EONET_ENRICHMENT", "true").lower() == "true"
+    enable_reliefweb_enrichment: bool = os.getenv("ENABLE_RELIEFWEB_ENRICHMENT", "true").lower() == "true"
+    events_cache_ttl_seconds: int = int(os.getenv("EVENTS_CACHE_TTL_SECONDS", "300"))
+    events_max_response_bytes: int = int(os.getenv("EVENTS_MAX_RESPONSE_BYTES", str(2 * 1024 * 1024)))
 
 
 @lru_cache()

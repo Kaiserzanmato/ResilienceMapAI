@@ -114,6 +114,36 @@ export interface ActiveAlert {
   source: string;
 }
 
+export interface CurrentEvent {
+  event_id: string;
+  provider_event_id: string;
+  provider: "usgs-earthquake" | "gdacs" | "nasa-eonet" | "reliefweb";
+  source_tier: number;
+  hazard_type: string;
+  title: string;
+  geometry: { type: string; coordinates: unknown } | null;
+  latitude: number | null;
+  longitude: number | null;
+  severity: string | null;
+  magnitude: number | null;
+  magnitude_unit: string | null;
+  event_time: string | null;
+  updated_at: string | null;
+  retrieved_at: string;
+  source_url: string | null;
+  official: boolean;
+  confidence: string | null;
+  related_event_ids: string[];
+}
+
+export interface CurrentEventsResponse {
+  enabled: boolean;
+  events: CurrentEvent[];
+  pagination: { limit: number; offset: number; next_offset: number | null; total: number };
+  refreshed_at: string | null;
+  providers: Record<string, { status: string; latency_ms: number; last_successful_refresh: string | null }>;
+}
+
 export interface Dataset {
   id: string;
   name: string;

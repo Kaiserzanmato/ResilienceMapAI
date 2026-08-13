@@ -1,0 +1,3 @@
+# ReliefWeb
+
+Official docs: https://apidoc.reliefweb.int/. UN OCHA Tier 4 humanitarian reports/disasters API. JSON search API supports fields, filters, pagination and application identification; content is reports, not sensor/agency event evidence. Terms, attribution and quotas must be rechecked at implementation against the current API documentation. Risks: untrusted rich text, prompt injection, publisher variation, duplicates and late reporting. Privacy: backend proxy only; minimize queries. Recommendation: SUPPLEMENTAL news/advisory context only, sanitized and cited, no event creation or deterministic score use.

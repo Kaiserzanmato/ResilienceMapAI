@@ -2,8 +2,9 @@
 import { useQuery } from "@tanstack/react-query";
 import maplibregl, { Map as MLMap, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { FLAGS } from "@/lib/feature-flags";
 import { cn } from "@/lib/utils";
 import { getMapStyle } from "@/lib/mapStyles";
 import { useAppStore } from "@/lib/store";
@@ -47,10 +48,38 @@ export default function RiskMap() {
     queryKey: ["hazard-events"],
     queryFn: api.hazardEvents,
   });
+  const { data: currentEvents } = useQuery({
+    queryKey: ["current-events"],
+    queryFn: () => api.currentEvents(),
+    enabled: FLAGS.REALTIME_EVENTS,
+    staleTime: 60_000,
+    refetchInterval: 300_000,
+    retry: 1,
+  });
+  const currentEventGeoJson = useMemo<GeoJSON.FeatureCollection>(() => ({
+    type: "FeatureCollection",
+    features: (currentEvents?.events ?? [])
+      .filter((event) => event.latitude !== null && event.longitude !== null)
+      .map((event) => ({
+        type: "Feature" as const,
+        geometry: { type: "Point" as const, coordinates: [event.longitude!, event.latitude!] },
+        properties: {
+          id: event.event_id,
+          title: event.title,
+          provider: event.provider,
+          sourceTier: event.source_tier,
+          severity: event.severity ?? "unknown",
+          eventTime: event.event_time ?? "Unavailable",
+          retrievedAt: event.retrieved_at,
+          official: event.official,
+          sourceUrl: event.source_url ?? "",
+        },
+      })),
+  }), [currentEvents]);
 
   // Keep latest data in refs so style reloads can re-add overlays
-  const dataRef = useRef<{ zones?: GeoJSON.FeatureCollection; heat?: GeoJSON.FeatureCollection }>({});
-  dataRef.current = { zones, heat };
+  const dataRef = useRef<{ zones?: GeoJSON.FeatureCollection; heat?: GeoJSON.FeatureCollection; currentEvents?: GeoJSON.FeatureCollection }>({});
+  dataRef.current = { zones, heat, currentEvents: currentEventGeoJson };
 
   function addOverlays(map: MLMap) {
     const { zones: z, heat: h } = dataRef.current;
@@ -106,7 +135,52 @@ export default function RiskMap() {
         },
       });
     }
+    addCurrentEventOverlay(map);
     applyVisibility(map);
+  }
+
+  function addCurrentEventOverlay(map: MLMap) {
+    const events = dataRef.current.currentEvents;
+    if (!FLAGS.REALTIME_EVENTS || !events || map.getSource("realtime-events")) return;
+    map.addSource("realtime-events", {
+      type: "geojson",
+      data: events,
+      cluster: true,
+      clusterMaxZoom: 8,
+      clusterRadius: 48,
+    });
+    map.addLayer({
+      id: "realtime-event-clusters",
+      type: "circle",
+      source: "realtime-events",
+      filter: ["has", "point_count"],
+      paint: {
+        "circle-color": "#d97706",
+        "circle-radius": ["step", ["get", "point_count"], 15, 20, 20, 100, 26] as never,
+        "circle-stroke-color": "#fff",
+        "circle-stroke-width": 1.5,
+      },
+    });
+    map.addLayer({
+      id: "realtime-event-cluster-count",
+      type: "symbol",
+      source: "realtime-events",
+      filter: ["has", "point_count"],
+      layout: { "text-field": ["get", "point_count_abbreviated"] as never, "text-size": 12 },
+      paint: { "text-color": "#fff" },
+    });
+    map.addLayer({
+      id: "realtime-event-point",
+      type: "circle",
+      source: "realtime-events",
+      filter: ["!", ["has", "point_count"]],
+      paint: {
+        "circle-color": ["case", ["get", "official"], "#dc2626", "#2563eb"] as never,
+        "circle-radius": 7,
+        "circle-stroke-color": "#fff",
+        "circle-stroke-width": 1.5,
+      },
+    });
   }
 
   function applyVisibility(map: MLMap) {
@@ -155,6 +229,32 @@ export default function RiskMap() {
     });
     map.on("mouseenter", "risk-zones-fill", () => (map.getCanvas().style.cursor = "pointer"));
     map.on("mouseleave", "risk-zones-fill", () => (map.getCanvas().style.cursor = ""));
+    map.on("click", "realtime-event-clusters", (event) => {
+      const feature = event.features?.[0];
+      const clusterId = feature?.properties?.cluster_id;
+      const source = map.getSource("realtime-events") as maplibregl.GeoJSONSource | undefined;
+      const geometry = feature?.geometry;
+      if (typeof clusterId === "number" && source && geometry?.type === "Point") {
+        const center = geometry.coordinates as [number, number];
+        source.getClusterExpansionZoom(clusterId).then((zoom) => map.easeTo({ center, zoom }));
+      }
+    });
+    map.on("click", "realtime-event-point", (event) => {
+      const feature = event.features?.[0];
+      if (!feature || feature.geometry.type !== "Point") return;
+      const properties = feature.properties ?? {};
+      const content = document.createElement("div");
+      const heading = document.createElement("strong");
+      heading.textContent = String(properties.title ?? "Current event");
+      const details = document.createElement("div");
+      details.style.cssText = "font-size:11.5px;opacity:.75;margin-top:4px";
+      details.textContent = `${properties.official ? "Official" : "Supplemental"} Tier ${properties.sourceTier} | ${properties.provider} | ${properties.severity}`;
+      const timing = document.createElement("div");
+      timing.style.cssText = "font-size:10.5px;opacity:.6;margin-top:3px";
+      timing.textContent = `Event: ${properties.eventTime} | Retrieved: ${properties.retrievedAt}`;
+      content.append(heading, details, timing);
+      new maplibregl.Popup({ offset: 10, closeButton: true }).setDOMContent(content).setLngLat((feature.geometry.coordinates as [number, number])).addTo(map);
+    });
 
     const detachTelemetry = attachHoverTelemetry(map, (data) => {
       setTelemetry(data);
@@ -192,8 +292,13 @@ export default function RiskMap() {
       if (src) src.setData(heat);
       else addOverlays(map);
     }
+    if (FLAGS.REALTIME_EVENTS) {
+      const src = map.getSource("realtime-events") as maplibregl.GeoJSONSource | undefined;
+      if (src) src.setData(currentEventGeoJson);
+      else addCurrentEventOverlay(map);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zones, heat]);
+  }, [zones, heat, currentEventGeoJson]);
 
   // ---- toggle layer visibility
   useEffect(() => {

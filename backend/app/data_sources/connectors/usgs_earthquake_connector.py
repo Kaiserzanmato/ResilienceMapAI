@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from .safety import provider_json
+
 logger = logging.getLogger(__name__)
 
 USGS_FEEDS = {
@@ -19,8 +21,7 @@ async def fetch_usgs_earthquakes(
     url = USGS_FEEDS.get(feed, USGS_FEEDS["2.5_week"])
     try:
         resp = await http_client.get(url, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
+        data = provider_json(resp)
         features = data.get("features", [])
         logger.info("[usgs] Fetched %d earthquake events from %s", len(features), feed)
         return features

@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from .safety import provider_json
+
 logger = logging.getLogger(__name__)
 
 EONET_EVENTS_URL = "https://eonet.gsfc.nasa.gov/api/v3/events"
@@ -14,8 +16,7 @@ async def fetch_eonet_events(http_client: Any, days: int = 7, limit: int = 100) 
             params={"days": days, "limit": limit, "status": "open"},
             timeout=15,
         )
-        resp.raise_for_status()
-        data = resp.json()
+        data = provider_json(resp)
         events = data.get("events", [])
         logger.info("[nasa-eonet] Fetched %d events", len(events))
         return events

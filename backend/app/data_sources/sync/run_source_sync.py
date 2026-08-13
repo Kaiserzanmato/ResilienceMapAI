@@ -41,6 +41,13 @@ async def run_source_sync(source_id: str, http_client: Any) -> dict:
     start = time.monotonic()
     try:
         records = await _dispatch_connector(source_id, http_client)
+        # Current-event ingestion is feature-gated and retains its own
+        # normalized cache. The legacy sync result remains intact for source
+        # health/audit compatibility even when the feature is disabled.
+        from ..event_intelligence import get_event_intelligence_service
+        service = get_event_intelligence_service()
+        if source_id in service.enabled_providers():
+            service.ingest(source_id, records)
         duration_ms = int((time.monotonic() - start) * 1000)
         await record_sync_success(source_id, len(records))
         await log_sync_attempt(source_id, "success", len(records), duration_ms=duration_ms)
@@ -88,7 +95,7 @@ async def run_all_wired_sources() -> dict:
         if s.id in WIRED_SOURCE_IDS and s.auto_sync_enabled
     ]
     results = []
-    async with httpx.AsyncClient(timeout=20.0) as client:
+    async with httpx.AsyncClient(timeout=20.0, follow_redirects=False) as client:
         for source in targets:
             results.append(await run_source_sync(source.id, client))
 

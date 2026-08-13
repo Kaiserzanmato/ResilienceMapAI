@@ -1,4 +1,4 @@
-import type { AIResponse, Dataset, GeocodeResult, GlobalAssessment, InsightResponse, RiskAssessment } from "./types";
+import type { AIResponse, CurrentEventsResponse, Dataset, GeocodeResult, GlobalAssessment, InsightResponse, RiskAssessment } from "./types";
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -71,6 +71,9 @@ export const api = {
   layerIndex: () => request<{ layers: { key: string; label: string }[] }>("/api/hazard-layers/index"),
 
   hazardEvents: () => request<{ events: import("./types").HazardEvent[]; alerts: import("./types").ActiveAlert[] }>("/api/hazard-events"),
+
+  currentEvents: (limit = 200) =>
+    request<CurrentEventsResponse>(`/api/events?limit=${limit}`),
 
   aiSummary: (body: { lat: number; lng: number; name?: string; persona: string }) =>
     request<AIResponse & { risk: RiskAssessment }>("/api/ai/summary", {

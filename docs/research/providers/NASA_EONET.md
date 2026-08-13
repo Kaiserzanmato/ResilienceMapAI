@@ -1,0 +1,3 @@
+# NASA EONET
+
+Official docs: https://eonet.gsfc.nasa.gov/docs/v3. Tier 4 curated near-real-time event metadata; API v3 is current. GET API, no key, JSON/GeoJSON, filters for source/category/status/days/bbox/limit. Event IDs, title, sources, geometry dates and optional magnitude are present; geometry may be point or polygon and event time can be source-dependent. No documented commercial cost/SLA/rate quota found in the primary docs. Risks: curation freshness and geometry semantics. Privacy: server IP/query only. Recommendation: SUPPLEMENTAL, 15-minute cache, source link visible, never official or scoring input.

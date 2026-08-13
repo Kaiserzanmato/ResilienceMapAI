@@ -1,0 +1,3 @@
+# OSM / Overpass
+
+Official references: https://wiki.openstreetmap.org/wiki/Overpass_API and https://wiki.openstreetmap.org/wiki/Overpass_API/versions. Tier 1 community data under ODbL; attribution and any derivative-database obligations require legal review. Overpass supports tag/bounding-box queries but public instances enforce fair use and can return 429; it is unsuitable for on-map-motion or per-user production querying. Risks: incompleteness, stale/misclassified facilities, endpoint load and licensing. Recommendation: PROTOTYPE bounded offline/import workflow only; labels must be `COMMUNITY_MAPPED`, never Official.

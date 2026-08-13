@@ -1,0 +1,3 @@
+# GDACS
+
+Official docs: https://www.gdacs.org/gdacsapi/swagger/index.html and https://www.gdacs.org/Documents/2025/GDACS_API_quickstart_v2.pdf. GDACS is Tier 4 EC/UN multi-hazard alert intelligence. Free GeoJSON API, no key, with source acknowledgement requested; query supports event type/date/alert level. Fields include event identity, alert severity and geometry, but schema and latency must be validated per event type. Probe first request timed out at 20s on 2026-08-13; do not infer an SLA. Risks: availability, duplicates with official sources, and alert interpretation. Privacy: server IP/query only. Recommendation: IMPLEMENT as intergovernmental corroboration, cache 10+ minutes, never outrank Tier 5 or create deterministic risk without approved rules.

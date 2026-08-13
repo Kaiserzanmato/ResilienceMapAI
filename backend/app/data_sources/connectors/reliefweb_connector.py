@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from .safety import provider_json
+
 logger = logging.getLogger(__name__)
 
 RELIEFWEB_API = "https://api.reliefweb.int/v1/disasters"
@@ -20,8 +22,7 @@ async def fetch_reliefweb_disasters(
             "filter": {"field": "status", "value": ["alert", "ongoing"]},
         }
         resp = await http_client.post(RELIEFWEB_API, json=payload, timeout=20)
-        resp.raise_for_status()
-        data = resp.json()
+        data = provider_json(resp)
         items = data.get("data", [])
         logger.info("[reliefweb] Fetched %d disasters", len(items))
         return items

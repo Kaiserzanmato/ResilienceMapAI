@@ -1,0 +1,3 @@
+# USGS
+
+Official docs: https://earthquake.usgs.gov/earthquakes/feed/ and https://earthquake.usgs.gov/fdsnws/event/1/index. USGS is a Tier 5 scientific authority. GeoJSON summary feeds provide FeatureCollections with stable event IDs, geometry, UTC timestamps, magnitude, place and detail URL; FDSN provides bounded detail queries. No key, paid plan, SDK, webhook, or published SLA is required. USGS recommends the real-time feeds for automated display. Retain attribution and source URL. Probe: 10/10 HTTP 200, 0.48-0.61s on 2026-08-13. Risks: upstream availability/schema change; mitigate timeout, response cap, cache, validation, and no user URL. Privacy: server IP only. Recommendation: IMPLEMENT as authoritative earthquakes; 5-minute shared fetch, no browser access.
