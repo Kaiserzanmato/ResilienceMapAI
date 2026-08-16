@@ -228,6 +228,11 @@ def deduplicate_events(events: list[NormalizedEvent]) -> list[NormalizedEvent]:
     """
     unique = {event.event_id: event for event in events}
     ordered = list(unique.values())
+    # Links are derived from the current normalized event set. Events retained
+    # from a prior provider refresh may already have links, so rebuild them
+    # rather than appending stale or duplicate IDs on every ingestion.
+    for event in ordered:
+        event.related_event_ids = []
     for index, event in enumerate(ordered):
         for other in ordered[index + 1:]:
             if event.provider == other.provider or event.hazard_type != other.hazard_type:

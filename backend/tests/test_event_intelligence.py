@@ -56,6 +56,17 @@ def test_deduplication_preserves_separate_cross_provider_provenance():
     assert usgs.event_id in gdacs.related_event_ids
 
 
+def test_deduplication_rebuilds_links_without_duplicates_on_reingestion():
+    usgs = normalize_usgs({"id": "u1", "geometry": {"type": "Point", "coordinates": [125, 11]}, "properties": {"title": "M 5", "time": int(NOW.timestamp() * 1000), "url": "https://earthquake.usgs.gov/u1"}}, NOW)
+    gdacs = normalize_gdacs({"id": "g1", "geometry": {"type": "Point", "coordinates": [125.1, 11.1]}, "properties": {"eventtype": "EQ", "name": "Earthquake", "fromdate": "2026-08-13T00:00:00Z", "url": "https://www.gdacs.org/g1"}}, NOW)
+
+    events = deduplicate_events([usgs, gdacs])
+    deduplicate_events(events)
+
+    assert usgs.related_event_ids == [gdacs.event_id]
+    assert gdacs.related_event_ids == [usgs.event_id]
+
+
 @pytest.mark.asyncio
 async def test_disabled_event_service_never_fetches():
     service = EventIntelligenceService()
