@@ -1,6 +1,6 @@
 # Sprint 1 reliability, recovery, rollout, and cost policy decision
 
-**Decision status:** Proposed / Pending Approval
+**Decision status:** Approved framework; final numeric and evidence gates pending
 
 **Approval record:** Issue #9, Approval 5
 
@@ -106,7 +106,10 @@ Rollback disables the narrowest affected flag, returns an explicit safe state, p
 
 ## 7. Approval checklist
 
-Record an explicit **Approved**, **Rejected**, or **Revised** decision and rationale for each item. Until all applicable items are Approved, this brief remains Proposed/Pending Approval and Sprint 1 implementation remains blocked.
+The following framework decisions are recorded as Approved. The conservative
+numeric values and evidence gates remain Pending Approval where this document
+or another approval record says so. Sprint 1 implementation remains blocked
+until all cross-cutting requirements are satisfied.
 
 1. **SLO measurement contract:** approve metric definitions, denominators, closed no-data handling, and section 2 targets—or replace every target with evidence-backed values.
 2. **Capacity and cost envelope:** approve queue, throughput, storage, telemetry, and third-party cost guardrails after product/provider/privacy evidence is supplied.
@@ -126,3 +129,24 @@ Record an explicit **Approved**, **Rejected**, or **Revised** decision and ratio
 **Proposed deadline:** before any Sprint 1 migration, connector, background sync, deterministic-score, snapshot, public-display, or grounded-AI ticket begins.
 
 **Effect if unapproved:** flags remain disabled. No migration, dual-read/write, data synchronization, score/snapshot implementation, public rollout, provider use, or production deployment is authorized. Planning and approved non-production evidence collection may continue only.
+
+## 8. Recorded Approval 5 decisions
+
+1. **Approved:** adopt the SLO measurement contract to make data freshness,
+   sync health, latency, errors, no-data handling, and provenance measurable
+   before release.
+2. **Approved:** adopt capacity, queue, storage, telemetry, and third-party
+   cost guardrails. Set final numeric limits through operational evidence before
+   enabling new sources.
+3. **Approved:** adopt the proposed RPO/RTO and restore-integrity objectives,
+   subject to validation through a documented restore drill.
+4. **Approved:** require disabled-by-default feature flags, migration rehearsal,
+   dual-read/dual-write sequencing, and independently reversible rollback
+   before rollout.
+5. **Approved:** require rollout hold points, monitoring/alert thresholds,
+   rollback triggers, and named evidence owners for each release.
+
+**Final status:** Approval 5's operational framework is approved. Signed
+Approval 3 evidence, legal/privacy and retention/deletion decisions, approved
+numeric limits and permitted providers, and source-specific evidence remain
+blocking requirements. No Sprint 1 implementation is authorized.
