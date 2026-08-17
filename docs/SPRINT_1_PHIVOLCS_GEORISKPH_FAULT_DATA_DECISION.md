@@ -1,6 +1,6 @@
 # Sprint 1 PHIVOLCS / GeoRiskPH fault-data decision
 
-**Decision status:** Proposed / Pending Approval
+**Decision status:** Approved with implementation blockers
 **Approval record:** Issue #9, Approval 2
 **Scope:** Research and documentation only. This record authorizes no ingestion, schema, scoring, connector, source enablement, secret, deployment, or infrastructure change.
 
@@ -8,7 +8,7 @@
 
 Select, or explicitly defer, a PHIVOLCS/GeoRiskPH active-fault distribution for the Sprint 1 `active_fault` exposure component. The approval must establish the exact artifact or service, permitted public use, attribution, steward, update contract, validation evidence, and a scientifically approved distance policy.
 
-Until every item is approved, `active_fault` remains `out_of_coverage` or `unavailable`; no fault connector, map layer, component score, or public proximity result is authorized.
+Until written source authorization and all required evidence are accepted, `active_fault` remains `out_of_coverage` or `unavailable`; no fault connector, map layer, component score, or public proximity result is authorized.
 
 ## 2. Official primary-source research record
 
@@ -23,11 +23,11 @@ Until every item is approved, `active_fault` remains `out_of_coverage` or `unava
 
 ### Research conclusion
 
-**Proposed decision: no distribution endpoint is approved yet.** The candidate is a PHIVOLCS-issued, machine-readable vector artifact or documented service endpoint obtained through written confirmation from PHIVOLCS/GeoRiskPH. The approval record must name the immutable endpoint or delivery channel, format, layer/resource identifier, permitted automated access, license, attribution, and change-notice process.
+**Approved policy: no distribution endpoint is approved yet.** The candidate is a PHIVOLCS-issued, machine-readable vector artifact or documented service endpoint obtained through written confirmation from PHIVOLCS/GeoRiskPH. The approval record must name the immutable endpoint or delivery channel, format, layer/resource identifier, permitted automated access, license, attribution, and change-notice process.
 
 This conclusion deliberately does not scrape or reverse-engineer HazardHunterPH, FaultFinder, map imagery, KMZ files, or undocumented ArcGIS behavior. It keeps the project consistent with the merged deterministic-hazard blueprint’s prohibition on portal scraping and its source-by-source acceptance requirement.
 
-## 3. Proposed approved-distribution contract
+## 3. Approved distribution-selection contract
 
 ### 3.1 Required recorded values before approval
 
@@ -47,7 +47,7 @@ The proposed default attribution is “Active-fault data: DOST-PHIVOLCS, [releas
 
 The source must never be represented as endorsing ResilienceMap AI, and no output may identify a PHIVOLCS result as an official document unless PHIVOLCS has expressly issued that document.
 
-## 4. Proposed stewardship and escalation path
+## 4. Approved stewardship and escalation path
 
 1. Submit a written request to `georisk@phivolcs.dost.gov.ph` requesting the official active-fault vector distribution, data dictionary, license/terms, permitted use, attribution, update cadence, contact steward, and change-notice process.
 2. Retain the request, written PHIVOLCS/GeoRiskPH response, license/DUA or memorandum, and named primary/backup steward in the approval record.
@@ -56,7 +56,7 @@ The source must never be represented as endorsing ResilienceMap AI, and no outpu
 
 **Acceptance criteria:** the approval artifact identifies a named organization role, written authorization, primary and escalation contact route, review date, renewal date, and response-time expectation.
 
-## 5. Proposed data characteristics, limitations, and validation
+## 5. Approved data characteristics, limitations, and validation
 
 ### 5.1 Expected characteristics to verify, not assume
 
@@ -75,7 +75,7 @@ The source must never be represented as endorsing ResilienceMap AI, and no outpu
 
 **Acceptance criteria:** fixture and operational evidence prove deterministic acceptance/rejection, reproducible hashes/manifests, valid CRS/geometry handling, explicit coverage states, and last-known-good rollback without deletion.
 
-## 6. Proposed PostGIS handling and spatial-regression evidence
+## 6. Approved PostGIS handling and spatial-regression evidence
 
 This is a design requirement, not authorization to implement.
 
@@ -87,13 +87,13 @@ This is a design requirement, not authorization to implement.
 
 **Acceptance criteria:** approved fixtures reproduce distance units and nearest-trace selection for the approved artifact/version; query-plan evidence shows the intended index path; invalid or unapproved data cannot produce a proximity output.
 
-## 7. Proposed fault-distance policy — scientific approval required
+## 7. Approved distance-only policy — scientific score approval still required
 
 ### Policy boundary
 
 The only permissible initial semantic is **nearest known active-fault exposure distance**, tied to the accepted source/version, map scale/resolution, and coverage. It may be displayed as distance and provenance with the required screening disclaimer.
 
-Any distance-to-risk band, score curve, “zone of avoidance,” or uncertainty language is **Proposed / Pending Scientific Approval**. It requires named approval from a qualified PHIVOLCS-designated or independently documented hazard-science authority, with evidence for the threshold, geographic applicability, map-scale limitations, and public wording.
+Any distance-to-risk band, score curve, “zone of avoidance,” or uncertainty language beyond source-provided distance facts remains **Pending Scientific Approval**. It requires named approval from a qualified PHIVOLCS-designated or independently documented hazard-science authority, with evidence for the threshold, geographic applicability, map-scale limitations, and public wording.
 
 ### Explicit prohibitions
 
@@ -102,7 +102,7 @@ Any distance-to-risk band, score curve, “zone of avoidance,” or uncertainty 
 - Do not turn an unmapped area, stale dataset, unavailable source, or distance above a band into low risk.
 - Do not use a third-party or AI-generated curve as scientific evidence.
 
-### Proposed default before any score-curve approval
+### Approved default before any score-curve approval
 
 Display no `active_fault` score. If a licensed, accepted vector source is later approved, display the nearest known active-fault distance and data limitations only; keep the derived score component `not_applicable`, `out_of_coverage`, or `unknown` until the scientific curve is approved.
 
@@ -136,18 +136,18 @@ Display no `active_fault` score. If a licensed, accepted vector source is later 
 - Distance outputs are source/version-bound and reproduce from approved spatial fixtures.
 - No score curve, rupture/activity inference, connector, ingestion, or source enablement exists without separate accepted implementation work and scientific approval.
 
-### Deadline and effect of non-approval
+### Effective gate and implementation effect
 
-- **Proposed deadline:** before any active-fault onboarding, source connector, schema/migration, map layer, public display, or scoring implementation ticket.
-- If unapproved, `active_fault` remains `out_of_coverage` or `unavailable`; the team may continue official-source correspondence and documentation only.
+- This gate applies before any active-fault onboarding, source connector, schema/migration, map layer, public display, or scoring implementation ticket.
+- `active_fault` remains `out_of_coverage` or `unavailable` until written source authorization and all listed evidence are accepted. Approvals 3–5 also remain implementation blockers.
 
-## 9. Decisions requiring approval
+## 9. Recorded Approval 2 decisions
 
-1. Select the exact PHIVOLCS/GeoRiskPH artifact or documented endpoint after written confirmation; approve no current public endpoint as an ingestion source.
-2. Approve the written license, permitted public-display/derivative/export use, attribution, retention, and change-notice obligations.
-3. Approve the named data steward, escalation contact, cadence/SLA, coverage, format/schema, and maximum last-known-good age.
-4. Approve the validation, artifact-hash/versioning, PostGIS handling, and spatial-regression evidence requirements.
-5. Approve the distance-only default and the explicit prohibition on inferred rupture probability, fault activity, earthquake probability, or official advisories.
-6. If a derived score is desired later, obtain separate named scientific approval for its bands/curve, uncertainty, and wording.
+1. **Approved:** Do not use any current public PHIVOLCS/GeoRiskPH endpoint for production vector ingestion, scoring, or public fault-proximity display without explicit written authorization and a supported data contract.
+2. **Approved:** Contact `georisk@phivolcs.dost.gov.ph` to request an approved vector source, license/terms, attribution, data steward, refresh cadence, coverage, and permitted public and derivative use.
+3. **Approved:** Until the above is received and approved, `active_fault` remains unavailable/out_of_coverage. Missing fault data must never appear low risk, safe, inactive, or as an earthquake probability assessment.
+4. **Approved:** Enablement requires an approved source artifact/version, CRS and geometry validation, record-level provenance, license approval, freshness evidence, and PostGIS spatial regression testing before a fault layer is enabled.
+5. **Approved:** If enabled later, public output is limited to authoritative distance/proximity facts with clear source, freshness, uncertainty, and “screening information, not an official advisory” disclosure. Do not infer fault activity, rupture probability, recurrence, or safety conclusions.
+6. **Approved:** Any distance-to-risk curve, weighting, or contribution to a public risk score is deferred until separately reviewed and approved by the responsible scientific authority.
 
-**Final status:** Proposed / Pending Approval. Approval 2 is not complete, and no Sprint 1 implementation is authorized.
+**Final status:** Approval 2 policy is approved with implementation blockers. No endpoint or artifact is approved; written source authorization, source-specific evidence, and Approvals 3–5 remain required before Sprint 1 implementation.
