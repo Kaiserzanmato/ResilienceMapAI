@@ -435,18 +435,10 @@ export default function RiskMap() {
           color: var(--fg, #fff);
           pointer-events: auto;
         }
-        @media (min-width: 768px) {
-          /* When the AI Research Agent panel is open it pushes the risk
-             summary widget left (see app/(app)/map/page.tsx: right: 760px),
-             into the centered telemetry card's space. Anchor the card to
-             that same 760px offset so it hugs the widget's right edge with
-             a clean gap, instead of floating centered in open map space. */
-          .rm-telemetry-card--ai-open {
-            left: calc(100% - 760px + 16px);
-            right: auto;
-            transform: none;
-          }
-        }
+        /* The summary and panel own the top overlay region while AI is open.
+           Telemetry remains available whenever AI is closed, without a
+           viewport-dependent offset that could clip it. */
+        .rm-telemetry-card--ai-open { display: none; }
         .rm-telemetry-dismiss {
           position: absolute;
           top: 4px;

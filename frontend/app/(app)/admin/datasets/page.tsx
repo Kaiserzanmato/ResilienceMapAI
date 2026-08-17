@@ -185,7 +185,7 @@ export default function DatasetsPage() {
           };
           localStorage.setItem(STORAGE_KEY_SYNC_UPDATES, JSON.stringify(updates));
           setLastUpdates(updates);
-          setMessage('Data sources refreshed successfully!');
+          setMessage('Sync status refreshed. No source synchronization was triggered.');
           setTimeout(() => setMessage(null), 5000);
         }
       }, 500);
@@ -254,16 +254,16 @@ export default function DatasetsPage() {
                 <button
                   onClick={handleRefresh}
                   disabled={syncLoading || !canRefresh}
-                  title={!canRefresh ? `Rate limited. Refresh available in ${formatTimeRemaining(timeUntilRefresh || 0)}` : 'Refresh data sources'}
+                  title={!canRefresh ? `Rate limited. Refresh available in ${formatTimeRemaining(timeUntilRefresh || 0)}` : 'Refresh sync status'}
                   className="focus-ring glass flex h-10 cursor-pointer items-center gap-2 rounded-xl px-4 text-[13px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {syncLoading ? (
                     <>
-                      <Loader2 size={14} className="animate-spin" aria-hidden="true" /> Refreshing
+                      <Loader2 size={14} className="animate-spin" aria-hidden="true" /> Refreshing status
                     </>
                   ) : (
                     <>
-                      <RefreshCw size={14} aria-hidden="true" /> Refresh
+                      <RefreshCw size={14} aria-hidden="true" /> Refresh Status
                     </>
                   )}
                 </button>
@@ -279,7 +279,7 @@ export default function DatasetsPage() {
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] border border-[var(--surface-border)]">
                   <Clock size={14} className="text-[var(--accent)]" />
                   <div className="text-[12px]">
-                    <span className="text-[var(--fg-muted)]">Last updated: </span>
+                    <span className="text-[var(--fg-muted)]">Last status refresh: </span>
                     <span className="font-medium text-[var(--fg)]">{new Date(lastRefreshTime).toLocaleString()}</span>
                     {!canRefresh && (
                       <span className="text-[var(--risk-medium)] ml-2">

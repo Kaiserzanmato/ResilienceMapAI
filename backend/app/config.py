@@ -84,7 +84,7 @@ class Settings(BaseSettings):
     # more frequent by nature. See app/services/usage_quota.py.
     insights_quota_limit: int = int(os.getenv("INSIGHTS_QUOTA_LIMIT", "3"))
     insights_quota_window_seconds: int = int(os.getenv("INSIGHTS_QUOTA_WINDOW", str(5 * 3600)))
-    chat_quota_limit: int = int(os.getenv("CHAT_QUOTA_LIMIT", "50"))
+    chat_quota_limit: int = int(os.getenv("CHAT_QUOTA_LIMIT", "20"))
 
     # Database (RBAC/auth-ready; the MVP runs on curated sample datasets)
     database_url: str = os.getenv("DATABASE_URL", "")

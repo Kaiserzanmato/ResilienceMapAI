@@ -16,11 +16,18 @@ import { PrioritizedLocationInsight } from "./PrioritizedLocationInsight";
  */
 export function IntelligenceMarkersWidget() {
   const setSelected = useAppStore((s) => s.setSelected);
+  const selectedMapLocation = useAppStore((s) => s.selected);
   const [selectedLocation, setSelectedLocation] = useState<PrioritizedLocation | null>(
     PRIORITIZED_LOCATIONS[0] || null
   );
 
   const sortedLocations = getLocationsSortedByRisk();
+  const selectedDiffersFromPriority = Boolean(
+    selectedMapLocation && selectedLocation && (
+      selectedMapLocation.lat !== selectedLocation.lat ||
+      selectedMapLocation.lng !== selectedLocation.lng
+    )
+  );
 
   const handleSelectLocation = (location: PrioritizedLocation) => {
     setSelectedLocation(location);
@@ -66,6 +73,12 @@ export function IntelligenceMarkersWidget() {
               aria-hidden="true"
             />
           </div>
+          {selectedDiffersFromPriority && selectedMapLocation && (
+            <p className="mt-2 text-[10.5px] leading-relaxed text-[var(--fg-muted)]" role="status">
+              Selected map location: <strong className="text-[var(--fg)]">{selectedMapLocation.name ?? `${selectedMapLocation.lat.toFixed(4)}, ${selectedMapLocation.lng.toFixed(4)}`}</strong>.
+              {" "}This is separate from the prioritized high-risk area above.
+            </p>
+          )}
         </div>
       </GlassCard>
 

@@ -6,6 +6,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { WeatherLayerControl } from "@/components/weather/WeatherLayerControl";
 import { WeatherLegend } from "@/components/weather/WeatherLegend";
 import { WEATHER_LAYERS, type WeatherLayerKey } from "@/lib/weatherLayers";
+import { useAppStore } from "@/lib/store";
 
 // Lazy-load the map (heaviest bundle) — same pattern as the risk map page
 const WeatherMap = dynamic(() => import("@/components/weather/WeatherMap"), {
@@ -22,6 +23,7 @@ type KeyStatus = "ok" | "missing" | "pending" | "error" | null;
 export default function WeatherPage() {
   const [layer, setLayer] = useState<WeatherLayerKey>(WEATHER_LAYERS[0].key);
   const [keyStatus, setKeyStatus] = useState<KeyStatus>(null);
+  const aiOpen = useAppStore((state) => state.aiOpen);
 
   useEffect(() => {
     fetch("/api/weather-current?lat=0&lon=0")
@@ -36,7 +38,7 @@ export default function WeatherPage() {
 
   return (
     <div className="fixed inset-0 top-0">
-      <WeatherMap layer={layer} />
+      <WeatherMap layer={layer} aiOpen={aiOpen} />
 
       {keyStatus === "missing" && (
         <div
@@ -120,29 +122,31 @@ export default function WeatherPage() {
         </div>
       </div>
 
-      {/* Zoom.Earth link-out — bottom-right, above footer */}
-      <div
-        className="pointer-events-none absolute right-3 z-20"
-        style={{ bottom: "calc(var(--footer-h) + 12px)" }}
-      >
-        <GlassCard strong className="pointer-events-auto flex max-w-xs items-center gap-3 px-4 py-3">
-          <Satellite size={20} className="shrink-0 text-[var(--accent)]" aria-hidden="true" />
-          <div className="min-w-0 flex-1">
-            <p className="text-[12.5px] font-semibold">Want the full storm-tracking view?</p>
-            <p className="text-[11px] text-[var(--fg-muted)]">
-              Zoom.Earth has live satellite loops &amp; cyclone tracks.
-            </p>
-          </div>
-          <a
-            href="https://zoom.earth/maps/satellite/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="focus-ring flex shrink-0 items-center gap-1 rounded-lg border border-[var(--surface-border)] px-2.5 py-1.5 text-[11.5px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
-          >
-            Open <ExternalLink size={12} aria-hidden="true" />
-          </a>
-        </GlassCard>
-      </div>
+      {/* Zoom.Earth link-out — raised above MapLibre's bottom-right controls. */}
+      {!aiOpen && (
+        <div
+          className="pointer-events-none absolute right-3 z-20"
+          style={{ bottom: "calc(var(--footer-h) + 120px)" }}
+        >
+          <GlassCard strong className="pointer-events-auto flex max-w-xs items-center gap-3 px-4 py-3">
+            <Satellite size={20} className="shrink-0 text-[var(--accent)]" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[12.5px] font-semibold">Want the full storm-tracking view?</p>
+              <p className="text-[11px] text-[var(--fg-muted)]">
+                Zoom.Earth has live satellite loops &amp; cyclone tracks.
+              </p>
+            </div>
+            <a
+              href="https://zoom.earth/maps/satellite/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="focus-ring flex shrink-0 items-center gap-1 rounded-lg border border-[var(--surface-border)] px-2.5 py-1.5 text-[11.5px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              Open <ExternalLink size={12} aria-hidden="true" />
+            </a>
+          </GlassCard>
+        </div>
+      )}
     </div>
   );
 }
