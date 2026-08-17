@@ -1,4 +1,43 @@
 # QA Audit, Security Sweep, and Regression Report
+
+## 2026-08-17 release-readiness follow-up
+
+**Current release status:** **Locally verified; pending current deployment
+verification.** The historical commit and deployment statements below apply
+only to the prior audit release (`cd233b3`), not to the currently uncommitted
+responsive Map and Weather changes.
+
+- **Responsive QA:** Manual QA was reported complete and passing for the Map
+  and Weather responsive flows. Supplied desktop captures verify the Map
+  sidebar/legend stack and Weather with the AI panel expanded; the detailed
+  capture paths and sanitized observations are in
+  `docs/MANUAL_VISUAL_QA_CHECKLIST.md`.
+- **AI panel behavior:** The supplied captures show the expanded Map panel
+  without sidebar overlap and Weather controls remaining available with the
+  forecast expanded and collapsed. The completed manual run also covered the
+  collapsed-panel state.
+- **Weather service:** External QA verified HTTP 200 for
+  `/api/weather-current` and `/api/weather-tiles/*`. No API key or request
+  credential is recorded in this report.
+- **Rate limit:** The configured default chat/AI quota is 20 requests.
+- **Secret scanning:** The worktree scan found no current leak. The Git-history
+  scan continues to identify two reviewed false positives: a documented
+  placeholder in `DEEPSEEK_SETUP.md:205` (`fcc0cae`) and a deliberate
+  redaction-guardrail fixture in `backend/tests/test_ai_guardrails.py:24`
+  (`bafcca9`). No rule has been disabled or allowlisted.
+- **Known limitations:** Screenshot evidence is available for the recorded
+  desktop Map and Weather states. The completed mobile, tablet, theme,
+  keyboard, navigation, globe, Console, and Network checks were reported as
+  passed but did not include additional named capture files; they are not
+  represented as screenshots in the checklist. No deployment has been
+  performed for this current release.
+
+## Prior audit record (historical)
+
+The following report documents the earlier audit release and its historical
+commit/deployment verification. It does not describe the status of the current
+release candidate.
+
 **Date:** August 6, 2026
 **Scope:** Map Hover Telemetry, Spatial Vision (Qwen-VL) endpoint, Firecrawl + PostGIS scraper worker — the three features added in the prior session
 **Spec:** `AUDIT_AND_DEPLOY_SPEC.md`
@@ -237,6 +276,15 @@ Live smoke test (LOCAL dev server only — see §6.4 for why not production):
 ---
 
 ## Remaining Risks and Deferred Work
+
+- **2026-08-17 Gitleaks history follow-up.** Two redacted history candidates
+  were independently reviewed without revealing their contents. The
+  `DEEPSEEK_SETUP.md:205` candidate in `fcc0cae` is a documented 12-character
+  API-key placeholder; `backend/tests/test_ai_guardrails.py:24` in `bafcca9`
+  is a deliberate guardrail-test fixture. Both are false positives. No
+  Gitleaks rule was disabled or allowlisted. Manual visual QA was subsequently
+  reported complete; the checklist records only the named captures actually
+  supplied, without inventing additional screenshot evidence.
 
 - **Firecrawl worker never run against real infrastructure.** No `FIRECRAWL_API_KEY` or live PostGIS-enabled database was available in this environment. Its logic paths are fully unit-tested against mocks (SDK shape verified against the real installed package), but the actual scrape→extract→upsert flow against a real advisory page and a real database has never executed. Treat as code-complete, not production-verified.
 - **`fastapi`/`starlette` remain outdated.** The one concretely-exploitable consequence in this codebase (rate-limit-tier bypass via Host-header path confusion) is closed at the application level (finding #6), but a coordinated dependency upgrade was judged out of scope for a targeted audit and is recommended as follow-up work.

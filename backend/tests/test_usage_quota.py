@@ -9,6 +9,11 @@ from app.main import app
 from app.services import usage_quota
 
 
+def test_default_chat_quota_is_twenty_requests():
+    """The documented production-safe default is 20 daily AI chat requests."""
+    assert get_settings().chat_quota_limit == 20
+
+
 def test_insights_allows_up_to_limit_then_blocks():
     for _ in range(get_settings().insights_quota_limit):
         status = usage_quota.consume("insights", "k1")

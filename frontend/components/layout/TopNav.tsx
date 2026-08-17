@@ -50,7 +50,7 @@ export function TopNav() {
           </span>
         </Link>
 
-        <div className="hidden flex-1 items-center gap-1 lg:flex">
+        <div className="hidden flex-1 items-center gap-1 xl:flex">
           {LINKS.map((l) => {
             const active = pathname.startsWith(l.href);
             return (
@@ -59,7 +59,7 @@ export function TopNav() {
                 href={l.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "focus-ring flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-medium transition-all",
+                  "focus-ring flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-2 text-[13px] font-medium transition-all",
                   active
                     ? "bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] text-[var(--accent)]"
                     : "text-[var(--fg-muted)] hover:bg-[color-mix(in_srgb,var(--fg)_7%,transparent)] hover:text-[var(--fg)]"
@@ -79,7 +79,7 @@ export function TopNav() {
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((v) => !v)}
-            className="focus-ring glass flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl lg:hidden"
+            className="focus-ring glass flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl xl:hidden"
           >
             {mobileOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
@@ -87,7 +87,7 @@ export function TopNav() {
       </nav>
 
       {mobileOpen && (
-        <div className="glass-strong mx-auto mt-2 max-w-[1800px] rounded-2xl p-2 lg:hidden">
+        <div className="glass-strong mx-auto mt-2 max-w-[1800px] rounded-2xl p-2 xl:hidden">
           {LINKS.map((l) => {
             const active = pathname.startsWith(l.href);
             return (

@@ -21,6 +21,9 @@ import { Markdown } from "./Markdown";
 import { SourceGroundingCard } from "./SourceGroundingCard";
 import { UsageMeter } from "@/components/ui/UsageMeter";
 
+const MIN_PANEL_WIDTH = 340;
+const MAX_PANEL_WIDTH = 640;
+
 export function AIAgentPanel() {
   const {
     aiOpen, setAiOpen, aiPinned, setAiPinned, messages, addMessage,
@@ -28,7 +31,7 @@ export function AIAgentPanel() {
   } = useAppStore();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [panelWidth, setPanelWidth] = useState(400);
+  const { aiPanelWidth, setAiPanelWidth } = useAppStore();
   const [chatUsage, setChatUsage] = useState<UsageStatus | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const activePersona = getPersona(persona);
@@ -42,7 +45,7 @@ export function AIAgentPanel() {
     e.preventDefault();
     const onMove = (ev: PointerEvent) => {
       const w = window.innerWidth - ev.clientX - 12;
-      setPanelWidth(Math.min(640, Math.max(340, w)));
+      setAiPanelWidth(Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, w)));
     };
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
@@ -185,7 +188,7 @@ export function AIAgentPanel() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 80 }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            style={{ "--ai-w": `${panelWidth}px` } as React.CSSProperties}
+            style={{ "--ai-w": `${aiPanelWidth}px` } as React.CSSProperties}
             className={cn(
               "glass-strong fixed z-40 flex flex-col overflow-hidden",
               // mobile: bottom sheet; desktop: right panel (resizable)

@@ -4,7 +4,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { useAppStore } from "@/lib/store";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { aiOpen } = useAppStore();
+  const { aiOpen, aiPanelWidth } = useAppStore();
   return (
     <>
       <TopNav />
@@ -12,7 +12,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         id="main"
         className="pt-[calc(var(--banner-h)+var(--nav-h)+20px)]"
         style={{
-          paddingRight: aiOpen ? "420px" : "0",
+          paddingRight: aiOpen ? `${aiPanelWidth + 24}px` : "0",
           transition: "padding-right 300ms ease-in-out",
         }}
       >

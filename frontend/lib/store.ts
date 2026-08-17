@@ -40,8 +40,10 @@ interface AppState {
 
   // AI panel
   aiOpen: boolean;
+  aiPanelWidth: number;
   aiPinned: boolean;
   setAiOpen: (open: boolean) => void;
+  setAiPanelWidth: (width: number) => void;
   setAiPinned: (pinned: boolean) => void;
   messages: ChatMessage[];
   addMessage: (m: ChatMessage) => void;
@@ -78,8 +80,10 @@ export const useAppStore = create<AppState>()(
       setActiveTarget: (activeTarget) => set({ activeTarget }),
 
       aiOpen: false,
+      aiPanelWidth: 400,
       aiPinned: false,
       setAiOpen: (aiOpen) => set({ aiOpen }),
+      setAiPanelWidth: (aiPanelWidth) => set({ aiPanelWidth }),
       setAiPinned: (aiPinned) => set({ aiPinned }),
       messages: [],
       addMessage: (m) => set((s) => ({ messages: [...s.messages, m] })),

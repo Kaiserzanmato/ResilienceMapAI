@@ -73,7 +73,11 @@ export default function AmbientGlobe() {
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!countries || !svgRef.current) return;
+    // The component stays mounted in the root layout. Re-run this effect on
+    // route transitions so its cleanup cancels animation while a full-screen
+    // map or weather route hides the globe, then initializes it again when a
+    // normal route becomes visible.
+    if (isFullScreenRoute(pathname) || !countries || !svgRef.current) return;
 
     const svg = select(svgRef.current);
     svg.selectAll("*").remove();
@@ -150,7 +154,7 @@ export default function AmbientGlobe() {
       }
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [countries]);
+  }, [countries, pathname]);
 
   if (isFullScreenRoute(pathname)) return null;
 

@@ -24,10 +24,11 @@ interface CurrentWeather {
   wind?: { speed: number };
 }
 
-export default function WeatherMap({ layer }: { layer: WeatherLayerKey }) {
+export default function WeatherMap({ layer, aiOpen }: { layer: WeatherLayerKey; aiOpen: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
   const popupRef = useRef<Popup | null>(null);
+  const aiOpenRef = useRef(aiOpen);
   // True once the map's one-time "load" event has fired. isStyleLoaded()
   // looks like the right gate for "safe to addSource/addLayer", but it
   // actually reports false whenever ANY tile is mid-fetch — which is true
@@ -53,6 +54,7 @@ export default function WeatherMap({ layer }: { layer: WeatherLayerKey }) {
     });
 
     map.on("click", async (e) => {
+      if (aiOpenRef.current) return;
       const { lat, lng } = e.lngLat;
       popupRef.current?.remove();
       popupRef.current = new maplibregl.Popup({ closeButton: true, offset: 12 })
@@ -94,6 +96,11 @@ export default function WeatherMap({ layer }: { layer: WeatherLayerKey }) {
       mapRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    aiOpenRef.current = aiOpen;
+    if (aiOpen) popupRef.current?.remove();
+  }, [aiOpen]);
 
   // ---- swap the weather tile overlay whenever the selected layer changes
   useEffect(() => {
