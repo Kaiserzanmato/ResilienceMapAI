@@ -1,6 +1,6 @@
 # Sprint 1 coverage and public-display decision
 
-**Decision status:** Proposed / Pending Approval
+**Decision status:** Approved with conditions
 **Approval record:** Issue #9, Approval 1
 **Scope:** Documentation and decision preparation only. This document authorizes no code, schema, connector, ingestion, source enablement, secret, deployment, or infrastructure change.
 
@@ -8,22 +8,22 @@
 
 Approve a phased geographic-coverage and public-display policy for deterministic multi-hazard screening. It defines when a hazard may receive a public score and how Map, Dashboard, Export, and AI disclose evidence limits.
 
-Every choice here is **Proposed / Pending Approval**. It becomes binding only when the named approvers record a decision in Issue #9 with the required evidence.
+Approval 1 was recorded in Issue #9. The coverage/public-display policy below is approved, subject to the two conditions recorded in section 8: detailed authorization, retention, deletion, and privacy controls remain subject to Approval 3; and every specialist owner must provide required evidence before implementation begins.
 
-## 2. Proposed coverage policy
+## 2. Approved coverage policy
 
 ### 2.1 Phased rollout
 
-| Phase | Proposed coverage | Public-score rule | Status |
+| Phase | Approved coverage | Public-score rule | Status |
 | --- | --- | --- | --- |
-| Phase 0 — current/legacy | Existing curated and registry-backed evidence, labeled with current limitations. | Never represent missing evidence as low risk. Preserve existing behavior until Sprint 1 is approved and implemented. | Proposed / Pending Approval |
-| Phase 1 — Philippines-first detailed coverage | Philippines hazards supported by approved authoritative sources that meet the quality gate below. `active_fault` remains excluded until its PHIVOLCS/GeoRiskPH decision is approved. | A public component score is allowed only with accepted coverage, provenance, freshness, and quality evidence. | Proposed / Pending Approval |
-| Phase 2 — global baseline display | Global baseline only where the same quality gate passes for the relevant hazard and jurisdiction. | State baseline resolution; do not imply local detail equal to Phase 1. | Proposed / Pending Approval |
-| Phase 3 — expanded detailed coverage | Additional jurisdictions after source-by-source coverage and public-display review. | Enable per hazard and jurisdiction, never under a blanket global-coverage claim. | Proposed / Pending Approval |
+| Phase 0 — current/legacy | Existing curated and registry-backed evidence, labeled with current limitations. | Never represent missing evidence as low risk. Preserve existing behavior until Sprint 1 is implemented. | Approved policy; implementation blocked |
+| Phase 1 — Philippines-first detailed coverage | Philippines hazards supported by approved authoritative sources that meet the quality gate below. `active_fault` remains excluded until its PHIVOLCS/GeoRiskPH decision is approved. | A public component score is allowed only with accepted coverage, provenance, freshness, and quality evidence. | Approved policy; source evidence pending |
+| Phase 2 — global baseline display | Global baseline only where the same quality gate passes for the relevant hazard and jurisdiction. | State baseline resolution; do not imply local detail equal to Phase 1. | Approved policy; source evidence pending |
+| Phase 3 — expanded detailed coverage | Additional jurisdictions after source-by-source coverage and public-display review. | Enable per hazard and jurisdiction, never under a blanket global-coverage claim. | Approved policy; source evidence pending |
 
 ### 2.2 Recommendation and coverage unit
 
-The proposed default is Philippines-first detailed coverage using approved authoritative sources. This bounded geography supports validation of source authority, licenses, boundaries, map precision, no-data behavior, accessibility, and public wording. Each detailed result must name its hazard, source version, coverage boundary, resolution, and freshness.
+The approved default is Philippines-first detailed coverage using approved authoritative sources. This bounded geography supports validation of source authority, licenses, boundaries, map precision, no-data behavior, accessibility, and public wording. Each detailed result must name its hazard, source version, coverage boundary, resolution, and freshness.
 
 Global data may be displayed only as a **global baseline** where each hazard passes the quality gate. It must state actual resolution and may not be described as detailed local coverage. A source covering one country or one hazard does not grant permission to score another.
 
@@ -95,11 +95,11 @@ No no-data state (`not_applicable`, `out_of_coverage`, `unknown`, `unavailable`,
 
 **Acceptance criteria:** fixtures for every state prove that UI, export, and AI show required wording and never emit a low-risk score, color, or claim.
 
-## 5. Proposed public-score quality gate
+## 5. Approved public-score quality gate
 
 A hazard may receive a public score only when every applicable requirement is met for its coverage unit. This applies independently to a Philippines detailed component and every global baseline component.
 
-| Requirement | Proposed minimum |
+| Requirement | Approved minimum |
 | --- | --- |
 | Source authority | Source is allowlisted and approved authoritative, or has an approved documented exception. |
 | License and provenance | License/terms, permitted public use, attribution, canonical URL, source/version, and review status are recorded and compatible with public display. |
@@ -109,11 +109,11 @@ A hazard may receive a public score only when every applicable requirement is me
 | Reproducibility | Accepted dataset/artifact, transform, score-engine configuration, and snapshot input manifest are retained. |
 | Public wording | Coverage, uncertainty, attribution, and disclaimer appear in every applicable view. |
 
-The proposed quality floor is documented authority; known license and public-display permission; bounded geographic coverage; known resolution and temporal validity; accepted validation; and deterministic confidence. Missing a mandatory field produces a no-data state, not a public score.
+The approved quality floor is documented authority; known license and public-display permission; bounded geographic coverage; known resolution and temporal validity; accepted validation; and deterministic confidence. Missing a mandatory field produces a no-data state, not a public score.
 
 **Acceptance criteria:** review fixtures reject a public score when license, coverage, source version, freshness, validation, or provenance is missing, and the approval audit identifies reviewer and evidence.
 
-## 6. Proposed location privacy, precision, and accessibility rules
+## 6. Approved location privacy, precision, and accessibility baseline
 
 ### Location privacy and precision
 
@@ -161,18 +161,18 @@ The proposed quality floor is documented authority; known license and public-dis
 - Public disclaimer, precision, and attribution language is approved for Map, Dashboard, Export, and AI.
 - The decision and evidence are linked in Issue #9 before an implementation ticket begins.
 
-### Deadline and effect if unapproved
+### Effective gate and implementation effect
 
-- **Proposed deadline:** before Approval 2 source selection and before any Sprint 1 engineering ticket, schema, connector, or public-display work.
-- If unapproved, implementation remains blocked. The team may continue read-only source discovery and documentation, but may not enable sources, assign public scores, build coverage-driven views, migrate data, or release Sprint 1 functionality.
+- This approval is effective immediately as a policy gate, before Approval 2 source selection and before any Sprint 1 engineering ticket, schema, connector, or public-display work.
+- Implementation remains blocked until every specialist owner provides required evidence, source-specific quality evidence is accepted, and Approvals 2–5 are complete. The team may continue read-only source discovery and documentation only.
 
-## 8. Explicit choices requiring your approval
+## 8. Recorded Approval 1 decisions and conditions
 
-1. Philippines-first detailed coverage for Phase 1, with global display limited to hazard-by-hazard baseline coverage that passes the quality gate.
-2. The closed `coverage_status` vocabulary and the rule that no no-data state can display as low risk, safe, zero, green, or complete.
-3. The public-display fields and screening/not-an-official-advisory wording for Map, Dashboard, Export, and AI.
-4. The minimum quality gate and source-by-source public-score requirement.
-5. The location privacy/precision and accessibility principles, pending the later detailed authorization/privacy decision.
-6. The approvers, evidence package, and proposed deadline as the gate for any Sprint 1 implementation work.
+1. **Approved:** Philippines-first detailed coverage for Phase 1. Global information remains hazard-by-hazard baseline coverage and must not imply local precision.
+2. **Approved:** No-data must never be presented as low risk, safe, zero, green, or complete coverage.
+3. **Approved:** Require coverage, resolution, freshness, provenance, uncertainty, and “screening information, not an official advisory” disclosure across Map, Dashboard, Export, and AI.
+4. **Approved:** Require source-by-source authority, licensing, provenance, coverage, freshness, validation, reproducibility, and disclosure evidence before a public score is shown.
+5. **Approved with condition:** Apply canonical-grid precision, sensitive-location safeguards, accessible non-color disclosures, and keyboard/screen-reader access as policy. Detailed authorization, retention, deletion, and privacy controls remain subject to Approval 3.
+6. **Approved with condition:** Adopt the proposed approvers, evidence package, and gate. Each specialist owner must provide required evidence before implementation begins.
 
-**Final status:** Proposed / Pending Approval. No decision in this document is Approved. Sprint 1 implementation remains blocked until this and the other four Approval records are approved.
+**Final status:** Approval 1 is Approved with conditions. Sprint 1 implementation remains blocked until source-specific evidence is accepted and Approvals 2–5 are approved.
