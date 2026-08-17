@@ -1,6 +1,6 @@
 # Sprint 1 deterministic scoring policy decision
 
-**Decision status:** Proposed / Pending Approval
+**Decision status:** Partially approved; formula and source-resolution revisions pending
 **Approval record:** Issue #9, Approval 3
 **Scope:** Documentation and decision preparation only. This record authorizes no application code, schema, scoring change, source enablement, dataset ingestion, secret, deployment, or infrastructure change.
 
@@ -12,7 +12,7 @@ AI remains explanation-only. It may explain an authorized server-produced snapsh
 
 ## 2. Hazard taxonomy and compatibility decision
 
-### 2.1 Canonical taxonomy proposed for approval
+### 2.1 Approved canonical taxonomy
 
 | Class | Canonical use | Score rule |
 | --- | --- | --- |
@@ -27,7 +27,7 @@ Canonical Sprint 1 keys are `earthquake`, `flood`, `tropical_cyclone`, `landslid
 
 ### 2.2 Existing-vocabulary compatibility mapping
 
-| Existing key | Proposed compatibility rule |
+| Existing key | Approved compatibility rule |
 | --- | --- |
 | `earthquake`, `flood`, `tropical_cyclone`, `landslide`, `storm_surge` | Preserve the key through a versioned adapter; no silent semantic change. |
 | `volcano` | Retain as legacy/non-Sprint-1 compatibility data. A Sprint 1-only response must emit an explicit no-data state rather than silently remove it. |
@@ -38,11 +38,11 @@ Canonical Sprint 1 keys are `earthquake`, `flood`, `tropical_cyclone`, `landslid
 
 ## 3. Baseline inputs versus live overlays
 
-### Proposed baseline rule
+### Approved baseline rule
 
 Baseline scores may use only accepted, durable, versioned hazard features and historical evidence valid at the immutable `as_of` timestamp. Every input must have approved source, coverage, temporal validity, quality, and provenance.
 
-### Proposed overlay rule
+### Approved overlay rule
 
 Active events and authoritative alerts are separately versioned overlays containing event/alert ID, issuer, jurisdiction, validity window, and expiry/retraction state. An overlay may be displayed beside a baseline score but cannot change its numeric baseline value, component, confidence, or narrative meaning unless a future score-engine version explicitly approves that behavior with scientific evidence.
 
@@ -50,7 +50,9 @@ Active events and authoritative alerts are separately versioned overlays contain
 
 **Acceptance criteria:** fixed fixtures show that an event/alert changes overlay content only; expired/retracted overlays disappear from current display but remain auditable; unapproved or no-data inputs cannot affect a baseline calculation.
 
-## 4. Formula, range, and deterministic calculation decision
+## 4. Revised formula, range, and deterministic calculation decision
+
+**Status: Revised / Pending evidence.** The formula package is not approved. Before a decision can be recorded, the hazard-science lead and data owner must supply a signed evidence package defining per-hazard and overall ranges, formulas, weights, blend, caps/floors, missing-data behavior, thresholds, rounding, and deterministic tie-breaking. The package must include its evidence rationale, versioned fixtures, and shadow-comparison acceptance limits.
 
 The approvers must select and publish one canonical calculation policy before implementation. It must specify:
 
@@ -73,7 +75,9 @@ The approvers must select and publish one canonical calculation policy before im
 
 **Acceptance criteria:** a versioned fixture suite reproduces unrounded inputs, components, overall result, rounding, caps/floors, and ties byte-for-byte for a fixed manifest and `as_of` time.
 
-## 5. Source resolution, confidence, freshness, and no-data decision
+## 5. Revised source resolution, confidence, freshness, and no-data decision
+
+**Status: Revised / Pending evidence.** Source precedence, confidence, freshness, deduplication, and conflict handling are not approved. Before a decision can be recorded, data governance must attach a source-by-source quality and provenance matrix for every candidate `(hazard, jurisdiction, feature kind)`, including authority, license/permitted use, coverage/resolution, temporal validity, source priority, canonical mapping/deduplication rule, validation result, confidence tier, freshness SLA, maximum staleness, conflict rule, and no-data outcome.
 
 ### Source precedence and conflicts
 
@@ -100,7 +104,7 @@ No no-data state may be represented as low risk, safe, zero, green, complete cov
 
 **Acceptance criteria:** source-priority/conflict fixtures are deterministic; confidence/freshness boundaries are testable; every no-data state is visible and cannot enter a prohibited calculation path.
 
-## 6. Historical evidence, exposure, uncertainty, and public language
+## 6. Approved historical evidence, exposure, uncertainty, and public-language boundaries
 
 - Historical events may support only an approved recurrence/evidence component with stated period, coverage, completeness, and uncertainty. They cannot imply a current event, forecast, or official warning.
 - Exposure features may describe accepted geographic proximity/condition only. They cannot imply likelihood, recurrence, movement, safety, or official status without authoritative evidence and an approved formula.
@@ -110,7 +114,7 @@ No no-data state may be represented as low risk, safe, zero, green, complete cov
 
 **Acceptance criteria:** regression prompts and UI/export fixtures reject or template unsupported safety/probability/advisory claims; historical and exposure examples preserve their declared semantics.
 
-## 7. Versioning, manifests, and shared snapshot decision
+## 7. Approved versioning, manifests, and shared snapshot decision
 
 Every score is a pure function of one immutable, canonically ordered manifest. A snapshot must retain or reference:
 
@@ -123,7 +127,7 @@ Map, Dashboard, Export, and AI must consume the same authorized immutable snapsh
 
 **Acceptance criteria:** integration fixtures show identical snapshot ID/components across Map, Dashboard, Export, and AI; altered client context cannot change the server result; later data/version changes still reproduce a retained manifest.
 
-## 8. Owners, evidence, deadline, and non-approval effect
+## 8. Approved owners, evidence, deadline, and non-approval gate
 
 | Role | Required approval responsibility |
 | --- | --- |
@@ -156,14 +160,14 @@ Map, Dashboard, Export, and AI must consume the same authorized immutable snapsh
 - **Proposed deadline:** before any scoring-engine, snapshot, Map/Dashboard/Export integration, or AI-grounding implementation ticket.
 - If unapproved, no deterministic scoring, source-priority, formula, snapshot, overlay, or user-visible risk-score implementation may begin. Documentation and non-production research may continue only.
 
-## 9. Explicit Approval 3 checklist
+## 9. Recorded Approval 3 decisions
 
-1. Approve the canonical taxonomy, record classes, and legacy compatibility mapping.
-2. Approve which accepted evidence may affect baseline scores and require active events/alerts to remain overlays unless separately versioned and approved.
-3. Approve the canonical formula package: component/overall range, weights, blend, caps/floors, rounding, missing-component behavior, and deterministic tie-breaking.
-4. Approve the source-precedence, deduplication, conflict-resolution, quality, confidence, freshness, and closed no-data policy.
-5. Approve historical-event, exposure, uncertainty, `active_fault`, and public-language boundaries, including all no-safety/probability/advisory prohibitions.
-6. Approve immutable manifest and server-authorized snapshot requirements across Map, Dashboard, Export, and AI; affirm AI explanation-only and client context non-authoritative rules.
-7. Approve named owners, required evidence, acceptance criteria, and deadline as gates before implementation.
+1. **Approved:** taxonomy and legacy compatibility mapping.
+2. **Approved:** accepted baseline evidence is separate from active-event and alert overlays.
+3. **Revised:** formula package remains unapproved until a scientific/data-owner evidence package defines ranges, weights, missing-data behavior, thresholds, and tie-breaking.
+4. **Revised:** source precedence, confidence, freshness, deduplication, and conflict handling remain unapproved until a source-by-source quality and provenance matrix is attached.
+5. **Approved:** enforce the `active_fault`, uncertainty, historical-event, and no-safety/no-probability/no-advisory public-language boundaries.
+6. **Approved:** require immutable, server-authorized snapshots shared by Map, Dashboard, Export, and AI; AI remains explanation-only and client context is non-authoritative.
+7. **Approved:** owners, evidence, acceptance criteria, and deadline remain mandatory gates.
 
-**Final status:** Proposed / Pending Approval. This Approval 3 decision, Approvals 4–5, and source-specific evidence remain blocking requirements. No Sprint 1 implementation is authorized.
+**Final status:** Approval 3 is partially approved. The formula package and source-resolution policy remain pending the exact evidence above. Approvals 4–5 and source-specific evidence remain blocking requirements. No Sprint 1 implementation is authorized.
