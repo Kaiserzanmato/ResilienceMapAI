@@ -101,6 +101,29 @@ invent either. Sanitized endpoint evidence confirms `/api/weather-current` and
 `/api/weather-tiles/*` returned HTTP 200. No secrets, cookies, authorization
 headers, or request bodies are recorded here.
 
+## Production release outcome
+
+PR #5 merged to `main` as `26a563e5c4e35e22c89ae5a994aac6f5ec614a7d`.
+The first Production deployment's current-weather proxy returned HTTP 401 with
+an upstream invalid-key diagnostic, so the rollout was stopped and Vercel was
+promoted back to the immediately previous healthy deployment. No secret value
+was read or recorded.
+
+After the Production key was corrected and `main` redeployed, the Vercel
+Production deployment was Ready. Final sanitized HTTP checks passed:
+
+| Target | Result | Note |
+| --- | --- | --- |
+| `/map` | HTTP 200 | Route availability check. |
+| `/weather` | HTTP 200 | Route availability check. |
+| `/api/weather-current` | HTTP 200 | Corrected-key proxy verification. |
+| `/api/weather-tiles/precipitation_new/3/6/3` | HTTP 200 | Representative forecast-tile proxy verification. |
+| Render `/health` | HTTP 200 | Passed after one retry for the documented free-tier cold start. |
+
+The final production endpoint checks contain no Console/Network export or
+additional screenshot artifact. The manual QA evidence limits above still
+apply.
+
 ## Security scan record
 
 Gitleaks found two historical candidates during a redacted Git-history scan.

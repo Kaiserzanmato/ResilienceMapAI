@@ -2,10 +2,10 @@
 
 ## 2026-08-17 release-readiness follow-up
 
-**Current release status:** **Locally verified; pending current deployment
-verification.** The historical commit and deployment statements below apply
-only to the prior audit release (`cd233b3`), not to the currently uncommitted
-responsive Map and Weather changes.
+**Current release status:** **Production released and verified.** PR #5 was
+merged to `main` as `26a563e5c4e35e22c89ae5a994aac6f5ec614a7d`. The
+historical commit and deployment statements below apply only to the prior audit
+release (`cd233b3`), not to this responsive Map and Weather release.
 
 - **Responsive QA:** Manual QA was reported complete and passing for the Map
   and Weather responsive flows. Supplied desktop captures verify the Map
@@ -29,8 +29,24 @@ responsive Map and Weather changes.
   desktop Map and Weather states. The completed mobile, tablet, theme,
   keyboard, navigation, globe, Console, and Network checks were reported as
   passed but did not include additional named capture files; they are not
-  represented as screenshots in the checklist. No deployment has been
-  performed for this current release.
+  represented as screenshots in the checklist.
+
+### Production release closeout
+
+- The first Vercel Production deployment completed, but the production
+  current-weather proxy returned HTTP 401 with a sanitized upstream
+  invalid-key diagnostic. The rollout was stopped and Vercel was promoted
+  back to the immediately previous healthy deployment; no secret value was
+  read or recorded.
+- After the Production OpenWeather key was corrected and the merged `main`
+  release redeployed, Vercel Production was Ready at
+  `https://resilience-map-8u3di5a7w-oliveripsioco-3103s-projects.vercel.app`.
+- Final production checks returned HTTP 200 for `/map`, `/weather`,
+  `/api/weather-current`, and a representative `/api/weather-tiles/*`
+  request. Render `/health` also returned HTTP 200 after one retry for the
+  documented free-tier cold start.
+- Render has no explicit `CHAT_QUOTA_LIMIT` override; its deployed default is
+  20, confirmed through the read-only usage-status response.
 
 ## Prior audit record (historical)
 
