@@ -1,6 +1,6 @@
 # Sprint 1 authorization, privacy, audit, abuse-control, and AI model-policy decision
 
-**Decision status:** Proposed / Pending Approval
+**Decision status:** Approved framework; legal, retention, limit, and provider evidence pending
 **Approval record:** Issue #9, Approval 4
 **Scope:** Documentation and decision preparation only. This record authorizes no application code, identity integration, database change, source enablement, secret, deployment, or infrastructure change.
 
@@ -10,7 +10,7 @@ Approve the access-control, privacy, audit, abuse-control, and AI-model policy r
 
 Every duration, numeric limit, provider, model, retention period, legal basis, and incident procedure not explicitly approved below is **Unknown / Pending Approval**. This document makes no legal conclusion and does not create an authorization system by itself.
 
-## 2. Proposed roles and least-privilege access
+## 2. Approved roles and least-privilege access
 
 Access is server-enforced, default-deny, and scoped to the minimum data/action required. Role names are proposed; their concrete identity-provider mapping and entitlements remain Pending Approval.
 
@@ -28,11 +28,11 @@ Access is server-enforced, default-deny, and scoped to the minimum data/action r
 
 ## 3. Snapshot, export, and revocation controls
 
-### Proposed snapshot rule
+### Approved snapshot rule
 
 Snapshots are opaque, server-issued references. A `snapshot_id` is never an authorization credential and must not be predictable, enumerable, or accepted as proof of ownership. The server authorizes every snapshot read, AI request, provenance lookup, share, and export against the authenticated principal, current role/scope, policy state, and requested action.
 
-### Proposed lifecycle controls
+### Approved lifecycle controls
 
 - Define Pending Approval expiry, retention, revocation, deletion, legal-hold, and cache-invalidation rules for snapshots and exports.
 - Re-check authorization after role, organization, consent, or policy revocation; do not rely on a previously issued link or cached client state.
@@ -44,7 +44,7 @@ Snapshots are opaque, server-issued references. A `snapshot_id` is never an auth
 
 ## 4. Sensitive location, privacy, retention, and incident access
 
-### Proposed data-minimization rule
+### Approved data-minimization rule
 
 Treat original selected coordinates, saved location history, location-linked exports, prompts that contain locations, and precise provenance joins as sensitive location information. Store, display, export, and retain only the minimum precision needed for the approved screening use. Prefer canonical-grid precision for ordinary display where the approved coverage policy permits it.
 
@@ -63,7 +63,7 @@ Never place precise locations, prompts, source credentials, or secret values in 
 
 **Acceptance criteria:** a documented data-flow/threat model and privacy/legal review identify collection, precision, storage, display, export, deletion, backup, incident, and third-party sharing behavior. Tests prove least-precision display, deletion/revocation handling, and redacted telemetry.
 
-## 5. Audit and incident-access policy
+## 5. Approved audit and incident-access policy
 
 All privileged actions require append-oriented, tamper-evident audit events with actor/service identity, action, target class, authorization decision, policy/version, timestamp, outcome, and safe reason code. Logs must not contain secrets, raw credentials, unredacted prompts, or more precise location data than the approved audit policy permits.
 
@@ -71,7 +71,7 @@ Incident access is break-glass only if separately approved. It requires the Pend
 
 **Acceptance criteria:** audit events are searchable by authorized reviewers, protected from ordinary modification, redacted by policy, and cover privileged reads/exports, sync controls, model/provider decisions, and break-glass events.
 
-## 6. Grounded AI and untrusted-content boundary
+## 6. Approved grounded-AI and untrusted-content boundary
 
 AI receives only a server-rendered `GroundedRiskContext` from an authorized immutable deterministic snapshot. It cannot call scoring, source-resolution, authorization, or provider-selection logic. Map context, client-provided scores, source text, source metadata, uploaded material, user prompts, and model/provider responses are untrusted content.
 
@@ -89,13 +89,13 @@ AI must not infer scores, missing hazards, source authority, probability, safety
 
 ## 7. Rate limits, abuse controls, and provider/model policy
 
-### Proposed abuse controls
+### Approved abuse-control framework
 
 Apply server-side, identity-aware and trusted-network-aware rate limits to assessment creation, snapshot reads, exports, AI requests, share operations, source/admin actions, and sync triggers. Numeric limits, windows, quotas, alert thresholds, appeal process, and enforcement actions are **Unknown / Pending Approval**. Limits must be enforced independently of client headers/personas and without exposing sensitive internal policy details.
 
 Monitor approved redacted signals for unusual volume, repeated authorization failures, enumeration patterns, export abuse, prompt-injection attempts, provider failures, quota exhaustion, and policy violations. Define Pending Approval escalation owners, retention, alert thresholds, and incident playbooks.
 
-### Proposed provider/model and data-sharing policy
+### Approved provider/model and data-sharing framework
 
 Only a server allowlist may select a provider, model, version, task, region, and capability. Each candidate requires Pending Approval security, privacy, data-processing, retention, cross-border/data-residency, cost, availability, abuse, and output-validation review. Client requests cannot choose or override it.
 
@@ -103,7 +103,7 @@ Send a provider only the minimum authorized, redacted snapshot context and user 
 
 **Acceptance criteria:** tests prove rate limits cannot be bypassed by header/persona manipulation, provider/model selection is server-only, denied data is never sent to providers, and every provider fallback yields validated structured output or deterministic fallback.
 
-## 8. Owners, evidence, deadline, and non-approval effect
+## 8. Approved owners, evidence, deadline, and non-approval gate
 
 | Role | Required responsibility |
 | --- | --- |
@@ -137,13 +137,13 @@ Send a provider only the minimum authorized, redacted snapshot context and user 
 - **Proposed deadline:** before persistent snapshots, exports/shares, privileged sync/admin flows, external AI provider use, or grounded-AI implementation tickets.
 - If unapproved, no Sprint 1 authorization, snapshot persistence, provenance/export, privileged sync, AI-grounding, rate-limit, or provider integration implementation may begin. Documentation and approved non-production research may continue only.
 
-## 9. Explicit Approval 4 checklist
+## 9. Recorded Approval 4 decisions
 
-1. Approve the role model, least-privilege matrix, server-side authorization, and revocation/expiry/export-control requirements.
-2. Approve the sensitive-location precision, privacy, retention/deletion, audit retention, and break-glass incident-access decision process; record all durations and legal requirements separately.
-3. Approve immutable snapshot, sharing, and export rules, including opaque non-authorizing IDs and tenant/policy re-checks.
-4. Approve the AI-only-authorized-snapshot boundary, untrusted-content treatment, structured citation/component validation, and deterministic fallback.
-5. Approve the rate-limit, abuse-monitoring, prompt-injection, provider/model allowlist, and data-sharing decision framework; record numeric limits and provider approvals separately.
-6. Approve the named owners, evidence package, acceptance criteria, and deadline as mandatory gates.
+1. **Approved:** adopt default-deny, least-privilege roles; enforce all authorization server-side with revocation, expiry, and export controls.
+2. **Approved:** adopt sensitive-location safeguards, privacy boundaries, auditability, and incident-access controls. Retention, deletion periods, and legal requirements remain pending formal legal/privacy review.
+3. **Approved:** snapshot IDs must be opaque and non-authorizing; every read, share, export, and AI use must be server-authorized.
+4. **Approved:** AI may only explain server-authorized deterministic snapshots; prompts, sources, and client context are untrusted; output requires validated structured citations/components and deterministic fallback.
+5. **Approved:** adopt rate limiting, abuse monitoring, prompt-injection defenses, and a server-side provider/model allowlist. Numeric limits and permitted providers remain pending.
+6. **Approved:** adopt the named owners, evidence package, acceptance criteria, and deadline as mandatory gates.
 
-**Final status:** Proposed / Pending Approval. This Approval 4 decision, Approval 3’s pending signed formula/source-quality evidence, Approval 5, and source-specific evidence remain blocking requirements. No Sprint 1 implementation is authorized.
+**Final status:** Approval 4 framework is approved. Formal legal/privacy review, retention/deletion periods, numeric limits, permitted providers, signed Approval 3 formula/source-quality evidence, Approval 5, and source-specific evidence remain blocking requirements. No Sprint 1 implementation is authorized.
