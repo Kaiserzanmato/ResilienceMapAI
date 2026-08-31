@@ -1,7 +1,15 @@
 import type { StyleSpecification } from "maplibre-gl";
 
-/** Free, keyless raster basemaps for each map view. Production deployments can
- * swap these for vector tile styles (MapTiler/Protomaps) via env config. */
+/** Raster basemaps for each map view. CARTO now requires a public basemap key
+ * on its raster tiles; non-CARTO providers below remain keyless. */
+
+const CARTO_BASEMAP_API_KEY = process.env.NEXT_PUBLIC_CARTO_BASEMAP_API_KEY ?? "";
+
+function withCartoKey(url: string): string {
+  if (!CARTO_BASEMAP_API_KEY) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}key=${encodeURIComponent(CARTO_BASEMAP_API_KEY)}`;
+}
 
 function rasterStyle(
   id: string,
@@ -70,8 +78,10 @@ export const MAP_VIEWS: { key: string; label: string; style: StyleSpecification 
         {
           id: "carto-labels",
           tiles: [
-            "https://a.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png".replace("{r}", ""),
-            "https://b.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png",
+            withCartoKey(
+              "https://a.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png".replace("{r}", "")
+            ),
+            withCartoKey("https://b.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png"),
           ],
           attribution: CARTO_ATTR,
         },
@@ -84,9 +94,9 @@ export const MAP_VIEWS: { key: string; label: string; style: StyleSpecification 
     style: rasterStyle(
       "carto-dark",
       [
-        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+        withCartoKey("https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"),
+        withCartoKey("https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"),
+        withCartoKey("https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"),
       ],
       CARTO_ATTR
     ),
@@ -97,9 +107,9 @@ export const MAP_VIEWS: { key: string; label: string; style: StyleSpecification 
     style: rasterStyle(
       "carto-light",
       [
-        "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-        "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-        "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+        withCartoKey("https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"),
+        withCartoKey("https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"),
+        withCartoKey("https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"),
       ],
       CARTO_ATTR
     ),

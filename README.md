@@ -299,10 +299,12 @@ editing the Python registry. Never hand-edit the `.ts` file.
   falls back to same-origin relative API calls, which 404 — the map, dashboard, and
   AI features all break with no obvious error. This exact misconfiguration shipped
   unnoticed for 49+ days before being caught and fixed on 2026-08-01.
-- **Vercel env vars**: `NEXT_PUBLIC_API_URL` (above), plus `OPENWEATHERMAP_API_KEY`
-  (optional, server-only — powers `/weather`'s live tile layers; without it the
-  page still renders with a notice instead of tiles). Set via
-  `vercel env add <NAME> production` or the dashboard.
+- **Vercel env vars**: `NEXT_PUBLIC_API_URL` (above),
+  `NEXT_PUBLIC_CARTO_BASEMAP_API_KEY` (public CARTO basemap key for dark/light
+  and hybrid-label tiles — required to avoid CARTO's API-key watermark), plus
+  `OPENWEATHERMAP_API_KEY` (optional, server-only — powers `/weather`'s live
+  tile layers; without it the page still renders with a notice instead of
+  tiles). Set via `vercel env add <NAME> production` or the dashboard.
 
 ## Global Search And Multi-Hazard Screening
 
