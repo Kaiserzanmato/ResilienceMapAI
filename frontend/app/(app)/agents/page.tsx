@@ -240,7 +240,7 @@ export default function AgentsPage() {
 
   return (
     <div className="mx-auto grid h-[calc(100dvh-var(--banner-h)-var(--nav-h)-var(--footer-h)-32px)] max-w-[1500px] gap-3 px-4 pb-4 lg:grid-cols-[320px_1fr]">
-      {/* Left: context + personas */}
+      {/* Left: context + personas — desktop only */}
       <div className="hidden flex-col gap-3 overflow-y-auto lg:flex pb-2" style={{ scrollBehavior: "smooth" }}>
         <GlassCard className="p-4">
           <h2 className="mb-2 flex items-center gap-2 text-[13px] font-semibold">

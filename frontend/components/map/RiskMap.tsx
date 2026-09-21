@@ -9,12 +9,20 @@ import { cn } from "@/lib/utils";
 import { getMapStyle } from "@/lib/mapStyles";
 import { useAppStore } from "@/lib/store";
 import { attachHoverTelemetry, type TelemetryPayload } from "@/lib/mapHoverTelemetry";
+import { SpatialRippleEffect } from "./SpatialRippleEffect";
 
 const RISK_FILL_COLORS: [string, string][] = [
   ["green", "#22c55e"],
   ["yellow", "#eab308"],
   ["red", "#ef4444"],
 ];
+
+const RISK_LEVEL_TO_SEVERITY: Record<string, "low" | "medium" | "high"> = {
+  "High": "high",
+  "Medium": "medium",
+  "Low": "low",
+  "No Data": "low",
+};
 
 export default function RiskMap() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -25,7 +33,7 @@ export default function RiskMap() {
 
   const {
     mapView, activeLayer, showZones, showHeatmap, showAlerts, showEvents,
-    selected, setSelected, aiOpen,
+    selected, setSelected, aiOpen, lastAssessmentCoords, risk,
   } = useAppStore();
 
   const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(null);
@@ -377,6 +385,16 @@ export default function RiskMap() {
         role="application"
         aria-label="Risk intelligence map"
       />
+
+      {/* Spatial ripple effect when assessment completes */}
+      {lastAssessmentCoords && (
+        <SpatialRippleEffect
+          map={mapRef.current}
+          lat={lastAssessmentCoords[0]}
+          lng={lastAssessmentCoords[1]}
+          severity={RISK_LEVEL_TO_SEVERITY[risk?.overall.level ?? "No Data"]}
+        />
+      )}
 
       {telemetry && (
         <div

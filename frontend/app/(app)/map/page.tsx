@@ -8,6 +8,7 @@ import { LayerControlWidget } from "@/components/map/LayerControlWidget";
 import { RiskLegend } from "@/components/map/RiskLegend";
 import { RiskSummaryWidget } from "@/components/map/RiskSummaryWidget";
 import { SearchBar } from "@/components/map/SearchBar";
+import { MapCommandBar } from "@/components/map/MapCommandBar";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { buildMapTarget, getOfficialSourcesByCountry } from "@/lib/map-target-builder";
@@ -57,6 +58,9 @@ export default function MapPage() {
     >
       {/* Map fills the entire viewport beneath all overlays */}
       <RiskMap />
+
+      {/* Floating Command Bar */}
+      <MapCommandBar />
 
       {/* Search below the navigation for tablet and mobile. */}
       <div

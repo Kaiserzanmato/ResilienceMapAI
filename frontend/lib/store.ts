@@ -62,6 +62,14 @@ interface AppState {
   setShowAlerts: (b: boolean) => void;
   showEvents: boolean;
   setShowEvents: (b: boolean) => void;
+
+  // CTA state for map command bar micro-interactions
+  assessmentLoading: boolean;
+  setAssessmentLoading: (b: boolean) => void;
+  assessmentSuccess: boolean;
+  setAssessmentSuccess: (b: boolean) => void;
+  lastAssessmentCoords: [number, number] | null;
+  setLastAssessmentCoords: (coords: [number, number] | null) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -101,6 +109,13 @@ export const useAppStore = create<AppState>()(
       setShowAlerts: (showAlerts) => set({ showAlerts }),
       showEvents: false,
       setShowEvents: (showEvents) => set({ showEvents }),
+
+      assessmentLoading: false,
+      setAssessmentLoading: (assessmentLoading) => set({ assessmentLoading }),
+      assessmentSuccess: false,
+      setAssessmentSuccess: (assessmentSuccess) => set({ assessmentSuccess }),
+      lastAssessmentCoords: null,
+      setLastAssessmentCoords: (lastAssessmentCoords) => set({ lastAssessmentCoords }),
     }),
     {
       name: "resiliencemap-state",
