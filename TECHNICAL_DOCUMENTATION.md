@@ -71,6 +71,7 @@ Set server-side only in Render or local backend `.env`; examples are in
 | Frontend/backend link | `NEXT_PUBLIC_API_URL` (Vercel) |
 | Persistence | `DATABASE_URL`, `ALEMBIC_DATABASE_URL`, `REDIS_URL` |
 | AI and operational controls | `QWEN_*`, `TOGETHER_*`, `DEEPSEEK_*`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, rate-limit and quota variables |
+| Admin/RBAC stopgap | `ADMIN_SHARED_SECRET` (backend and frontend, same value) — required for `/admin/datasets` dataset registration; the frontend proxy (`frontend/app/api/admin/datasets/upload/route.ts`) only forwards it after the caller presents it back via `x-admin-key` |
 
 Keys, tokens, and shared secrets must never be committed, returned by API
 diagnostics, or copied into documentation.

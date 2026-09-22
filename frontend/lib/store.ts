@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ChatMessage, RiskAssessment } from "./types";
+import type { EvacuationCenterWithDistance } from "./evacuation-centers";
 
 export interface SelectedLocation {
   lat: number;
@@ -62,6 +63,10 @@ interface AppState {
   setShowAlerts: (b: boolean) => void;
   showEvents: boolean;
   setShowEvents: (b: boolean) => void;
+  showEvacuationCenters: boolean;
+  setShowEvacuationCenters: (b: boolean) => void;
+  selectedEvacuationCenter: EvacuationCenterWithDistance | null;
+  setSelectedEvacuationCenter: (c: EvacuationCenterWithDistance | null) => void;
 
   // CTA state for map command bar micro-interactions
   assessmentLoading: boolean;
@@ -109,6 +114,10 @@ export const useAppStore = create<AppState>()(
       setShowAlerts: (showAlerts) => set({ showAlerts }),
       showEvents: false,
       setShowEvents: (showEvents) => set({ showEvents }),
+      showEvacuationCenters: false,
+      setShowEvacuationCenters: (showEvacuationCenters) => set({ showEvacuationCenters }),
+      selectedEvacuationCenter: null,
+      setSelectedEvacuationCenter: (selectedEvacuationCenter) => set({ selectedEvacuationCenter }),
 
       assessmentLoading: false,
       setAssessmentLoading: (assessmentLoading) => set({ assessmentLoading }),

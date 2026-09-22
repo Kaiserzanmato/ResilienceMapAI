@@ -16,8 +16,9 @@ assessments, grounded AI explanations, and report/export workflows.
 ### Current Capabilities
 
 - **Global map and search:** MapLibre-powered map with six basemaps, risk
-  zones, heatmaps, active alerts, historical events, coordinate search, and
-  server-side place search.
+  zones, heatmaps, active alerts, historical events, coordinate search,
+  server-side place search, and a nearest-evacuation-center locator with
+  wayfinding cards and Google Maps directions.
 - **Multi-hazard screening:** `POST /api/assessments` evaluates 13 hazard
   categories through the coverage registry. Unsupported evidence remains
   `null`; it is not represented as zero risk.
@@ -215,11 +216,14 @@ As a stopgap, elevated roles (`analyst` and above) additionally require an
 `ADMIN_SHARED_SECRET` sent as `Authorization: Bearer <secret>` (see
 `app/security.py`). This blocks opportunistic third-party abuse of the
 endpoint directly, but it is **one static secret, not per-user identity** —
-it does not restrict which site visitors can use the app's own admin UI
-(there's no login to distinguish them yet). The frontend never holds this
-secret directly: `frontend/app/api/admin/datasets/upload/route.ts` is a
-server-side proxy that attaches it. Real authentication (JWT/OAuth) is not
-yet built.
+real authentication (JWT/OAuth) is not yet built. The frontend never holds
+this secret directly: `frontend/app/api/admin/datasets/upload/route.ts` is a
+server-side proxy that holds it — the proxy only attaches it to the backend
+request after the caller first proves they know the secret themselves (an
+`x-admin-key` header, checked with a constant-time comparison); it does not
+attach the secret on behalf of every caller (see
+`RELEASE_AUDIT_2026-09-22.md` for the audit that found and fixed the
+previous behavior, where it did).
 
 ## Data sync & persistence
 
@@ -360,6 +364,22 @@ specifically, which stopped making sense once Qwen/Together became primary.
   now (resolved via the "agent" task chain, since that's what the AI Workspace
   chat uses) — it used to be hardcoded to always report "DeepSeek" regardless
   of configuration.
+
+## Evacuation Center Locator & security hardening (Sep 2026)
+
+Added the nearest-evacuation-center locator (see Current Capabilities above).
+In the same release, a full security audit (`code-reviews` skill; see
+`RELEASE_AUDIT_2026-09-22.md`) found and fixed a live-reproducible
+Critical: the dataset-upload admin proxy was attaching `ADMIN_SHARED_SECRET`
+to every caller regardless of who they were, letting any anonymous visitor
+write into the dataset source registry through the public `/admin/datasets`
+page. Also patched two Critical unauthenticated-RCE CVEs in `next`
+(16.3.0→16.3.5) plus High CVEs in `nanoid` and `sharp`, closed a latent
+unsanitized-HTML popup sink in the map's alert/event markers, and added
+`robots.txt`/`sitemap.xml`/`llms.txt` plus baseline security response
+headers. See the audit doc for the two items deliberately deferred (the
+`maplibre-gl` major-version bump, and the `/api/reports` public-listing
+access-model decision).
 
 ## Recent fixes (Aug 2026)
 

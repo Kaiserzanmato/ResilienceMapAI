@@ -60,6 +60,7 @@ export function LayerControlWidget() {
     mapView, setMapView, activeLayer, setActiveLayer,
     showZones, setShowZones, showHeatmap, setShowHeatmap,
     showAlerts, setShowAlerts, showEvents, setShowEvents,
+    showEvacuationCenters, setShowEvacuationCenters,
   } = useAppStore();
 
   const { data: layerIndex } = useQuery({ queryKey: ["layer-index"], queryFn: api.layerIndex });
@@ -132,6 +133,17 @@ export function LayerControlWidget() {
             <Toggle label="Heatmap" checked={showHeatmap} onChange={setShowHeatmap} />
             <Toggle label="Active alerts" checked={showAlerts} onChange={setShowAlerts} />
             <Toggle label="Historical events" checked={showEvents} onChange={setShowEvents} />
+          </div>
+
+          <div>
+            <p className="mb-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-[var(--fg-muted)]">
+              Critical infrastructure
+            </p>
+            <Toggle
+              label="🏫 Show Nearest Evacuation Centers"
+              checked={showEvacuationCenters}
+              onChange={setShowEvacuationCenters}
+            />
           </div>
         </div>
       )}

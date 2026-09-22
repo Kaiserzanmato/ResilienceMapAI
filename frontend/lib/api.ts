@@ -141,11 +141,13 @@ export const api = {
     url: string;
     confidence: string;
     records: number;
+    adminKey: string;
   }) => {
+    const { adminKey, ...payload } = meta;
     const res = await fetch("/api/admin/datasets/upload", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(meta),
+      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+      body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => null);
     if (!res.ok) {

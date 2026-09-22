@@ -66,6 +66,11 @@ status display that was hardcoded regardless of actual configuration.
   (`POST /api/ai/spatial-vision`) for a grounded, persona-tailored analysis;
   falls back to a deterministic response when no provider key is configured
   **(NEW Aug 2026)**
+- **Evacuation Center Locator** — a Map Layers toggle that finds the nearest
+  curated evacuation centers to the active map selection (Haversine
+  distance), flies the camera to the closest one, and shows a wayfinding
+  card with status, address, safety instructions, and a Google Maps
+  directions link **(NEW Sep 2026)**
 
 **Technical**: MapLibre GL JS, GeoJSON hazard layers, vector tiles
 

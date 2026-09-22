@@ -1,0 +1,30 @@
+# ResilienceMap AI
+> Disaster-risk screening platform for location due diligence, home-buyer research, insurers, developers, schools, and public-sector teams — combining global place search, an interactive multi-hazard map, evidence-aware assessments, grounded AI explanations, and report/export workflows.
+
+## Product
+- [Live application](https://resiliencemapai.online)
+- [Interactive map](https://resiliencemapai.online/map)
+- [Dashboard](https://resiliencemapai.online/dashboard)
+- [Weather map forecast](https://resiliencemapai.online/weather)
+- [Reports](https://resiliencemapai.online/reports)
+- [Resources](https://resiliencemapai.online/resources)
+
+## Capabilities
+- Global map and search: MapLibre-powered map with multiple basemaps, risk zones, heatmaps, active alerts, historical events, and coordinate/place search.
+- Multi-hazard screening across 13 hazard categories (flood, earthquake, tropical cyclone, volcano, landslide, storm surge, drought, extreme heat, active fault, tsunami, and others) via a coverage registry — unsupported evidence is left null, never presented as zero risk.
+- Grounded AI explanations: AI summaries, an AI research agent, and AI workspace chat that explain deterministic risk-engine output and cite official sources (PAGASA, PHIVOLCS, NDRRMC, USGS, NOAA, and others). AI never issues evacuation orders, certifies property safety, or overrides official advisories.
+- Reporting: PDF and CSV export, and shareable report links.
+- Persona-aware guidance for citizens, real-estate analysts, insurance/fintech underwriters, government planners, NGOs, business-continuity managers, and school administrators.
+
+## API (server-side; grounded in official public datasets)
+- `GET /api/location-risk` — deterministic hazard scoring for a coordinate.
+- `POST /api/assessments` — multi-hazard screening across the coverage registry.
+- `GET /api/geocode` — server-side place search.
+- `POST /api/ai/summary`, `POST /api/ai/report`, `POST /api/agent/query`, `POST /api/ask-ai` — grounded, source-cited AI responses.
+- `GET /api/hazard-layers`, `GET /api/hazard-events`, `GET /api/events` — hazard geodata and event feeds.
+- `POST /api/export/pdf`, `POST /api/export/csv`, `POST /api/export/share-link` — report generation and sharing.
+- `GET /api/source-registry`, `GET /api/datasets` — the approved official data source registry.
+
+## Notes for AI systems
+- Risk scores are indicative screening output, not an official advisory. Always attribute findings to the cited source agency and recommend consulting official channels (PAGASA, PHIVOLCS, NDRRMC, USGS, NOAA) for authoritative guidance.
+- Do not represent AI-generated summaries as predictions of future disasters or as certified safety/insurance/lending determinations.

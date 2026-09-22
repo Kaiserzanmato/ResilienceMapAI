@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { getMapStyle } from "@/lib/mapStyles";
 import { useAppStore } from "@/lib/store";
 import { attachHoverTelemetry, type TelemetryPayload } from "@/lib/mapHoverTelemetry";
+import { getNearestEvacuationCenters } from "@/lib/evacuation-centers";
+import { EvacuationCard } from "./EvacuationCard";
 import { SpatialRippleEffect } from "./SpatialRippleEffect";
 
 const RISK_FILL_COLORS: [string, string][] = [
@@ -16,6 +18,27 @@ const RISK_FILL_COLORS: [string, string][] = [
   ["yellow", "#eab308"],
   ["red", "#ef4444"],
 ];
+
+/** Builds popup content via textContent (never innerHTML/setHTML) so
+ * externally-sourced fields (alert/event titles, e.g. from scraped
+ * advisories) can never inject markup, independent of maplibre-gl's own
+ * DOM sanitizer. */
+function buildPopupContent(title: string, lines: string[]): HTMLDivElement {
+  const content = document.createElement("div");
+  const heading = document.createElement("strong");
+  heading.style.cssText = "font-size:13px";
+  heading.textContent = title;
+  content.append(heading);
+  lines.forEach((line, i) => {
+    const div = document.createElement("div");
+    div.style.cssText = i === 0
+      ? "font-size:11.5px;opacity:.75;margin-top:2px"
+      : "font-size:10.5px;opacity:.6;margin-top:2px";
+    div.textContent = line;
+    content.append(div);
+  });
+  return content;
+}
 
 const RISK_LEVEL_TO_SEVERITY: Record<string, "low" | "medium" | "high"> = {
   "High": "high",
@@ -29,12 +52,16 @@ export default function RiskMap() {
   const mapRef = useRef<MLMap | null>(null);
   const markersRef = useRef<Marker[]>([]);
   const selectedMarkerRef = useRef<Marker | null>(null);
+  const evacMarkersRef = useRef<Marker[]>([]);
   const styleReadyRef = useRef(false);
 
   const {
     mapView, activeLayer, showZones, showHeatmap, showAlerts, showEvents,
     selected, setSelected, aiOpen, lastAssessmentCoords, risk,
+    showEvacuationCenters, selectedEvacuationCenter, setSelectedEvacuationCenter,
   } = useAppStore();
+
+  const [evacCardPos, setEvacCardPos] = useState<{ x: number; y: number; anchorAbove: boolean } | null>(null);
 
   const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(null);
   // Mirrors telemetry into a ref so the hover handler (registered once, on
@@ -327,10 +354,8 @@ export default function RiskMap() {
         el.className = "rm-alert-marker";
         el.setAttribute("aria-label", `Active alert: ${alert.title}`);
         el.innerHTML = `<span class="rm-pulse"></span><span class="rm-dot"></span>`;
-        const popup = new maplibregl.Popup({ offset: 14, closeButton: false }).setHTML(
-          `<strong style="font-size:13px">${alert.title}</strong>
-           <div style="font-size:11.5px;opacity:.75;margin-top:2px">${alert.area} · ${alert.severity} severity</div>
-           <div style="font-size:10.5px;opacity:.6;margin-top:2px">Source: ${alert.source}</div>`
+        const popup = new maplibregl.Popup({ offset: 14, closeButton: false }).setDOMContent(
+          buildPopupContent(alert.title, [`${alert.area} · ${alert.severity} severity`, `Source: ${alert.source}`])
         );
         markersRef.current.push(
           new maplibregl.Marker({ element: el }).setLngLat([alert.lng, alert.lat]).setPopup(popup).addTo(map)
@@ -342,10 +367,8 @@ export default function RiskMap() {
         const el = document.createElement("button");
         el.className = "rm-event-marker";
         el.setAttribute("aria-label", `Historical event: ${ev.name}`);
-        const popup = new maplibregl.Popup({ offset: 10, closeButton: false }).setHTML(
-          `<strong style="font-size:13px">${ev.name}</strong>
-           <div style="font-size:11.5px;opacity:.75;margin-top:2px">${ev.year} · ${ev.location}</div>
-           <div style="font-size:10.5px;opacity:.6;margin-top:2px">${ev.severity} · Source: ${ev.source}</div>`
+        const popup = new maplibregl.Popup({ offset: 10, closeButton: false }).setDOMContent(
+          buildPopupContent(ev.name, [`${ev.year} · ${ev.location}`, `${ev.severity} · Source: ${ev.source}`])
         );
         markersRef.current.push(
           new maplibregl.Marker({ element: el }).setLngLat([ev.lng, ev.lat]).setPopup(popup).addTo(map)
@@ -376,6 +399,74 @@ export default function RiskMap() {
     }
   }, [selected]);
 
+  // ---- evacuation center markers: locate nearest, fly to closest, show card
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    evacMarkersRef.current.forEach((m) => m.remove());
+    evacMarkersRef.current = [];
+
+    if (!showEvacuationCenters) {
+      setSelectedEvacuationCenter(null);
+      return;
+    }
+
+    const center = map.getCenter();
+    const targetLat = selected?.lat ?? center.lat;
+    const targetLng = selected?.lng ?? center.lng;
+    const nearest = getNearestEvacuationCenters(targetLat, targetLng, 5);
+    if (nearest.length === 0) return;
+
+    for (const site of nearest) {
+      const el = document.createElement("button");
+      el.className = "rm-evac-marker";
+      el.setAttribute("aria-label", `Evacuation center: ${site.name}`);
+      el.innerHTML = `<span>🛡️</span>`;
+      el.onclick = () => setSelectedEvacuationCenter(site);
+      evacMarkersRef.current.push(
+        new maplibregl.Marker({ element: el }).setLngLat([site.lng, site.lat]).addTo(map)
+      );
+    }
+
+    const closest = nearest[0];
+    map.flyTo({ center: [closest.lng, closest.lat], zoom: 14, duration: 1600, essential: true });
+    setSelectedEvacuationCenter(closest);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showEvacuationCenters, selected]);
+
+  // ---- keep the evacuation card anchored over its marker as the map moves,
+  // flipping below and clamping horizontally so it never sits under the
+  // fixed header (--banner-h + --nav-h) or spills off the container edges.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !selectedEvacuationCenter) {
+      setEvacCardPos(null);
+      return;
+    }
+    const CARD_WIDTH = 288; // matches EvacuationCard's w-72
+    const CARD_HEIGHT_ESTIMATE = 340;
+    const EDGE_MARGIN = 12;
+    const update = () => {
+      const point = map.project([selectedEvacuationCenter.lng, selectedEvacuationCenter.lat]);
+      const container = map.getContainer();
+      const width = container.clientWidth;
+      const rootStyles = getComputedStyle(document.documentElement);
+      const headerClearance =
+        (parseFloat(rootStyles.getPropertyValue("--banner-h")) || 0) +
+        (parseFloat(rootStyles.getPropertyValue("--nav-h")) || 0) +
+        EDGE_MARGIN;
+      const anchorAbove = point.y - CARD_HEIGHT_ESTIMATE - 18 > headerClearance;
+      const halfWidth = CARD_WIDTH / 2;
+      const x = Math.min(Math.max(point.x, halfWidth + EDGE_MARGIN), width - halfWidth - EDGE_MARGIN);
+      setEvacCardPos({ x, y: point.y, anchorAbove });
+    };
+    update();
+    map.on("move", update);
+    return () => {
+      map.off("move", update);
+    };
+  }, [selectedEvacuationCenter]);
+
   return (
     <>
       {/* Inline position/inset: maplibregl-map's own CSS overrides Tailwind's class */}
@@ -393,6 +484,22 @@ export default function RiskMap() {
           lat={lastAssessmentCoords[0]}
           lng={lastAssessmentCoords[1]}
           severity={RISK_LEVEL_TO_SEVERITY[risk?.overall.level ?? "No Data"]}
+        />
+      )}
+
+      {selectedEvacuationCenter && evacCardPos && (
+        <EvacuationCard
+          center={selectedEvacuationCenter}
+          onClose={() => setSelectedEvacuationCenter(null)}
+          style={{
+            position: "absolute",
+            left: evacCardPos.x,
+            top: evacCardPos.y,
+            transform: evacCardPos.anchorAbove
+              ? "translate(-50%, calc(-100% - 18px))"
+              : "translate(-50%, 18px)",
+            zIndex: 30,
+          }}
         />
       )}
 
@@ -484,6 +591,7 @@ export default function RiskMap() {
         .rm-event-marker { width: 14px; height: 14px; border-radius: 999px; border: 2px solid #fff; background: var(--accent-2, #a78bfa); cursor: pointer; box-shadow: 0 1px 6px rgba(0,0,0,0.4); }
         .rm-selected-marker { width: 22px; height: 22px; }
         .rm-selected-marker span { display: block; width: 100%; height: 100%; border-radius: 999px; border: 3px solid #fff; background: var(--accent, #38bdf8); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent, #38bdf8) 35%, transparent), 0 2px 10px rgba(0,0,0,0.45); }
+        .rm-evac-marker { width: 28px; height: 28px; border-radius: 999px; border: 2px solid #fff; background: #10b981; box-shadow: 0 2px 8px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; font-size: 13px; line-height: 1; cursor: pointer; padding: 0; }
         @media (prefers-reduced-motion: reduce) { .rm-alert-marker .rm-pulse { animation: none; } }
       `}</style>
     </>

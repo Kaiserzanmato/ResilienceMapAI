@@ -8,6 +8,19 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // All routes, including /api/* — baseline hardening headers that
+        // cost nothing functionally: block MIME-sniffing, block this app
+        // being framed by another origin (clickjacking), and avoid leaking
+        // full referrer URLs to third-party destinations.
+        source: "/(.*)",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "X-XSS-Protection", value: "1; mode=block" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+      {
         // Page routes only — excludes /_next/* (content-hashed, safe to
         // cache forever — Next already forces this and it can't be
         // overridden), /api/*, and any path with a file extension (icons,

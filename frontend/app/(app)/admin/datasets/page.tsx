@@ -54,6 +54,7 @@ const EMPTY_FORM = {
   url: "",
   confidence: "Medium",
   records: 0,
+  adminKey: "",
 };
 
 interface SyncHealthEntry {
@@ -408,11 +409,11 @@ export default function DatasetsPage() {
         <GlassCard strong className="mb-4 p-5">
           <h2 className="mb-3 text-[14px] font-semibold">Register dataset metadata</h2>
           <p className="mb-4 text-[12px] text-[var(--fg-muted)]">
-            Requires the{" "}
+            Requires the admin key below (matches the server&apos;s{" "}
             <code className="rounded bg-[color-mix(in_srgb,var(--fg)_8%,transparent)] px-1.5 py-0.5">
-              dataset_admin
-            </code>{" "}
-            role. Sources must be HTTPS and from trusted agencies (USGS, NOAA, PAGASA, PHIVOLCS, Copernicus…).
+              ADMIN_SHARED_SECRET
+            </code>
+            ). Sources must be HTTPS and from trusted agencies (USGS, NOAA, PAGASA, PHIVOLCS, Copernicus…).
           </p>
           <form
             className="grid gap-3 sm:grid-cols-2"
@@ -478,6 +479,18 @@ export default function DatasetsPage() {
                 value={form.url}
                 onChange={(e) => setForm({ ...form, url: e.target.value })}
                 placeholder="https://earthquake.usgs.gov/…"
+              />
+            </label>
+            <label className="text-[12px] font-medium sm:col-span-2">
+              Admin key
+              <input
+                required
+                type="password"
+                autoComplete="off"
+                className={cn(inputCls, "mt-1")}
+                value={form.adminKey}
+                onChange={(e) => setForm({ ...form, adminKey: e.target.value })}
+                placeholder="Server ADMIN_SHARED_SECRET"
               />
             </label>
             <div className="flex gap-2 sm:col-span-2">
