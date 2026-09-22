@@ -28,7 +28,11 @@ export function EvacuationCard({
   return (
     <GlassCard
       strong
-      style={style}
+      style={{
+        maxHeight: "calc(100vh - var(--banner-h, 0px) - var(--nav-h, 0px) - var(--footer-h, 0px) - 48px)",
+        overflowY: "auto",
+        ...style,
+      }}
       className={cn("w-72 space-y-3 p-4 text-[13px]", className)}
       role="dialog"
       aria-label={`Evacuation center: ${center.name}`}

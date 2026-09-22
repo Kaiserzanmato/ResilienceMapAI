@@ -7,7 +7,6 @@ import { IntelligenceMarkersWidget } from "@/components/map/IntelligenceMarkersW
 import { LayerControlWidget } from "@/components/map/LayerControlWidget";
 import { RiskLegend } from "@/components/map/RiskLegend";
 import { RiskSummaryWidget } from "@/components/map/RiskSummaryWidget";
-import { SearchBar } from "@/components/map/SearchBar";
 import { MapCommandBar } from "@/components/map/MapCommandBar";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
@@ -59,30 +58,18 @@ export default function MapPage() {
       {/* Map fills the entire viewport beneath all overlays */}
       <RiskMap />
 
-      {/* Floating Command Bar */}
+      {/* Floating Command Bar — the single unified location search/select
+          control (map click, dropdown search, or preset) all read/write the
+          same `selected` store value, so there is exactly one place a user
+          searches for or sees the current location. */}
       <MapCommandBar />
 
-      {/* Search below the navigation for tablet and mobile. */}
+      {/* Desktop risk summary, top right. Mobile/tablet summary renders
+          separately near the footer below. */}
       <div
-        className={`pointer-events-none absolute inset-x-0 top-[calc(var(--banner-h)+var(--nav-h)+36px)] z-30 flex justify-center px-3 xl:hidden ${
-          aiOpen ? "md:right-[calc(var(--ai-panel-w)+1.5rem)]" : ""
-        }`}
-      >
-        <div className="pointer-events-auto w-full max-w-md">
-          <SearchBar />
-        </div>
-      </div>
-
-      {/* Desktop uses one grid for search + summary. The auto-sized summary
-          column keeps search out of the summary's actual space, while the
-          shared AI width reserves the expanded panel's space. */}
-      <div
-        className="pointer-events-none absolute left-3 top-[calc(var(--banner-h)+var(--nav-h)+36px)] z-30 hidden grid-cols-[minmax(0,1fr)_auto] gap-3 xl:grid"
+        className="pointer-events-none absolute top-[calc(var(--banner-h)+var(--nav-h)+36px)] z-30 hidden xl:block"
         style={{ right: aiOpen ? "calc(var(--ai-panel-w) + 1.5rem)" : "4rem" }}
       >
-        <div className="pointer-events-auto min-w-0 w-full max-w-md justify-self-center">
-          <SearchBar />
-        </div>
         <div className="pointer-events-auto">
           <RiskSummaryWidget />
         </div>

@@ -61,7 +61,7 @@ export default function RiskMap() {
     showEvacuationCenters, selectedEvacuationCenter, setSelectedEvacuationCenter,
   } = useAppStore();
 
-  const [evacCardPos, setEvacCardPos] = useState<{ x: number; y: number; anchorAbove: boolean } | null>(null);
+  const [evacCardPos, setEvacCardPos] = useState<{ x: number; top: number } | null>(null);
 
   const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(null);
   // Mirrors telemetry into a ref so the hover handler (registered once, on
@@ -434,9 +434,12 @@ export default function RiskMap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showEvacuationCenters, selected]);
 
-  // ---- keep the evacuation card anchored over its marker as the map moves,
-  // flipping below and clamping horizontally so it never sits under the
-  // fixed header (--banner-h + --nav-h) or spills off the container edges.
+  // ---- keep the evacuation card anchored over its marker as the map moves.
+  // Picks whichever side (above/below the marker) actually has room, then
+  // clamps the final top within [header, footer] regardless of that choice —
+  // so the card can never render under the fixed header (--banner-h +
+  // --nav-h) *or* the fixed footer (--footer-h), and never spills off the
+  // container's horizontal edges either.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !selectedEvacuationCenter) {
@@ -446,19 +449,29 @@ export default function RiskMap() {
     const CARD_WIDTH = 288; // matches EvacuationCard's w-72
     const CARD_HEIGHT_ESTIMATE = 340;
     const EDGE_MARGIN = 12;
+    const MARKER_GAP = 18;
     const update = () => {
       const point = map.project([selectedEvacuationCenter.lng, selectedEvacuationCenter.lat]);
       const container = map.getContainer();
       const width = container.clientWidth;
+      const height = container.clientHeight;
       const rootStyles = getComputedStyle(document.documentElement);
       const headerClearance =
         (parseFloat(rootStyles.getPropertyValue("--banner-h")) || 0) +
         (parseFloat(rootStyles.getPropertyValue("--nav-h")) || 0) +
         EDGE_MARGIN;
-      const anchorAbove = point.y - CARD_HEIGHT_ESTIMATE - 18 > headerClearance;
+      const footerClearance = (parseFloat(rootStyles.getPropertyValue("--footer-h")) || 0) + EDGE_MARGIN;
+
+      const spaceAbove = point.y - MARKER_GAP - headerClearance;
+      const spaceBelow = height - footerClearance - (point.y + MARKER_GAP) - CARD_HEIGHT_ESTIMATE;
+      const anchorAbove = spaceAbove >= CARD_HEIGHT_ESTIMATE || spaceAbove >= spaceBelow;
+
+      let top = anchorAbove ? point.y - MARKER_GAP - CARD_HEIGHT_ESTIMATE : point.y + MARKER_GAP;
+      top = Math.min(Math.max(top, headerClearance), height - footerClearance - CARD_HEIGHT_ESTIMATE);
+
       const halfWidth = CARD_WIDTH / 2;
       const x = Math.min(Math.max(point.x, halfWidth + EDGE_MARGIN), width - halfWidth - EDGE_MARGIN);
-      setEvacCardPos({ x, y: point.y, anchorAbove });
+      setEvacCardPos({ x, top });
     };
     update();
     map.on("move", update);
@@ -494,10 +507,8 @@ export default function RiskMap() {
           style={{
             position: "absolute",
             left: evacCardPos.x,
-            top: evacCardPos.y,
-            transform: evacCardPos.anchorAbove
-              ? "translate(-50%, calc(-100% - 18px))"
-              : "translate(-50%, 18px)",
+            top: evacCardPos.top,
+            transform: "translateX(-50%)",
             zIndex: 30,
           }}
         />
