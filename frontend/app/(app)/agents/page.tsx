@@ -251,7 +251,7 @@ export default function AgentsPage() {
     <div className="relative mx-auto grid h-[calc(100dvh-var(--banner-h)-var(--nav-h)-var(--footer-h)-32px)] max-w-[1500px] gap-3 px-4 pb-4 lg:grid-cols-[320px_1fr]">
       {/* Left: context + personas — desktop only */}
       <div className="hidden flex-col gap-3 overflow-y-auto lg:flex pb-2" style={{ scrollBehavior: "smooth" }}>
-        <GlassPanel className="p-4">
+        <GlassPanel className="overflow-visible p-4">
           <h2 className="mb-2 flex items-center gap-2 text-[13px] font-semibold">
             <MapPin size={14} className="text-[var(--accent)]" aria-hidden="true" />
             Location context
@@ -378,7 +378,7 @@ export default function AgentsPage() {
 
               <div className="mt-6 grid gap-2 sm:grid-cols-1">
                 {/* Mobile-only: the header CTA covers this on larger screens */}
-                {selected && risk && (
+                {canAudit && (
                   <button
                     onClick={generateInsights}
                     disabled={insightsLoading || loading}

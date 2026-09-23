@@ -24,6 +24,7 @@ export function GlassmorphismCta({
   speed = "4s",
   className,
   type = "button",
+  style,
   ...props
 }: GlassmorphismCtaProps) {
   return (
@@ -41,14 +42,15 @@ export function GlassmorphismCta({
           "--spread": spread,
           "--shimmer-color": shimmerColor,
           "--speed": speed,
+          ...style,
         } as CSSProperties
       }
       {...props}
     >
       {/* Rotating conic shimmer, visible as a 1px border around the pill */}
-      <span aria-hidden="true" className="absolute inset-0">
+      <span aria-hidden="true" className="absolute inset-0 hc:hidden">
         <span className="absolute inset-[-200%] h-[400%] w-[400%] [animation:rotate-gradient_var(--speed)_linear_infinite]">
-          <span className="absolute inset-0 [background:conic-gradient(from_calc(270deg-(var(--spread)*0.5)),transparent_0,var(--shimmer-color)_var(--spread),transparent_var(--spread))]" />
+          <span className="absolute inset-0 [background:conic-gradient(from_calc(270deg_-_(var(--spread)*0.5)),transparent_0,var(--shimmer-color)_var(--spread),transparent_var(--spread))]" />
         </span>
       </span>
 
@@ -56,7 +58,7 @@ export function GlassmorphismCta({
         {/* Border beam sweep */}
         <span
           aria-hidden="true"
-          className="absolute left-1/2 top-1/2 h-[200%] w-[200%] [animation:borderBeamRotation_4s_linear_infinite]"
+          className="absolute left-1/2 top-1/2 h-[200%] w-[200%] [animation:borderBeamRotation_var(--speed)_linear_infinite]"
           style={{
             transform: "translate(-50%, -50%)",
             background:

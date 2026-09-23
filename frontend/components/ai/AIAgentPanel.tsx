@@ -24,7 +24,7 @@ import { UsageMeter } from "@/components/ui/UsageMeter";
 const MIN_PANEL_WIDTH = 340;
 const MAX_PANEL_WIDTH = 640;
 
-export function AIAgentPanel() {
+export function AIAgentPanel({ hidden = false }: { hidden?: boolean } = {}) {
   const {
     aiOpen, setAiOpen, aiPinned, setAiPinned, messages, addMessage,
     clearMessages, persona, selected, risk, activeTarget,
@@ -146,6 +146,8 @@ export function AIAgentPanel() {
   }
 
   const contextLabel = selected?.name ?? risk?.location_name ?? "No location selected";
+
+  if (hidden) return null;
 
   return (
     <>

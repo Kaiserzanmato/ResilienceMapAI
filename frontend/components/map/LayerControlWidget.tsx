@@ -41,6 +41,27 @@ function Toggle({
   );
 }
 
+function RadioPill({
+  label, checked, onClick, icon: Icon,
+}: { label: string; checked: boolean; onClick: () => void; icon?: typeof Globe }) {
+  return (
+    <button
+      role="radio"
+      aria-checked={checked}
+      onClick={onClick}
+      className={cn(
+        "focus-ring flex cursor-pointer items-center justify-center gap-1 rounded-lg border px-1 py-1.5 text-[11px] font-medium transition-all",
+        checked
+          ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] text-[var(--accent)]"
+          : "border-[var(--surface-border)] text-[var(--fg-muted)] hover:text-[var(--fg)]"
+      )}
+    >
+      {Icon && <Icon size={12} aria-hidden="true" />}
+      {label}
+    </button>
+  );
+}
+
 // Subscribe to the desktop media query so the widget defaults open on
 // desktop but collapsed on mobile (no overlapping panels on small screens)
 const desktopQuery = "(min-width: 768px)";
@@ -94,39 +115,23 @@ export function LayerControlWidget() {
             </p>
             <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="Map view">
               {MAP_VIEWS.map((v) => (
-                <button
+                <RadioPill
                   key={v.key}
-                  role="radio"
-                  aria-checked={mapView === v.key}
+                  label={v.label}
+                  checked={mapView === v.key}
                   onClick={() => setMapView(v.key)}
-                  className={cn(
-                    "focus-ring cursor-pointer rounded-lg border px-1 py-1.5 text-[11px] font-medium transition-all",
-                    mapView === v.key
-                      ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] text-[var(--accent)]"
-                      : "border-[var(--surface-border)] text-[var(--fg-muted)] hover:text-[var(--fg)]"
-                  )}
-                >
-                  {v.label}
-                </button>
+                />
               ))}
             </div>
             <div className="mt-1.5 grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Map projection">
-              {PROJECTIONS.map(({ key, label, icon: Icon }) => (
-                <button
+              {PROJECTIONS.map(({ key, label, icon }) => (
+                <RadioPill
                   key={key}
-                  role="radio"
-                  aria-checked={mapProjection === key}
+                  label={label}
+                  icon={icon}
+                  checked={mapProjection === key}
                   onClick={() => setMapProjection(key)}
-                  className={cn(
-                    "focus-ring flex cursor-pointer items-center justify-center gap-1 rounded-lg border px-1 py-1.5 text-[11px] font-medium transition-all",
-                    mapProjection === key
-                      ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] text-[var(--accent)]"
-                      : "border-[var(--surface-border)] text-[var(--fg-muted)] hover:text-[var(--fg)]"
-                  )}
-                >
-                  <Icon size={12} aria-hidden="true" />
-                  {label}
-                </button>
+                />
               ))}
             </div>
           </div>
