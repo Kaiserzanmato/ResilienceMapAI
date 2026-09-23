@@ -25,6 +25,9 @@ export interface MapTarget {
   timestamp: number; // For cache invalidation
 }
 
+/** 2D web-mercator map or MapLibre's 3D globe; both share every overlay. */
+export type MapProjection = "mercator" | "globe";
+
 interface AppState {
   persona: string;
   setPersona: (p: string) => void;
@@ -53,6 +56,8 @@ interface AppState {
   // Map state
   mapView: string;
   setMapView: (v: string) => void;
+  mapProjection: MapProjection;
+  setMapProjection: (p: MapProjection) => void;
   activeLayer: string;
   setActiveLayer: (l: string) => void;
   showHeatmap: boolean;
@@ -104,6 +109,8 @@ export const useAppStore = create<AppState>()(
 
       mapView: "dark",
       setMapView: (mapView) => set({ mapView }),
+      mapProjection: "mercator",
+      setMapProjection: (mapProjection) => set({ mapProjection }),
       activeLayer: "overall",
       setActiveLayer: (activeLayer) => set({ activeLayer }),
       showHeatmap: true,
@@ -131,6 +138,7 @@ export const useAppStore = create<AppState>()(
       partialize: (s) => ({
         persona: s.persona,
         mapView: s.mapView,
+        mapProjection: s.mapProjection,
         activeLayer: s.activeLayer,
         aiPinned: s.aiPinned,
         selected: s.selected,

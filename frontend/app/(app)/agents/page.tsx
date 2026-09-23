@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Markdown } from "@/components/ai/Markdown";
 import { SourceGroundingCard } from "@/components/ai/SourceGroundingCard";
 import { SearchBar } from "@/components/map/SearchBar";
-import { GlassCard } from "@/components/ui/GlassCard";
+import { GlassPanel } from "@/components/ui/GlassPanel";
+import { GlassmorphismCta } from "@/components/ui/GlassmorphismCta";
 import { UsageMeter } from "@/components/ui/UsageMeter";
 import { api, API_BASE, type UsageStatus } from "@/lib/api";
 import { getPersona, PERSONAS } from "@/lib/personas";
@@ -238,11 +239,19 @@ export default function AgentsPage() {
     }
   }
 
+  const canAudit = !!selected && !!risk;
+
   return (
-    <div className="mx-auto grid h-[calc(100dvh-var(--banner-h)-var(--nav-h)-var(--footer-h)-32px)] max-w-[1500px] gap-3 px-4 pb-4 lg:grid-cols-[320px_1fr]">
+    <div className="relative">
+      {/* Ambient glow orbs behind the frosted panels */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -top-8 overflow-hidden hc:hidden">
+        <div className="absolute -left-[8%] -top-[12%] h-[45%] w-[45%] rounded-full bg-[var(--risk-low)] opacity-[0.12] blur-[130px]" />
+        <div className="absolute -bottom-[12%] -right-[8%] h-[45%] w-[45%] rounded-full bg-[var(--accent-2)] opacity-[0.14] blur-[130px]" />
+      </div>
+    <div className="relative mx-auto grid h-[calc(100dvh-var(--banner-h)-var(--nav-h)-var(--footer-h)-32px)] max-w-[1500px] gap-3 px-4 pb-4 lg:grid-cols-[320px_1fr]">
       {/* Left: context + personas — desktop only */}
       <div className="hidden flex-col gap-3 overflow-y-auto lg:flex pb-2" style={{ scrollBehavior: "smooth" }}>
-        <GlassCard className="p-4">
+        <GlassPanel className="p-4">
           <h2 className="mb-2 flex items-center gap-2 text-[13px] font-semibold">
             <MapPin size={14} className="text-[var(--accent)]" aria-hidden="true" />
             Location context
@@ -253,10 +262,10 @@ export default function AgentsPage() {
               ? <>Grounding insights in <strong className="text-[var(--fg)]">{selected.name ?? `${selected.lat.toFixed(3)}, ${selected.lng.toFixed(3)}`}</strong></>
               : "No location selected — answers will be general guidance."}
           </p>
-        </GlassCard>
+        </GlassPanel>
 
         {/* Sync Verification Diagnostics */}
-        <GlassCard className="p-4">
+        <GlassPanel className="p-4">
           <h2 className="mb-2.5 flex items-center gap-1.5 text-[12px] font-semibold">
             <ShieldCheck size={13} className="text-[var(--accent)]" />
             Grounding Status
@@ -280,9 +289,9 @@ export default function AgentsPage() {
           <p className="mt-2 text-[10px] text-[var(--fg-muted)]">
             Last sync: {new Date().toLocaleTimeString()}
           </p>
-        </GlassCard>
+        </GlassPanel>
 
-        <GlassCard className="flex-1 p-4">
+        <GlassPanel className="flex-1 p-4">
           <h2 className="mb-2 text-[13px] font-semibold">Persona</h2>
           <div className="space-y-1.5">
             {PERSONAS.map((p) => (
@@ -304,11 +313,11 @@ export default function AgentsPage() {
               </button>
             ))}
           </div>
-        </GlassCard>
+        </GlassPanel>
       </div>
 
       {/* Right: chat workspace */}
-      <GlassCard strong className="flex min-h-0 flex-col overflow-hidden">
+      <GlassPanel className="flex min-h-0 flex-col">
         <div className="flex items-center gap-3 border-b border-[var(--surface-border)] px-5 py-3.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)]">
             <Sparkles size={16} className="text-white" aria-hidden="true" />
@@ -329,6 +338,14 @@ export default function AgentsPage() {
               </p>
             </div>
           </div>
+          <GlassmorphismCta
+            label={insightsLoading ? "Running audit…" : "Run Risk Audit"}
+            icon={insightsLoading ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : undefined}
+            onClick={generateInsights}
+            disabled={!canAudit || insightsLoading || loading}
+            title={canAudit ? "Generate grounded insights for the selected location" : "Select a location with a loaded risk profile first"}
+            className="hidden sm:inline-flex"
+          />
           <button
             onClick={clearMessages}
             aria-label="Clear conversation"
@@ -360,11 +377,12 @@ export default function AgentsPage() {
               )}
 
               <div className="mt-6 grid gap-2 sm:grid-cols-1">
+                {/* Mobile-only: the header CTA covers this on larger screens */}
                 {selected && risk && (
                   <button
                     onClick={generateInsights}
                     disabled={insightsLoading || loading}
-                    className="focus-ring glass flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] px-4 py-3 font-medium text-[var(--accent)] transition-all hover:border-[var(--accent)] hover:brightness-110 disabled:opacity-50"
+                    className="focus-ring glass flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[var(--accent)] sm:hidden bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] px-4 py-3 font-medium text-[var(--accent)] transition-all hover:border-[var(--accent)] hover:brightness-110 disabled:opacity-50"
                   >
                     {insightsLoading ? (
                       <>
@@ -464,7 +482,8 @@ export default function AgentsPage() {
             </button>
           </div>
         </form>
-      </GlassCard>
+      </GlassPanel>
+    </div>
     </div>
   );
 }

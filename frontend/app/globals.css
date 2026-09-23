@@ -249,6 +249,16 @@ body {
 .high-contrast .skeleton { background: rgba(255, 255, 255, 0.14); }
 
 /* Reduced motion */
+/* ---------- Glassmorphism CTA animations ---------- */
+@keyframes rotate-gradient {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes borderBeamRotation {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

@@ -1,13 +1,13 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import maplibregl, { Map as MLMap, Marker } from "maplibre-gl";
+import maplibregl, { Map as MLMap, Marker, type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { FLAGS } from "@/lib/feature-flags";
 import { cn } from "@/lib/utils";
 import { getMapStyle } from "@/lib/mapStyles";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, type MapProjection } from "@/lib/store";
 import { attachHoverTelemetry, type TelemetryPayload } from "@/lib/mapHoverTelemetry";
 import { getNearestEvacuationCenters } from "@/lib/evacuation-centers";
 import { EvacuationCard } from "./EvacuationCard";
@@ -18,6 +18,10 @@ const RISK_FILL_COLORS: [string, string][] = [
   ["yellow", "#eab308"],
   ["red", "#ef4444"],
 ];
+
+function styleWithProjection(view: string, projection: MapProjection): StyleSpecification {
+  return { ...getMapStyle(view), projection: { type: projection } };
+}
 
 /** Builds popup content via textContent (never innerHTML/setHTML) so
  * externally-sourced fields (alert/event titles, e.g. from scraped
@@ -56,7 +60,7 @@ export default function RiskMap() {
   const styleReadyRef = useRef(false);
 
   const {
-    mapView, activeLayer, showZones, showHeatmap, showAlerts, showEvents,
+    mapView, mapProjection, activeLayer, showZones, showHeatmap, showAlerts, showEvents,
     selected, setSelected, aiOpen, lastAssessmentCoords, risk,
     showEvacuationCenters, selectedEvacuationCenter, setSelectedEvacuationCenter,
   } = useAppStore();
@@ -235,7 +239,7 @@ export default function RiskMap() {
     if (!containerRef.current || mapRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: getMapStyle(useAppStore.getState().mapView),
+      style: styleWithProjection(useAppStore.getState().mapView, useAppStore.getState().mapProjection),
       center: [122.5, 12.5],
       zoom: 5.1,
       attributionControl: { compact: true },
@@ -249,6 +253,9 @@ export default function RiskMap() {
     );
 
     map.on("style.load", () => {
+      // A projection toggle made while this style was loading was skipped; apply it now
+      const wanted = useAppStore.getState().mapProjection;
+      if (map.getProjection()?.type !== wanted) map.setProjection({ type: wanted });
       styleReadyRef.current = true;
       addOverlays(map);
     });
@@ -310,8 +317,16 @@ export default function RiskMap() {
     const map = mapRef.current;
     if (!map) return;
     styleReadyRef.current = false;
-    map.setStyle(getMapStyle(mapView), { diff: false });
+    // Projection lives in the style spec so a basemap switch keeps the globe
+    map.setStyle(styleWithProjection(mapView, useAppStore.getState().mapProjection), { diff: false });
   }, [mapView]);
+
+  // ---- switch 2D map / 3D globe (same map instance, so overlays and selection carry over)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !styleReadyRef.current) return;
+    map.setProjection({ type: mapProjection });
+  }, [mapProjection]);
 
   // ---- update overlay data when the active hazard layer changes
   useEffect(() => {

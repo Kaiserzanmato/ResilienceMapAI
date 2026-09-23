@@ -1,12 +1,17 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, Layers } from "lucide-react";
+import { ChevronDown, Globe, Layers, Map as MapIcon } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { api } from "@/lib/api";
 import { MAP_VIEWS } from "@/lib/mapStyles";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, type MapProjection } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "@/components/ui/GlassCard";
+
+const PROJECTIONS: { key: MapProjection; label: string; icon: typeof Globe }[] = [
+  { key: "mercator", label: "2D Map", icon: MapIcon },
+  { key: "globe", label: "3D Globe", icon: Globe },
+];
 
 function Toggle({
   label, checked, onChange,
@@ -57,7 +62,7 @@ export function LayerControlWidget() {
   const open = userToggled ?? isDesktop;
   const setOpen = (fn: (v: boolean) => boolean) => setUserToggled(fn(open));
   const {
-    mapView, setMapView, activeLayer, setActiveLayer,
+    mapView, setMapView, mapProjection, setMapProjection, activeLayer, setActiveLayer,
     showZones, setShowZones, showHeatmap, setShowHeatmap,
     showAlerts, setShowAlerts, showEvents, setShowEvents,
     showEvacuationCenters, setShowEvacuationCenters,
@@ -102,6 +107,25 @@ export function LayerControlWidget() {
                   )}
                 >
                   {v.label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-1.5 grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Map projection">
+              {PROJECTIONS.map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  role="radio"
+                  aria-checked={mapProjection === key}
+                  onClick={() => setMapProjection(key)}
+                  className={cn(
+                    "focus-ring flex cursor-pointer items-center justify-center gap-1 rounded-lg border px-1 py-1.5 text-[11px] font-medium transition-all",
+                    mapProjection === key
+                      ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] text-[var(--accent)]"
+                      : "border-[var(--surface-border)] text-[var(--fg-muted)] hover:text-[var(--fg)]"
+                  )}
+                >
+                  <Icon size={12} aria-hidden="true" />
+                  {label}
                 </button>
               ))}
             </div>
