@@ -157,7 +157,8 @@ frontend/
 │   ├── map/                       - MapLibre wrapper & layers
 │   ├── weather/                   - Weather map + layer control (NEW)
 │   ├── charts/                    - Recharts visualizations
-│   ├── ui/                        - Design system (GlassCard, etc.)
+│   ├── ui/                        - Design system (GlassCard, GlassPanel,
+│   │                                 GlassmorphismCta, etc.)
 │   └── ...                        - Other reusable components
 ├── lib/
 │   ├── api.ts                     - API client & endpoints

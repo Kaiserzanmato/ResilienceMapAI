@@ -15,10 +15,11 @@ assessments, grounded AI explanations, and report/export workflows.
 
 ### Current Capabilities
 
-- **Global map and search:** MapLibre-powered map with six basemaps, risk
-  zones, heatmaps, active alerts, historical events, coordinate search,
-  server-side place search, and a nearest-evacuation-center locator with
-  wayfinding cards and Google Maps directions.
+- **Global map and search:** MapLibre-powered map with six basemaps, a 2D/3D
+  globe projection toggle, risk zones, heatmaps, active alerts, historical
+  events, coordinate search, server-side place search, and a
+  nearest-evacuation-center locator with wayfinding cards and Google Maps
+  directions.
 - **Multi-hazard screening:** `POST /api/assessments` evaluates 13 hazard
   categories through the coverage registry. Unsupported evidence remains
   `null`; it is not represented as zero risk.
@@ -26,7 +27,8 @@ assessments, grounded AI explanations, and report/export workflows.
   LocationIQ is the fallback, Photon is optional, and the local gazetteer is a
   degraded final fallback. Search candidates show their normalized addresses
   before a user selects one.
-- **AI and reporting:** grounded summaries, an AI workspace, spatial map
+- **AI and reporting:** grounded summaries, a dedicated `/agents` AI workspace
+  (glassmorphism UI, persona picker, grounding diagnostics), spatial map
   analysis, PDF/CSV export, and shareable report records. AI explains
   deterministic assessment data and does not override official advisories.
 - **Data and operations:** source registry, scheduled-source sync interfaces,
@@ -380,6 +382,47 @@ unsanitized-HTML popup sink in the map's alert/event markers, and added
 headers. See the audit doc for the two items deliberately deferred (the
 `maplibre-gl` major-version bump, and the `/api/reports` public-listing
 access-model decision).
+
+## AI workspace redesign & shimmer/panel fixes (Sep 2026)
+
+Reworked the `/agents` AI workspace with a glassmorphism visual language
+(`GlassPanel`, `GlassmorphismCta`), removed the duplicate AI drawer that used
+to render alongside the page's own chat surface, and added the 2D/3D globe
+projection toggle to `LayerControlWidget`. A cloud multi-agent review
+(`code-review ultra`) of that change then caught:
+
+- **Search dropdown clipped on the Location context panel**: `GlassPanel`
+  hardcoded `overflow-hidden` on its outer wrapper (unlike the `GlassCard` it
+  replaced), which clipped the `SearchBar` autocomplete dropdown at the
+  panel's bottom edge once results appeared. Fixed by overriding to
+  `overflow-visible` on the one panel that hosts `SearchBar`; the other
+  panels keep the clip for their rounded-corner look.
+- **Shimmer CTA silently not rendering**: `GlassmorphismCta`'s conic-gradient
+  used `calc(270deg-(var(--spread)*0.5))` — invalid CSS per the values spec,
+  since `+`/`-` inside `calc()` require surrounding whitespace. Every
+  browser dropped the whole background declaration, so the "Run Risk Audit"
+  CTA's signature rotating shimmer never rendered. Fixed to
+  `calc(270deg_-_(var(--spread)*0.5))` (Tailwind maps `_` to a literal
+  space).
+- **Border-beam animation desynced from `speed` prop**: the inner sweep span
+  hardcoded a `4s` duration instead of `var(--speed)`, so a caller passing a
+  custom `speed` would see the two overlaid animations drift apart. Also
+  fixed a `style` prop spread ordering bug where a caller-supplied `style`
+  would silently replace (not merge with) the internal CSS custom
+  properties driving both animations, and added `hc:hidden` to the
+  decorative shimmer/beam layers to match this same PR's High Contrast
+  precedent on `GlassPanel`'s inner highlight border.
+- **AI drawer state reset on route change**: `AIAgentPanel` was being
+  conditionally unmounted on `/agents` routes to avoid showing a duplicate
+  of the page's own chat surface. That dropped any unsent draft in the
+  drawer's input and re-fired its usage-status fetch on every round trip.
+  Fixed by keeping it always mounted and hiding it via a `hidden` prop
+  instead of unmount/remount.
+- Two additional reuse nits: the mobile "Run Risk Audit" button now reuses
+  the page's existing `canAudit` boolean instead of re-deriving it inline,
+  and `LayerControlWidget`'s map-view/projection radio groups now share one
+  `RadioPill` component instead of duplicating the selected/unselected
+  styling twice.
 
 ## Recent fixes (Aug 2026)
 

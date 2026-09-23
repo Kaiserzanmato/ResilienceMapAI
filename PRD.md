@@ -119,6 +119,10 @@ source of dashboard load latency.
   from one budget, resets at UTC midnight); a usage meter shows remaining
   requests and blocks new messages before sending once exhausted, rather
   than failing silently or only after a wasted round-trip (NEW Aug 2026)
+- Glassmorphism visual redesign of the workspace shell; the map nav's AI
+  Agent drawer no longer renders on this page (it duplicated this same
+  chat surface), and stays mounted-but-hidden elsewhere in the app so its
+  draft input and usage state survive navigation (NEW Sep 2026)
 
 **Personas**:
 - **Citizen**: Accessible language, focus on personal safety
