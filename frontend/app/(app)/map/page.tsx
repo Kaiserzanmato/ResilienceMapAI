@@ -8,10 +8,9 @@ import { LayerControlWidget } from "@/components/map/LayerControlWidget";
 import { RiskLegend } from "@/components/map/RiskLegend";
 import { RiskSummaryWidget } from "@/components/map/RiskSummaryWidget";
 import { MapCommandBar } from "@/components/map/MapCommandBar";
-import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { buildMapTarget, getOfficialSourcesByCountry } from "@/lib/map-target-builder";
-import { toRiskAssessment } from "@/lib/assessment-adapter";
+import { assessmentQueryKey, fetchAssessment } from "@/lib/queries/assessment";
 
 // Lazy-load the map (heaviest bundle) per performance requirements
 const RiskMap = dynamic(() => import("@/components/map/RiskMap"), {
@@ -27,14 +26,8 @@ export default function MapPage() {
   const { selected, setRisk, setActiveTarget, aiOpen, aiPanelWidth } = useAppStore();
   // Fetch risk whenever a location is selected (click or search)
   const { data: risk } = useQuery({
-    queryKey: ["assessment", selected?.lat, selected?.lng, selected?.name, selected?.countryCode],
-    queryFn: async () => toRiskAssessment(await api.assessLocation({
-      lat: selected!.lat,
-      lng: selected!.lng,
-      name: selected?.name,
-      country_code: selected?.countryCode,
-      geometry_type: "point",
-    })),
+    queryKey: assessmentQueryKey(selected),
+    queryFn: () => fetchAssessment(selected!),
     enabled: !!selected,
   });
 

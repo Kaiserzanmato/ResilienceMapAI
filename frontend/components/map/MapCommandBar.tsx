@@ -1,12 +1,13 @@
 "use client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, ChevronDown, Loader2, MapPin, Search, Zap } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, Loader2, MapPin, Search, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { parseCoordinates, getLocationCountryAlpha2 } from "@/lib/locations/geocoding";
+import { assessmentQueryKey, fetchAssessment } from "@/lib/queries/assessment";
 
 const RISK_COLOR_CLASSES: Record<string, string> = {
   red: "bg-red-500",
@@ -38,8 +39,11 @@ export function MapCommandBar() {
     setAssessmentLoading,
     assessmentSuccess,
     setAssessmentSuccess,
+    assessmentError,
+    setAssessmentError,
     setLastAssessmentCoords,
   } = useAppStore();
+  const queryClient = useQueryClient();
 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -84,11 +88,28 @@ export function MapCommandBar() {
     if (!selected) return;
     setAssessmentLoading(true);
     setAssessmentSuccess(false);
+    setAssessmentError(false);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // The global QueryClient default is staleTime: 60_000 (see
+      // Providers.tsx), so a plain fetchQuery() could silently hand back a
+      // cached response up to a minute old — wrong for a button whose whole
+      // point is "run it now". staleTime: 0 here forces this call to treat
+      // the cache as stale and actually hit the network. Writing the result
+      // into the shared "assessment" cache key is what updates the
+      // Inspector: MapPage's own useQuery on that same key re-renders with
+      // the fresh data and syncs it into the store, so this handler doesn't
+      // need to touch `risk` itself.
+      await queryClient.fetchQuery({
+        queryKey: assessmentQueryKey(selected),
+        queryFn: () => fetchAssessment(selected),
+        staleTime: 0,
+      });
       setAssessmentSuccess(true);
       setLastAssessmentCoords([selected.lat, selected.lng]);
       setTimeout(() => setAssessmentSuccess(false), 2500);
+    } catch {
+      setAssessmentError(true);
+      setTimeout(() => setAssessmentError(false), 3000);
     } finally {
       setAssessmentLoading(false);
     }
@@ -200,6 +221,8 @@ export function MapCommandBar() {
               "absolute inset-0 -z-10 rounded-2xl transition-all duration-300",
               assessmentSuccess
                 ? "bg-gradient-to-r from-green-500 to-green-600"
+                : assessmentError
+                ? "bg-gradient-to-r from-red-500 to-red-600"
                 : (riskColor && RISK_GRADIENT_CLASSES[riskColor]) || RISK_GRADIENT_CLASSES.gray
             )}
           />
@@ -237,6 +260,11 @@ export function MapCommandBar() {
                 <>
                   <CheckCircle2 size={16} className="text-green-500" />
                   <span>Assessment complete</span>
+                </>
+              ) : assessmentError ? (
+                <>
+                  <AlertTriangle size={16} className="text-red-500" />
+                  <span>Assessment failed — try again</span>
                 </>
               ) : (
                 <>

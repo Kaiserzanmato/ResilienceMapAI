@@ -86,6 +86,8 @@ interface AppState {
   setAssessmentLoading: (b: boolean) => void;
   assessmentSuccess: boolean;
   setAssessmentSuccess: (b: boolean) => void;
+  assessmentError: boolean;
+  setAssessmentError: (b: boolean) => void;
   lastAssessmentCoords: [number, number] | null;
   setLastAssessmentCoords: (coords: [number, number] | null) => void;
 }
@@ -141,6 +143,8 @@ export const useAppStore = create<AppState>()(
       setAssessmentLoading: (assessmentLoading) => set({ assessmentLoading }),
       assessmentSuccess: false,
       setAssessmentSuccess: (assessmentSuccess) => set({ assessmentSuccess }),
+      assessmentError: false,
+      setAssessmentError: (assessmentError) => set({ assessmentError }),
       lastAssessmentCoords: null,
       setLastAssessmentCoords: (lastAssessmentCoords) => set({ lastAssessmentCoords }),
     }),

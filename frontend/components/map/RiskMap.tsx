@@ -551,10 +551,19 @@ export default function RiskMap() {
               <strong>{telemetry.name}</strong>
               {telemetry.country ? ` · ${telemetry.country}` : ""}
               {typeof telemetry.score === "number" && (
-                <div className="rm-telemetry-score">
-                  {telemetry.hazard ?? "Overall"} risk: {Math.round(telemetry.score)}/100
-                  {telemetry.level ? ` (${telemetry.level})` : ""}
-                </div>
+                <>
+                  <div className="rm-telemetry-score">
+                    {telemetry.hazard ?? "Overall"} risk: {Math.round(telemetry.score)}/100
+                    {telemetry.level ? ` (${telemetry.level})` : ""}
+                  </div>
+                  {/* This hover readout comes from a small built-in set of
+                      major-city sample zones (see attachHoverTelemetry) —
+                      always illustrative, never a live/verified source. The
+                      Right Inspector's per-location assessment (a separate,
+                      registry-backed call) is the one that only shows a
+                      score when a real provider is configured for it. */}
+                  <div className="rm-telemetry-illustrative">Illustrative sample data — not a verified assessment</div>
+                </>
               )}
               {typeof telemetry.population === "number" && (
                 <div className="rm-telemetry-pop">
@@ -607,6 +616,7 @@ export default function RiskMap() {
         .rm-telemetry-coords { opacity: 0.65; font-variant-numeric: tabular-nums; }
         .rm-telemetry-zone { margin-top: 4px; }
         .rm-telemetry-score { margin-top: 2px; opacity: 0.85; }
+        .rm-telemetry-illustrative { margin-top: 2px; opacity: 0.55; font-size: 10.5px; font-style: italic; }
         .rm-telemetry-pop { opacity: 0.65; }
       `}</style>
       <style jsx global>{`
