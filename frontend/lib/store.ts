@@ -42,6 +42,14 @@ interface AppState {
   activeTarget: MapTarget | null;
   setActiveTarget: (target: MapTarget | null) => void;
 
+  // True while the top-nav persona dropdown is open. The dropdown and the
+  // map's RiskSummaryWidget are positioned independently and can overlap at
+  // narrower viewports — widgets that might sit underneath read this to
+  // hide themselves while the dropdown is open, rather than each floating
+  // panel needing to know about every other one's position.
+  personaMenuOpen: boolean;
+  setPersonaMenuOpen: (open: boolean) => void;
+
   // AI panel
   aiOpen: boolean;
   aiPanelWidth: number;
@@ -96,6 +104,9 @@ export const useAppStore = create<AppState>()(
 
       activeTarget: null,
       setActiveTarget: (activeTarget) => set({ activeTarget }),
+
+      personaMenuOpen: false,
+      setPersonaMenuOpen: (personaMenuOpen) => set({ personaMenuOpen }),
 
       aiOpen: false,
       aiPanelWidth: 400,

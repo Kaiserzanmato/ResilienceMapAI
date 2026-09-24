@@ -17,7 +17,7 @@ import { InsightsPanel } from "./InsightsPanel";
 import type { InsightResponse } from "@/lib/types";
 
 export function RiskSummaryWidget() {
-  const { risk, selected, setSelected, setRisk, persona, setAiOpen, activeTarget } = useAppStore();
+  const { risk, selected, setSelected, setRisk, persona, setAiOpen, activeTarget, personaMenuOpen } = useAppStore();
   const [busy, setBusy] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
@@ -51,6 +51,11 @@ export function RiskSummaryWidget() {
   }, [exportOpen]);
 
   if (!selected || !risk) return null;
+  // The top-nav persona dropdown isn't aware of this widget's position and
+  // can overlap it at narrower viewports — hide while it's open rather than
+  // let the dropdown cut through the middle of this panel. Reappears the
+  // instant the dropdown closes.
+  if (personaMenuOpen) return null;
 
   const slug = risk.location_name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
