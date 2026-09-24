@@ -33,7 +33,14 @@ export function PersonaSelector({ compact = false }: { compact?: boolean }) {
         <ChevronDown size={14} className="opacity-60" aria-hidden="true" />
       </button>
       {open && (
-        <div className="glass-strong absolute right-0 top-12 z-50 w-64 rounded-xl p-1.5">
+        // Solid background (not the usual translucent glass-strong) — this
+        // dropdown sits directly over the "Run Risk Audit" CTA on /agents,
+        // and glass-strong's ~12% transparency let the CTA's glow bleed
+        // through visibly while the menu was open.
+        <div
+          className="glass-strong absolute right-0 top-12 z-50 w-64 rounded-xl p-1.5"
+          style={{ background: "var(--surface-solid)" }}
+        >
           <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--fg-muted)]">
             Insight persona
           </p>
