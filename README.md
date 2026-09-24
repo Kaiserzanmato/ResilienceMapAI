@@ -426,6 +426,22 @@ projection toggle to `LayerControlWidget`. A cloud multi-agent review
 
 ## Recent fixes (Aug 2026)
 
+- **Risk summary overlay had no scroll**: `RiskSummaryWidget.tsx` (the
+  hazard-score panel shown after clicking a location on `/map`) rendered all
+  13 hazard rows plus main drivers, nearest-zone stats, and the action-button
+  row in one unconstrained-height card. On shorter viewports the bottom of
+  the panel — including the Insights/Ask AI/Export/Share buttons — was
+  pushed off-screen with no way to reach it. Fixed by capping the card to
+  `min(640px, viewport − header/footer chrome)`, pinning the title/badge
+  header and the action-button footer outside the scroll region, and making
+  only the hazard list + main drivers + nearest-zone section scroll
+  (`overflow-y-auto`). Also added a `.scroll-visible` utility
+  (`frontend/app/globals.css`) with an opaque thumb and visible track so the
+  scrollbar itself doesn't disappear into the dark theme — the prior
+  site-wide thin scrollbar was easy to miss. Verified live on
+  `resiliencemapai.online` post-deploy by diffing the deployed CSS/JS
+  bundles for the `.scroll-visible` rule and the `overflow-y-auto` hazard
+  container.
 - **Dashboard latency**: root cause was the dashboard fetching `dashboard-stats`
   directly from the Render backend on every load — measured connection setup
   times of 3.0s → 1.0s → 0.07s across successive requests, the classic

@@ -1,6 +1,6 @@
 # Technical Documentation
 
-**Current as of:** 2026-08-07
+**Current as of:** 2026-08-08
 
 **Scope:** deployed application contracts and implementation boundaries.
 
@@ -58,6 +58,17 @@ and geometry type. The response contains 13 hazard entries, evidence/source
 metadata, and nullable score/confidence fields. `null` is an explicit no-data
 state. The aggregate score is also `null` unless two or more hazard scores are
 available. No endpoint claims uniform global hazard coverage.
+
+## Risk summary overlay
+
+`components/map/RiskSummaryWidget.tsx` caps its own height to
+`min(640px, viewport − nav/banner/footer chrome − 32px)`. The header (title,
+coordinates, badge, close) and footer (action buttons, export menu, usage
+meter, disclaimer) are `shrink-0`; only the hazard list / main-drivers /
+nearest-zone block between them scrolls (`overflow-y-auto`), using the
+`.scroll-visible` class in `app/globals.css` for a non-default, visible
+scrollbar. This keeps the action buttons reachable on short viewports
+without requiring the browser window to be resized.
 
 ## Configuration
 

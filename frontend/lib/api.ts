@@ -156,6 +156,20 @@ export const api = {
     return data as { dataset: Dataset; message: string };
   },
 
+  // Routed through a same-origin proxy for the same reason as uploadDataset —
+  // the backend's manage_datasets check requires ADMIN_SHARED_SECRET.
+  triggerSync: async (adminKey: string) => {
+    const res = await fetch("/api/admin/datasets/sync", {
+      method: "POST",
+      headers: { "x-admin-key": adminKey },
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new APIError(data?.detail ?? `Request failed (${res.status})`, res.status, data);
+    }
+    return data as { message: string; triggered_at: string; sources_synced: string[]; results: unknown[] };
+  },
+
   reports: () =>
     request<{
       reports: { id: string; location: string; persona: string; created_at: string; overall: { score: number | null; level: string; color: string } }[];

@@ -47,7 +47,10 @@ status display that was hardcoded regardless of actual configuration.
 - Heatmap density visualization
 - Active alert markers with click-to-assess
 - Historical event timeline
-- Floating widget panels
+- Floating widget panels — the risk summary panel caps its height to the
+  viewport and scrolls internally (header and action buttons stay pinned)
+  so hazard data and export/share actions remain reachable on short
+  viewports **(FIXED Aug 2026)**
 - Animated zoom-to-location
 - Global location search through the server-side geocoder gateway. Geoapify is
   the primary provider; LocationIQ is attempted when the primary has no result
