@@ -8,9 +8,19 @@ import { cn } from "@/lib/utils";
 export function PersonaSelector({ compact = false }: { compact?: boolean }) {
   const persona = useAppStore((s) => s.persona);
   const setPersona = useAppStore((s) => s.setPersona);
+  const setPersonaMenuOpen = useAppStore((s) => s.setPersonaMenuOpen);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const active = getPersona(persona);
+
+  useEffect(() => {
+    setPersonaMenuOpen(open);
+    // Only this effect owns clearing the flag on unmount — safe even if a
+    // page without RiskSummaryWidget never reads it.
+    return () => {
+      if (open) setPersonaMenuOpen(false);
+    };
+  }, [open, setPersonaMenuOpen]);
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
