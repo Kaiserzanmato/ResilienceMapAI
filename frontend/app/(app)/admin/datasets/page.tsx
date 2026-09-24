@@ -214,6 +214,20 @@ export default function DatasetsPage() {
     onError: (e) => setMessage(`Upload failed: ${(e as Error).message}`),
   });
 
+  const [showSyncKeyInput, setShowSyncKeyInput] = useState(false);
+  const [syncAdminKey, setSyncAdminKey] = useState("");
+  const sync = useMutation({
+    mutationFn: api.triggerSync,
+    onSuccess: (res) => {
+      setMessage(res.message);
+      setShowSyncKeyInput(false);
+      setSyncAdminKey("");
+      qc.invalidateQueries({ queryKey: ["sync-health"] });
+      setTimeout(() => setMessage(null), 5000);
+    },
+    onError: (e) => setMessage(`Sync failed: ${(e as Error).message}`),
+  });
+
   const inputCls =
     "focus-ring w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-solid)] px-3 py-2.5 text-[13.5px] placeholder:text-[var(--fg-muted)]";
 
@@ -275,6 +289,56 @@ export default function DatasetsPage() {
                 >
                   <Info size={14} aria-hidden="true" /> What&apos;s New
                 </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowSyncKeyInput((v) => !v)}
+                    disabled={sync.isPending}
+                    title="Trigger a real sync against live source feeds (requires admin key)"
+                    className="focus-ring glass flex h-10 cursor-pointer items-center gap-2 rounded-xl px-4 text-[13px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {sync.isPending ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" aria-hidden="true" /> Syncing
+                      </>
+                    ) : (
+                      <>
+                        <Database size={14} aria-hidden="true" /> Sync Now
+                      </>
+                    )}
+                  </button>
+                  {showSyncKeyInput && (
+                    <div className="glass-strong absolute right-0 top-full z-20 mt-2 w-72 rounded-xl p-3">
+                      <p className="mb-2 text-[11.5px] text-[var(--fg-muted)]">
+                        Triggers a live sync for wired sources (USGS, GDACS, NASA EONET, ReliefWeb). Requires the server admin key.
+                      </p>
+                      <form
+                        className="flex gap-2"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          if (syncAdminKey) sync.mutate(syncAdminKey);
+                        }}
+                      >
+                        <input
+                          required
+                          type="password"
+                          autoComplete="off"
+                          autoFocus
+                          className={cn(inputCls, "flex-1")}
+                          value={syncAdminKey}
+                          onChange={(e) => setSyncAdminKey(e.target.value)}
+                          placeholder="Admin key"
+                        />
+                        <button
+                          type="submit"
+                          disabled={sync.isPending}
+                          className="focus-ring shrink-0 cursor-pointer rounded-xl bg-[var(--accent)] px-3 text-[13px] font-medium text-white hc:text-black disabled:opacity-50"
+                        >
+                          Go
+                        </button>
+                      </form>
+                    </div>
+                  )}
+                </div>
               </div>
               {lastRefreshTime && (
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] border border-[var(--surface-border)]">

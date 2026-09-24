@@ -290,6 +290,21 @@ project-status-log version.
 
 ### Latest Commits (Pushed to GitHub)
 ```
+83f48bd - fix: add visible scroll to risk summary overlay hazard list
+404eb1a - docs: surface security guardrails in README summary
+57bb3dd - docs: refresh README executive architecture summary
+cd0ff85 - docs: synchronize production geocoding release audit
+33053fc - fix: show full geocoding result addresses
+fa247d5 - fix: expose safe geocoder provider diagnostics
+7725340 - fix: normalize production geocoder endpoints
+4f8808f - feat: add Geoapify and LocationIQ geocoding
+ba22766 - fix: integrate registry assessments into map
+2247b8c - fix: resolve deployment blockers and validate release
+776c3c3 - feat: add registry-driven multi-hazard assessments
+07a98f8 - docs: document the ambient globe and cross-browser caching fixes
+aefd845 - fix(config): force no-store on page HTML across all browsers
+100585d - fix(globe): bundle world-atlas topology instead of fetching it at runtime
+0067d6d - docs: document the per-IP usage-quota system
 e6e0356 - fix: weather layer permanently stuck after first tile source added
 6856a34 - fix: make Weather Map Forecast tiles vivid and add a color-scale legend
 18b323d - fix: address code-review findings on weather feature and rate limiting
@@ -310,15 +325,17 @@ b648c51 - feat: Add search functionality and enhance refresh features
 ```
 
 ### Build Status
-- ✅ All commits above pushed to GitHub (`main` == `origin/main`, verified via `git fetch`)
-- ✅ Vercel auto-deployed from each push (confirmed live via direct HTTP checks after each)
-- ✅ Render backend confirmed live and healthy (no backend changes in the three most recent
-  commits — `18b323d`/`6856a34`/`e6e0356` are frontend-only, so nothing new to deploy there)
-- ✅ Backend test suite: 35/35 passing as of the latest commit
-- ✅ Full regression pass done across every page (not just changed ones) after the latest
-  commits — landing, dashboard, map (incl. click-to-assess + Ask AI round-trip), AI Workspace
-  (incl. live chat), reports, datasets, resources, settings (incl. theme toggle) all verified
-- ✅ All documentation comprehensive and current
+- ✅ All commits above pushed to GitHub (`main` == `origin/main`)
+- ✅ `83f48bd` confirmed live on `https://resiliencemapai.online` post-deploy (2026-08-08) by
+  fetching the deployed CSS/JS bundles directly and grepping for the change's signature: the
+  `.scroll-visible` scrollbar rules in `_next/static/css/*.css` and the
+  `min-h-0 flex-1 overflow-y-auto pr-2 -mr-2` class string in the `/map` page JS chunk. Both
+  present — Vercel auto-deployed from the push, no manual redeploy needed.
+- ⚠️ Commits before `83f48bd` were verified live at the time of their respective merges (see
+  `README.md` → "Recent fixes" for narrative detail); this index does not re-verify them on
+  every edit, so treat the single citation above as current and older ones as historical.
+- ✅ Render backend confirmed live and healthy (no backend changes in `83f48bd` — frontend-only)
+- ✅ All documentation comprehensive and current as of 2026-08-08
 
 ---
 

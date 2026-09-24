@@ -303,6 +303,36 @@ Browser (click on map)
   - otherwise → live temperature/conditions popup
 ```
 
+#### Risk Summary Overlay Scroll (`RiskSummaryWidget.tsx`, FIXED Aug 2026)
+
+The panel shown after a map click/geocoder selection previously grew to fit
+all content (13 hazard bars + main drivers + nearest-zone stats + action
+buttons + usage meter + disclaimer) with no height cap, so on short
+viewports the bottom — including the Insights/Ask AI/Export/Share row — was
+pushed past the visible screen with no way to reach it.
+
+```
+GlassCard (flex-col, maxHeight: min(640px, 100vh − nav − banner − footer − 32px))
+├── header (shrink-0)            — title, coords, RiskBadge, close button
+├── scrollable region (flex-1, min-h-0, overflow-y-auto, .scroll-visible)
+│   ├── hazard bars (ul)
+│   ├── main drivers
+│   └── nearest-zone stats
+└── footer (shrink-0)            — action buttons, export dropdown,
+                                    usage meter, disclaimer
+```
+
+Only the middle region scrolls; the header and footer are excluded from the
+flex layout's scroll container so the action buttons are never occluded.
+The export dropdown (`role="menu"`, opens `absolute bottom-full` from the
+footer) stays outside the scroll region for the same reason — positioning
+it inside would let the scrollable ancestor clip it.
+
+`.scroll-visible` (`frontend/app/globals.css`) overrides the app's default
+site-wide thin/near-transparent scrollbar with a more opaque thumb and a
+visible track for this panel specifically, since the default was easy to
+miss against the dark theme.
+
 ---
 
 ## Backend Architecture
