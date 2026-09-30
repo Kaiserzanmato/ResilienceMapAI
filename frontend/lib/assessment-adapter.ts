@@ -13,17 +13,28 @@ export function toRiskAssessment(assessment: GlobalAssessment): RiskAssessment {
   const hazards: Record<string, HazardScore> = Object.fromEntries(
     Object.entries(assessment.hazards).map(([key, hazard]) => [
       key,
-      { label: hazard.label, ...riskLevel(hazard.score) },
+      {
+        label: hazard.label,
+        ...riskLevel(hazard.score),
+        coverage_status: hazard.coverage_status,
+        reason_code: hazard.reason_code,
+        indicative_score: hazard.indicative_score ?? null,
+        indicative_source_type: hazard.indicative_source_type,
+      },
     ]),
   );
   const scores = Object.values(hazards).map((hazard) => hazard.score).filter((score): score is number => score !== null);
-  const overallScore = scores.length >= 2 ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : null;
+  // Overall reflects only components with available evidence; the widget discloses
+  // how many that is. Missing components are excluded, never counted as zero.
+  const overallScore = scores.length >= 1 ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : null;
   const coverage = assessment.multi_hazard_summary.coverage_score;
   return {
     location_name: assessment.location.name,
     latitude: assessment.location.latitude,
     longitude: assessment.location.longitude,
     overall: riskLevel(overallScore),
+    components_available: scores.length,
+    components_total: Object.keys(hazards).length,
     hazards,
     main_drivers: assessment.multi_hazard_summary.highest_priority_hazards.map((key) => hazards[key]?.label ?? key),
     nearest_zone: null,

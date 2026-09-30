@@ -16,6 +16,19 @@ import { UsageMeter } from "@/components/ui/UsageMeter";
 import { InsightsPanel } from "./InsightsPanel";
 import type { InsightResponse } from "@/lib/types";
 
+/** Policy wording for no-data states (SPRINT_1 coverage decision, section 4). Never styled as low risk. */
+function statusLabel(status: string | undefined): string {
+  switch (status) {
+    case "out_of_coverage": return "Not covered by this source";
+    case "unavailable": return "Temporarily unavailable";
+    case "not_applicable": return "Not applicable";
+    case "stale": return "Stale";
+    case "expired": return "Expired; not used";
+    case "suppressed": return "Unavailable for this view";
+    default: return "Data status unknown";
+  }
+}
+
 export function RiskSummaryWidget() {
   const { risk, selected, setSelected, setRisk, persona, setAiOpen, activeTarget, personaMenuOpen } = useAppStore();
   const [busy, setBusy] = useState<string | null>(null);
@@ -191,6 +204,13 @@ export function RiskSummaryWidget() {
                 {risk.latitude.toFixed(3)}, {risk.longitude.toFixed(3)} ·{" "}
                 {risk.confidence} confidence
               </p>
+              {risk.components_total ? (
+                <p className="text-[11px] text-[var(--fg-muted)]">
+                  {risk.components_available
+                    ? `Overall from ${risk.components_available} of ${risk.components_total} hazards with available data`
+                    : `No hazard has verified data here yet (0 of ${risk.components_total})`}
+                </p>
+              ) : null}
             </div>
             <RiskBadge risk={risk.overall} />
             <button
@@ -212,26 +232,38 @@ export function RiskSummaryWidget() {
                 <li key={key}>
                   <div className="mb-0.5 flex items-center justify-between text-[12px]">
                     <span className="font-medium">{h.label}</span>
-                    <span className="font-semibold" style={{ color: riskColor(h.color) }}>
-                      {h.score === null ? "No data" : `${h.score} · ${h.level}`}
-                    </span>
+                    {h.score === null ? (
+                      <span className="text-[11px] text-[var(--fg-muted)]">{statusLabel(h.coverage_status)}</span>
+                    ) : (
+                      <span className="font-semibold" style={{ color: riskColor(h.color) }}>
+                        {`${h.score} · ${h.level}`}
+                      </span>
+                    )}
                   </div>
-                  <div
-                    role="progressbar"
-                    aria-label={`${h.label} risk score`}
-                    aria-valuenow={h.score ?? 0}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    className="h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]"
-                  >
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${h.score ?? 0}%` }}
-                      transition={{ duration: 0.7, ease: "easeOut" }}
-                      className="h-full rounded-full"
-                      style={{ background: riskColor(h.color) }}
-                    />
-                  </div>
+                  {h.score === null ? (
+                    h.indicative_score != null && (
+                      <p className="text-[10.5px] text-[var(--fg-muted)]">
+                        Indicative {h.indicative_source_type === "curated-zone-model" ? "zone model" : "country baseline"}: {h.indicative_score}/100, not a verified score
+                      </p>
+                    )
+                  ) : (
+                    <div
+                      role="progressbar"
+                      aria-label={`${h.label} risk score`}
+                      aria-valuenow={h.score}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      className="h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]"
+                    >
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${h.score}%` }}
+                        transition={{ duration: 0.7, ease: "easeOut" }}
+                        className="h-full rounded-full"
+                        style={{ background: riskColor(h.color) }}
+                      />
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

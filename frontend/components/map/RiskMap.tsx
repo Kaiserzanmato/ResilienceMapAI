@@ -1,4 +1,5 @@
 "use client";
+import { pointToCountry } from "@/lib/locations/point-to-country";
 import { useQuery } from "@tanstack/react-query";
 import "@/lib/maplibre-worker";
 import * as maplibregl from "maplibre-gl";
@@ -262,14 +263,18 @@ export default function RiskMap() {
       addOverlays(map);
     });
 
-    map.on("click", (e) => {
+    let clickSeq = 0;
+    map.on("click", async (e) => {
+      const seq = ++clickSeq;
       const features = map.queryRenderedFeatures(e.point, { layers: ["risk-zones-fill"].filter((l) => map.getLayer(l)) });
-      if (features.length > 0) {
-        const p = features[0].properties as { name: string; lat: number; lng: number };
-        setSelected({ lat: Number(p.lat), lng: Number(p.lng), name: p.name });
-      } else {
-        setSelected({ lat: e.lngLat.lat, lng: e.lngLat.lng });
-      }
+      // Keep the exact clicked coordinates: snapping to a zone centre made
+      // neighbouring places (e.g. Bulacan) assess as "Metro Manila". The zone
+      // name is only added as context.
+      const zoneName = features.length > 0 ? (features[0].properties as { name?: string }).name : undefined;
+      const { lat, lng } = e.lngLat;
+      const countryCode = await pointToCountry(lat, lng);
+      if (seq !== clickSeq) return; // a newer click superseded this one
+      setSelected({ lat, lng, ...(zoneName ? { name: zoneName } : {}), ...(countryCode ? { countryCode } : {}) });
     });
     map.on("mouseenter", "risk-zones-fill", () => (map.getCanvas().style.cursor = "pointer"));
     map.on("mouseleave", "risk-zones-fill", () => (map.getCanvas().style.cursor = ""));
