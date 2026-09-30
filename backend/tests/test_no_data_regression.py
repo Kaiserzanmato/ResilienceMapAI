@@ -99,8 +99,16 @@ def test_every_small_country_box_resolves_at_its_centre(code, west, south, east,
     assert country_for_point((south + north) / 2, (west + east) / 2) == code
 
 
-def test_small_country_list_covers_the_required_states():
-    assert {box[0] for box in SMALL_COUNTRY_BOXES} >= {"SG", "HK", "MO", "BH", "MT", "MV", "LU", "AD", "MC", "LI", "SM", "BN"}
+def test_small_country_list_covers_the_states_missing_from_the_polygons():
+    assert {box[0] for box in SMALL_COUNTRY_BOXES} == {"SG", "HK", "MO", "BH", "MT", "MV", "AD", "MC", "LI", "SM"}
+
+
+def test_states_already_in_the_polygons_have_no_box_and_still_resolve():
+    codes = {box[0] for box in SMALL_COUNTRY_BOXES}
+    assert "LU" not in codes and "BN" not in codes
+    assert country_for_point(49.6116, 6.1319) == "LU"   # Luxembourg City
+    assert country_for_point(4.8903, 114.9401) == "BN"  # Bandar Seri Begawan
+    assert assess_location(49.6116, 6.1319, "Luxembourg City")["location"]["country_code"] == "LU"
 
 
 def test_small_country_boxes_do_not_swallow_nearby_neighbours():

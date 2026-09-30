@@ -7,7 +7,9 @@ import { COUNTRY_REGISTRY } from "./country-registry";
  * API derives the country server-side in that case.
  */
 /** Natural Earth 110m omits many small states (e.g. Singapore falls inside Malaysia),
- * so these approximate boxes are checked, in order, BEFORE the polygon lookup:
+ * so these approximate boxes are checked, in order, BEFORE the polygon lookup.
+ * States the polygons already contain (e.g. LU, BN) are deliberately left out:
+ * a rectangle would only replace a correct polygon result.
  * [code, west, south, east, north]. Keep identical to SMALL_COUNTRY_BOXES in
  * backend/app/services/country_lookup.py (a backend test enforces it). They are coarse
  * rectangles: near a shared border they can claim a sliver of a neighbour. */
@@ -18,12 +20,10 @@ export const SMALL_COUNTRY_BOXES: ReadonlyArray<readonly [string, number, number
   ["BH", 50.35, 25.65, 50.85, 26.35],
   ["MT", 14.17, 35.78, 14.6, 36.09],
   ["MV", 72.55, -0.8, 73.8, 7.15],
-  ["LU", 5.73, 49.44, 6.53, 50.19],
   ["AD", 1.41, 42.43, 1.79, 42.66],
   ["MC", 7.4, 43.72, 7.44, 43.76],
   ["LI", 9.47, 47.05, 9.64, 47.27],
   ["SM", 12.4, 43.89, 12.52, 43.99],
-  ["BN", 114.08, 4.0, 115.37, 5.05],
 ];
 
 export function smallCountryOverride(lat: number, lng: number): string | undefined {
