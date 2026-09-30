@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Optional
 
+from ..registry.sources_registry import TrustTier
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,5 +37,5 @@ def build_manual_source_entry(
         "ingested_by": uploaded_by,
         "access_type": "manual",
         "confidence_category": "manual_curated_record",
-        "trust_level": 5,
+        "trust_level": int(TrustTier.USER_UPLOAD),
     }

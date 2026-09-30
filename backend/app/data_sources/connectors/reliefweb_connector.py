@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from .safety import provider_json
+from ...redaction import redact_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -27,5 +28,5 @@ async def fetch_reliefweb_disasters(
         logger.info("[reliefweb] Fetched %d disasters", len(items))
         return items
     except Exception as exc:
-        logger.error("[reliefweb] Fetch failed: %s", exc)
+        logger.error("[reliefweb] Fetch failed: %s", redact_secrets(exc))
         raise

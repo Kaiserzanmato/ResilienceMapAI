@@ -1,5 +1,7 @@
 "use client";
-import maplibregl, { Map as MLMap, Popup } from "maplibre-gl";
+import "@/lib/maplibre-worker";
+import * as maplibregl from "maplibre-gl";
+import { Map as MLMap, Popup } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
 import { getMapStyle } from "@/lib/mapStyles";

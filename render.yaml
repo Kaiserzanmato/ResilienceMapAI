@@ -1,0 +1,24 @@
+# Render Blueprint — scheduled source sync only.
+#
+# The API web service (resiliencemap-api) is configured in the Render dashboard
+# and is intentionally NOT declared here, so applying this Blueprint does not
+# manage or redeploy it. It adds one cron job that calls the API's cron endpoint
+# every 15 minutes; the endpoint only syncs sources that are actually due (see
+# run_all_wired_sources in backend/app/data_sources/sync/run_source_sync.py), so
+# ticking faster than a source's own frequency is safe.
+#
+# Set CRON_SECRET on BOTH this cron job and the API web service (same value).
+services:
+  - type: cron
+    name: resiliencemap-sync-cron
+    runtime: python
+    schedule: "*/15 * * * *"
+    buildCommand: "true"
+    # --retry / --max-time cover a cold start of a sleeping web service.
+    startCommand: >-
+      curl -fsS --retry 2 --retry-delay 10 --max-time 120
+      -H "Authorization: Bearer $CRON_SECRET"
+      https://resiliencemap-api.onrender.com/api/cron/sync-sources
+    envVars:
+      - key: CRON_SECRET
+        sync: false

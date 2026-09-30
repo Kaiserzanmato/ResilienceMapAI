@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from .safety import provider_json
+from ...redaction import redact_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -18,5 +19,5 @@ async def fetch_gdacs_events(http_client: Any) -> list[dict]:
         logger.info("[gdacs] Fetched %d events", len(features))
         return features
     except Exception as exc:
-        logger.error("[gdacs] Fetch failed: %s", exc)
+        logger.error("[gdacs] Fetch failed: %s", redact_secrets(exc))
         raise

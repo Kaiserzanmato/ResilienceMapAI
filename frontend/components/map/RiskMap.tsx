@@ -1,7 +1,9 @@
 "use client";
 import { pointToCountry } from "@/lib/locations/point-to-country";
 import { useQuery } from "@tanstack/react-query";
-import maplibregl, { Map as MLMap, Marker, type StyleSpecification } from "maplibre-gl";
+import "@/lib/maplibre-worker";
+import * as maplibregl from "maplibre-gl";
+import { Map as MLMap, Marker, type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";

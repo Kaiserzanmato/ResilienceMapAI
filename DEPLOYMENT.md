@@ -51,6 +51,27 @@ Create a Web Service from the same repo with:
 
 Note the resulting URL, e.g. `https://resiliencemap-api.onrender.com`.
 
+### Scheduled source sync and durable state
+
+Live sources only refresh when something calls `GET /api/cron/sync-sources`
+with `Authorization: Bearer $CRON_SECRET`. Only sources that are *due* (their own
+`sync_frequency_minutes` has elapsed) are fetched, so a 15-minute tick is safe.
+
+- **Render (the real scheduler):** `render.yaml` declares a cron job
+  (`*/15 * * * *`) that curls the API. Apply it as a Blueprint, then set
+  `CRON_SECRET` on the cron job **and** on the API web service (same value).
+- **Vercel backend service:** `vercel.json` keeps a **daily** cron
+  (`0 0 * * *`) at `/_/backend/api/cron/sync-sources`. Sub-daily schedules such
+  as `*/15 * * * *` need a **Vercel Pro** plan; on Hobby the deploy is rejected.
+  (`vercel.json` is strict JSON and cannot hold a comment, so the note lives
+  here.) Note `/_/backend/*` currently 404s on the production domain, so this
+  cron only matters once that routing is fixed; until then Render does the work.
+- **Durable state:** set `DATABASE_URL` (Postgres with PostGIS) and run
+  `alembic upgrade head`. With `ENVIRONMENT=production` the API refuses to
+  start without `DATABASE_URL` unless `ALLOW_EPHEMERAL_STATE=true`.
+- **NASA FIRMS:** set `NASA_FIRMS_MAP_KEY` (and optionally `NASA_FIRMS_AREA`);
+  without it the source is skipped rather than reported as synced.
+
 ## 5. Deploy the frontend to Vercel
 
 **Dashboard route** (matches the import screen you have open):

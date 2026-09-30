@@ -1,7 +1,7 @@
 """Pydantic request/response schemas — input validation boundary."""
 import base64
 import binascii
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -155,6 +155,7 @@ class DataStatusResponse(BaseModel):
     sync_method: str  # "api", "scheduled", "manual", "static-file"
     is_fresh: bool  # True if data is < 24 hours old
     message: str
+    data_version: str = "static"  # newest successful sync timestamp; changes whenever synced data does
 
 
 class DatasetUpload(BaseModel):
@@ -165,6 +166,7 @@ class DatasetUpload(BaseModel):
     url: str = Field(..., max_length=300)
     confidence: str = Field("Medium", max_length=12)
     records: int = Field(0, ge=0)
+    license: Optional[str] = Field(None, max_length=120)
 
     @field_validator("url")
     @classmethod
@@ -179,3 +181,8 @@ class DatasetUpload(BaseModel):
         if v not in {"High", "Medium", "Low"}:
             raise ValueError("confidence must be High, Medium, or Low")
         return v
+
+
+class DatasetReview(BaseModel):
+    """Reviewer decision on a tier-5 uploaded dataset."""
+    decision: Literal["approved", "rejected"]

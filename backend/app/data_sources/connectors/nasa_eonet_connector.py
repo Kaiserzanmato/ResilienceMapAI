@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from .safety import provider_json
+from ...redaction import redact_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -21,5 +22,5 @@ async def fetch_eonet_events(http_client: Any, days: int = 7, limit: int = 100) 
         logger.info("[nasa-eonet] Fetched %d events", len(events))
         return events
     except Exception as exc:
-        logger.error("[nasa-eonet] Fetch failed: %s", exc)
+        logger.error("[nasa-eonet] Fetch failed: %s", redact_secrets(exc))
         raise

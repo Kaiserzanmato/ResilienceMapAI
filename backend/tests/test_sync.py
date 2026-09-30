@@ -8,7 +8,11 @@ from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.data_sources.connectors import (gdacs_connector, nasa_eonet_connector,
-                                         reliefweb_connector, usgs_earthquake_connector)
+                                         nasa_firms_connector, reliefweb_connector,
+                                         usgs_earthquake_connector)
+from app.repositories.audit_log_repo import get_audit_log_repo
+from app.repositories.hazard_event_repo import get_hazard_event_repo
+from app.repositories.sync_health_repo import get_sync_health_repo
 from app.data_sources.sync import run_source_sync as sync_module
 from app.data_sources.sync.source_sync_health import get_sync_health_report
 from app.main import app
@@ -26,6 +30,19 @@ def _mock_connectors(monkeypatch):
     monkeypatch.setattr(nasa_eonet_connector, "fetch_eonet_events", _fake_fetch)
     monkeypatch.setattr(usgs_earthquake_connector, "fetch_usgs_earthquakes", _fake_fetch)
     monkeypatch.setattr(reliefweb_connector, "fetch_reliefweb_disasters", _fake_fetch)
+    monkeypatch.setattr(nasa_firms_connector, "fetch_firms_fire_data", _fake_fetch)
+    monkeypatch.setattr(get_settings(), "nasa_firms_map_key", "test-map-key")
+
+
+@pytest.fixture(autouse=True)
+def _reset_in_memory_state():
+    # Health, audit and event repos are process-wide singletons; without a reset
+    # the "due" logic would see earlier tests' successful syncs.
+    for repo, attr in ((get_sync_health_repo(), "_health"), (get_audit_log_repo(), "_log"),
+                       (get_hazard_event_repo(), "rows")):
+        if hasattr(repo, attr):
+            getattr(repo, attr).clear()
+    yield
 
 
 async def test_wired_batch_syncs_only_wired_sources():

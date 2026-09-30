@@ -141,6 +141,7 @@ export const api = {
     url: string;
     confidence: string;
     records: number;
+    license?: string;
     adminKey: string;
   }) => {
     const { adminKey, ...payload } = meta;
@@ -148,6 +149,31 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
       body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new APIError(data?.detail ?? `Request failed (${res.status})`, res.status, data);
+    }
+    return data as { dataset: Dataset; message: string };
+  },
+
+  // Full upload list (pending/approved/rejected) via the admin-key-gated proxy.
+  // The public `datasets` call only ever returns approved uploads.
+  adminDatasets: async (adminKey: string) => {
+    const res = await fetch("/api/admin/datasets/list", { headers: { "x-admin-key": adminKey } });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new APIError(data?.detail ?? `Request failed (${res.status})`, res.status, data);
+    }
+    return data as { datasets: Dataset[] };
+  },
+
+  // Same-origin proxy (app/api/admin/datasets/[id]/review), same admin-key gate.
+  reviewDataset: async (id: string, decision: "approved" | "rejected", adminKey: string) => {
+    const res = await fetch(`/api/admin/datasets/${encodeURIComponent(id)}/review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+      body: JSON.stringify({ decision }),
     });
     const data = await res.json().catch(() => null);
     if (!res.ok) {

@@ -110,7 +110,7 @@ export const SOURCE_REGISTRY: RiskSource[] = [
     trustLevel: 1,
     confidenceCategory: "official_warning",
     enabled: true,
-    autoSyncEnabled: true,
+    autoSyncEnabled: false,
     syncFrequencyMinutes: 10,
   },
   {
@@ -171,7 +171,7 @@ export const SOURCE_REGISTRY: RiskSource[] = [
     trustLevel: 1,
     confidenceCategory: "official_warning",
     enabled: true,
-    autoSyncEnabled: true,
+    autoSyncEnabled: false,
     syncFrequencyMinutes: 15,
   },
   {
@@ -213,7 +213,7 @@ export const SOURCE_REGISTRY: RiskSource[] = [
     trustLevel: 2,
     confidenceCategory: "humanitarian_report",
     enabled: true,
-    autoSyncEnabled: true,
+    autoSyncEnabled: false,
     syncFrequencyMinutes: 360,
   },
   {
@@ -227,7 +227,7 @@ export const SOURCE_REGISTRY: RiskSource[] = [
     trustLevel: 2,
     confidenceCategory: "humanitarian_report",
     enabled: true,
-    autoSyncEnabled: true,
+    autoSyncEnabled: false,
     syncFrequencyMinutes: 180,
   },
   {
@@ -257,7 +257,7 @@ export const SOURCE_REGISTRY: RiskSource[] = [
     trustLevel: 3,
     confidenceCategory: "economic_indicator",
     enabled: true,
-    autoSyncEnabled: true,
+    autoSyncEnabled: false,
     syncFrequencyMinutes: 43200,
   },
   {

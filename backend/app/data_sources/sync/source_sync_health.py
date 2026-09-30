@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from ...repositories.sync_health_repo import get_sync_health_repo
 from ..registry.sources_registry import SOURCE_REGISTRY, RiskSource
+from .reason_codes import REASON_LABELS, safe_reason
 
 
 async def record_sync_success(source_id: str, records_synced: int = 0) -> None:
@@ -32,6 +33,29 @@ def _is_stale(health: dict, source: RiskSource) -> bool:
     return datetime.now(timezone.utc) - last_ok_dt > threshold
 
 
+def is_due(health: dict, source: RiskSource, now: datetime | None = None) -> bool:
+    """True when the source's own sync frequency has elapsed since its last
+    successful sync (or it never synced). Distinct from staleness, which only
+    trips after 3x the frequency and is what the UI flags."""
+    if not source.sync_frequency_minutes:
+        return True
+    last_ok = health.get("last_successful_sync_at")
+    if not last_ok:
+        return True
+    last_ok_dt = datetime.fromisoformat(last_ok)
+    if last_ok_dt.tzinfo is None:
+        last_ok_dt = last_ok_dt.replace(tzinfo=timezone.utc)
+    return (now or datetime.now(timezone.utc)) - last_ok_dt >= timedelta(minutes=source.sync_frequency_minutes)
+
+
+async def get_data_version() -> str:
+    """Newest successful sync timestamp across all sources, or "static" before
+    the first sync. Used as the cache validator for data-derived responses."""
+    all_health = await get_sync_health_repo().get_all()
+    times = [h["last_successful_sync_at"] for h in all_health.values() if h.get("last_successful_sync_at")]
+    return max(times) if times else "static"
+
+
 async def is_source_stale(source: RiskSource) -> bool:
     health = await get_sync_health_repo().get(source.id)
     return _is_stale(health, source)
@@ -49,7 +73,7 @@ async def get_sync_health_report() -> list[dict]:
             "coverage": source.coverage,
             "domains": source.domains,
             "access_type": source.access_type,
-            "trust_level": source.trust_level,
+            "trust_level": int(source.trust_level),
             "confidence_category": source.confidence_category,
             "enabled": source.enabled,
             "auto_sync_enabled": source.auto_sync_enabled,
@@ -58,7 +82,9 @@ async def get_sync_health_report() -> list[dict]:
             "last_successful_sync_at": health.get("last_successful_sync_at"),
             "last_sync_status": health.get("last_sync_status", "disabled" if not source.auto_sync_enabled else "never"),
             "records_synced": health.get("records_synced", 0),
-            "error": health.get("error"),
+            # Closed vocabulary only — legacy raw strings map to "unknown_error".
+            "reason_code": safe_reason(health.get("error")),
+            "error": REASON_LABELS.get(safe_reason(health.get("error")) or ""),
             "is_stale": _is_stale(health, source),
             "source_url": source.url,
             "docs_url": source.docs_url,

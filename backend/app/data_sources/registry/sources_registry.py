@@ -9,8 +9,28 @@ Used by connectors, sync jobs, and the AI grounding layer.
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
+from enum import IntEnum
 from typing import Optional
 from datetime import datetime
+
+
+class TrustTier(IntEnum):
+    """Canonical trust tiers. Lower is more authoritative. IntEnum so values
+    stay plain integers in JSON, the DB, and the generated TS registry."""
+    OFFICIAL = 1      # national/international agencies (PAGASA, PHIVOLCS, USGS, NOAA, GDACS, NASA)
+    HUMANITARIAN = 2  # UN and humanitarian bodies (ReliefWeb, HDX, IFRC, UNHCR, OCHA)
+    RESEARCH = 3      # research-grade and statistical datasets
+    REGIONAL = 4      # regional and specialised-operations bodies (Copernicus, aviation, maritime)
+    USER_UPLOAD = 5   # user-supplied datasets; reviewed before they can affect scoring or AI
+
+
+TRUST_TIER_LABELS: dict[int, str] = {
+    TrustTier.OFFICIAL: "Official agency",
+    TrustTier.HUMANITARIAN: "UN / humanitarian",
+    TrustTier.RESEARCH: "Research-grade",
+    TrustTier.REGIONAL: "Regional / specialised",
+    TrustTier.USER_UPLOAD: "User upload",
+}
 
 
 @dataclass
@@ -22,7 +42,7 @@ class RiskSource:
     access_type: str  # api | rss | geojson | csv | kml | shapefile | download | portal | manual
     coverage: str     # global | regional | country
     domains: list[str]
-    trust_level: int  # 1–5
+    trust_level: TrustTier
     confidence_category: str
     enabled: bool
     auto_sync_enabled: bool
@@ -49,7 +69,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         docs_url="https://www.gdacs.org/gdacsapi/swagger/index.html",
         access_type="api", coverage="global",
         domains=["natural_hazards"],
-        trust_level=1, confidence_category="official_warning",
+        trust_level=TrustTier.OFFICIAL, confidence_category="official_warning",
         enabled=True, auto_sync_enabled=True, sync_frequency_minutes=10,
     ),
     RiskSource(
@@ -58,8 +78,9 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://www.gdacs.org/feed_reference.aspx",
         access_type="rss", coverage="global",
         domains=["natural_hazards"],
-        trust_level=1, confidence_category="official_warning",
-        enabled=True, auto_sync_enabled=True, sync_frequency_minutes=10,
+        trust_level=TrustTier.OFFICIAL, confidence_category="official_warning",
+        # no connector yet; flip on when one is wired in run_source_sync
+        enabled=True, auto_sync_enabled=False, sync_frequency_minutes=10,
     ),
     RiskSource(
         id="nasa-eonet", name="NASA EONET",
@@ -68,7 +89,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         docs_url="https://eonet.gsfc.nasa.gov/docs/v3",
         access_type="api", coverage="global",
         domains=["natural_hazards"],
-        trust_level=1, confidence_category="satellite_detection",
+        trust_level=TrustTier.OFFICIAL, confidence_category="satellite_detection",
         enabled=True, auto_sync_enabled=True, sync_frequency_minutes=10,
     ),
     RiskSource(
@@ -78,7 +99,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         docs_url="https://firms.modaps.eosdis.nasa.gov/api",
         access_type="api", coverage="global",
         domains=["natural_hazards"],
-        trust_level=1, confidence_category="satellite_detection",
+        trust_level=TrustTier.OFFICIAL, confidence_category="satellite_detection",
         enabled=True, auto_sync_enabled=True, sync_frequency_minutes=30,
         requires_api_key=True, rate_limit_notes="Requires free MAP_KEY registration",
     ),
@@ -89,7 +110,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         docs_url="https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php",
         access_type="geojson", coverage="global",
         domains=["natural_hazards"],
-        trust_level=1, confidence_category="official_observation",
+        trust_level=TrustTier.OFFICIAL, confidence_category="official_observation",
         enabled=True, auto_sync_enabled=True, sync_frequency_minutes=5,
     ),
     RiskSource(
@@ -98,8 +119,9 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://www.weather.gov/documentation/services-web-api",
         access_type="api", coverage="global",
         domains=["natural_hazards", "climate"],
-        trust_level=1, confidence_category="official_warning",
-        enabled=True, auto_sync_enabled=True, sync_frequency_minutes=15,
+        trust_level=TrustTier.OFFICIAL, confidence_category="official_warning",
+        # no connector yet; flip on when one is wired in run_source_sync
+        enabled=True, auto_sync_enabled=False, sync_frequency_minutes=15,
     ),
     RiskSource(
         id="copernicus-ems", name="Copernicus EMS",
@@ -107,7 +129,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://emergency.copernicus.eu",
         access_type="portal", coverage="global",
         domains=["natural_hazards", "humanitarian"],
-        trust_level=4, confidence_category="satellite_detection",
+        trust_level=TrustTier.REGIONAL, confidence_category="satellite_detection",
         enabled=True, auto_sync_enabled=False,
     ),
 
@@ -119,7 +141,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         docs_url="https://apidoc.reliefweb.int",
         access_type="api", coverage="global",
         domains=["humanitarian", "natural_hazards"],
-        trust_level=2, confidence_category="humanitarian_report",
+        trust_level=TrustTier.HUMANITARIAN, confidence_category="humanitarian_report",
         enabled=True, auto_sync_enabled=True, sync_frequency_minutes=120,
     ),
     RiskSource(
@@ -128,8 +150,9 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://data.humdata.org",
         access_type="api", coverage="global",
         domains=["humanitarian"],
-        trust_level=2, confidence_category="humanitarian_report",
-        enabled=True, auto_sync_enabled=True, sync_frequency_minutes=360,
+        trust_level=TrustTier.HUMANITARIAN, confidence_category="humanitarian_report",
+        # no connector yet; flip on when one is wired in run_source_sync
+        enabled=True, auto_sync_enabled=False, sync_frequency_minutes=360,
     ),
     RiskSource(
         id="ifrc-go", name="IFRC GO Platform",
@@ -137,8 +160,9 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://go.ifrc.org",
         access_type="api", coverage="global",
         domains=["humanitarian"],
-        trust_level=2, confidence_category="humanitarian_report",
-        enabled=True, auto_sync_enabled=True, sync_frequency_minutes=180,
+        trust_level=TrustTier.HUMANITARIAN, confidence_category="humanitarian_report",
+        # no connector yet; flip on when one is wired in run_source_sync
+        enabled=True, auto_sync_enabled=False, sync_frequency_minutes=180,
     ),
     RiskSource(
         id="unhcr-data", name="UNHCR Operational Data Portal",
@@ -147,7 +171,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         docs_url="https://data.unhcr.org/en/api/api-registration",
         access_type="api", coverage="global",
         domains=["humanitarian"],
-        trust_level=2, confidence_category="humanitarian_report",
+        trust_level=TrustTier.HUMANITARIAN, confidence_category="humanitarian_report",
         enabled=True, auto_sync_enabled=False,
         requires_registration=True,
     ),
@@ -160,8 +184,9 @@ SOURCE_REGISTRY: list[RiskSource] = [
         docs_url="https://api.worldbank.org",
         access_type="api", coverage="global",
         domains=["climate", "humanitarian"],
-        trust_level=3, confidence_category="economic_indicator",
-        enabled=True, auto_sync_enabled=True, sync_frequency_minutes=43200,
+        trust_level=TrustTier.RESEARCH, confidence_category="economic_indicator",
+        # no connector yet; flip on when one is wired in run_source_sync
+        enabled=True, auto_sync_enabled=False, sync_frequency_minutes=43200,
     ),
     RiskSource(
         id="emdat", name="EM-DAT",
@@ -169,7 +194,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://www.emdat.be",
         access_type="download", coverage="global",
         domains=["natural_hazards", "humanitarian"],
-        trust_level=3, confidence_category="historical_record",
+        trust_level=TrustTier.RESEARCH, confidence_category="historical_record",
         enabled=True, auto_sync_enabled=False,
         requires_registration=True,
     ),
@@ -182,7 +207,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         docs_url="https://acleddata.com/acled-api-documentation",
         access_type="api", coverage="global",
         domains=["conflict_security"],
-        trust_level=3, confidence_category="conflict_event_dataset",
+        trust_level=TrustTier.RESEARCH, confidence_category="conflict_event_dataset",
         enabled=False, auto_sync_enabled=False, sync_frequency_minutes=1440,
         requires_api_key=True,
         license_notes="Attribution required; commercial use requires license",
@@ -194,7 +219,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         docs_url="https://ucdp.uu.se/apidocs/",
         access_type="api", coverage="global",
         domains=["conflict_security"],
-        trust_level=3, confidence_category="conflict_event_dataset",
+        trust_level=TrustTier.RESEARCH, confidence_category="conflict_event_dataset",
         enabled=False, auto_sync_enabled=False, sync_frequency_minutes=43200,
     ),
 
@@ -207,7 +232,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="portal", coverage="country",
         countries=["PH"],
         domains=["natural_hazards", "climate"],
-        trust_level=1, confidence_category="official_warning",
+        trust_level=TrustTier.OFFICIAL, confidence_category="official_warning",
         enabled=True, auto_sync_enabled=False,
         license_notes="Official Philippine government data — manual grounding only",
     ),
@@ -218,7 +243,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="portal", coverage="country",
         countries=["PH"],
         domains=["natural_hazards"],
-        trust_level=1, confidence_category="official_warning",
+        trust_level=TrustTier.OFFICIAL, confidence_category="official_warning",
         enabled=True, auto_sync_enabled=False,
         license_notes="Official Philippine government data — manual grounding only",
     ),
@@ -229,7 +254,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="portal", coverage="country",
         countries=["PH"],
         domains=["natural_hazards", "humanitarian"],
-        trust_level=1, confidence_category="official_warning",
+        trust_level=TrustTier.OFFICIAL, confidence_category="official_warning",
         enabled=True, auto_sync_enabled=False,
     ),
     RiskSource(
@@ -239,7 +264,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="portal", coverage="country",
         countries=["PH"],
         domains=["natural_hazards"],
-        trust_level=1, confidence_category="official_observation",
+        trust_level=TrustTier.OFFICIAL, confidence_category="official_observation",
         enabled=True, auto_sync_enabled=False,
     ),
 
@@ -253,7 +278,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://api.nasa.gov",
         access_type="api", coverage="global",
         domains=["natural_hazards", "climate"],
-        trust_level=1, confidence_category="official_observation",
+        trust_level=TrustTier.OFFICIAL, confidence_category="official_observation",
         enabled=False, auto_sync_enabled=False,
         requires_api_key=True, rate_limit_notes="1000 req/hour with API key",
         license_notes="Ported from frontend registry; connector not yet implemented",
@@ -264,7 +289,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://earthquake.usgs.gov/fdsnws/event/1/",
         access_type="api", coverage="global",
         domains=["natural_hazards"],
-        trust_level=1, confidence_category="official_observation",
+        trust_level=TrustTier.OFFICIAL, confidence_category="official_observation",
         enabled=False, auto_sync_enabled=False, sync_frequency_minutes=5,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -274,7 +299,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://www.noaa.gov",
         access_type="portal", coverage="global",
         domains=["natural_hazards", "climate"],
-        trust_level=1, confidence_category="official_observation",
+        trust_level=TrustTier.OFFICIAL, confidence_category="official_observation",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -284,7 +309,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://www.ncei.noaa.gov",
         access_type="portal", coverage="global",
         domains=["climate", "natural_hazards"],
-        trust_level=1, confidence_category="historical_record",
+        trust_level=TrustTier.OFFICIAL, confidence_category="historical_record",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -294,7 +319,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://dataspace.copernicus.eu/analyse/apis",
         access_type="api", coverage="global",
         domains=["natural_hazards", "climate"],
-        trust_level=4, confidence_category="satellite_detection",
+        trust_level=TrustTier.REGIONAL, confidence_category="satellite_detection",
         enabled=False, auto_sync_enabled=False,
         requires_registration=True,
         license_notes="Ported from frontend registry; connector not yet implemented",
@@ -305,7 +330,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://www.unocha.org",
         access_type="portal", coverage="global",
         domains=["humanitarian"],
-        trust_level=2, confidence_category="humanitarian_report",
+        trust_level=TrustTier.HUMANITARIAN, confidence_category="humanitarian_report",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -316,7 +341,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         docs_url="https://sdmx.data.unicef.org/ws/public/sdmxapi/rest/",
         access_type="api", coverage="global",
         domains=["humanitarian"],
-        trust_level=2, confidence_category="humanitarian_report",
+        trust_level=TrustTier.HUMANITARIAN, confidence_category="humanitarian_report",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -326,7 +351,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://data.undp.org",
         access_type="portal", coverage="global",
         domains=["humanitarian", "climate"],
-        trust_level=2, confidence_category="economic_indicator",
+        trust_level=TrustTier.HUMANITARIAN, confidence_category="economic_indicator",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -336,7 +361,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://www.iom.int/data-and-research",
         access_type="portal", coverage="global",
         domains=["humanitarian"],
-        trust_level=2, confidence_category="humanitarian_report",
+        trust_level=TrustTier.HUMANITARIAN, confidence_category="humanitarian_report",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -346,7 +371,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://www.internal-displacement.org/database/api-documentation/",
         access_type="api", coverage="global",
         domains=["humanitarian"],
-        trust_level=3, confidence_category="humanitarian_report",
+        trust_level=TrustTier.RESEARCH, confidence_category="humanitarian_report",
         enabled=False, auto_sync_enabled=False,
         requires_registration=True,
         license_notes="Ported from frontend registry; connector not yet implemented",
@@ -358,7 +383,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         docs_url="https://climateknowledgeportal.worldbank.org/download-data",
         access_type="api", coverage="global",
         domains=["climate"],
-        trust_level=3, confidence_category="climate_projection",
+        trust_level=TrustTier.RESEARCH, confidence_category="climate_projection",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -368,7 +393,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://data360.worldbank.org/en/api",
         access_type="api", coverage="global",
         domains=["climate", "humanitarian"],
-        trust_level=3, confidence_category="economic_indicator",
+        trust_level=TrustTier.RESEARCH, confidence_category="economic_indicator",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -378,7 +403,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://wmo.int",
         access_type="portal", coverage="global",
         domains=["natural_hazards", "climate"],
-        trust_level=3, confidence_category="model_forecast",
+        trust_level=TrustTier.RESEARCH, confidence_category="model_forecast",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -388,7 +413,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://www.undrr.org",
         access_type="portal", coverage="global",
         domains=["natural_hazards", "climate"],
-        trust_level=3, confidence_category="historical_record",
+        trust_level=TrustTier.RESEARCH, confidence_category="historical_record",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -398,7 +423,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://www.preventionweb.net",
         access_type="portal", coverage="global",
         domains=["natural_hazards", "climate"],
-        trust_level=3, confidence_category="historical_record",
+        trust_level=TrustTier.RESEARCH, confidence_category="historical_record",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -409,7 +434,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         docs_url="https://www.icao.int/api-data-service",
         access_type="portal", coverage="global",
         domains=["aviation"],
-        trust_level=4, confidence_category="aviation_advisory",
+        trust_level=TrustTier.REGIONAL, confidence_category="aviation_advisory",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -421,7 +446,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="portal", coverage="regional",
         countries=["US"],
         domains=["aviation"],
-        trust_level=4, confidence_category="aviation_advisory",
+        trust_level=TrustTier.REGIONAL, confidence_category="aviation_advisory",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -432,7 +457,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="portal", coverage="regional",
         regions=["Europe"],
         domains=["aviation"],
-        trust_level=4, confidence_category="aviation_advisory",
+        trust_level=TrustTier.REGIONAL, confidence_category="aviation_advisory",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -442,7 +467,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://www.iata.org",
         access_type="portal", coverage="global",
         domains=["aviation"],
-        trust_level=4, confidence_category="aviation_advisory",
+        trust_level=TrustTier.REGIONAL, confidence_category="aviation_advisory",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -452,7 +477,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://www.imo.org",
         access_type="portal", coverage="global",
         domains=["maritime"],
-        trust_level=4, confidence_category="maritime_security_alert",
+        trust_level=TrustTier.REGIONAL, confidence_category="maritime_security_alert",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -463,7 +488,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="portal", coverage="regional",
         regions=["Indian Ocean", "Gulf of Aden", "Red Sea"],
         domains=["maritime"],
-        trust_level=4, confidence_category="maritime_security_alert",
+        trust_level=TrustTier.REGIONAL, confidence_category="maritime_security_alert",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -473,7 +498,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://www.ics-shipping.org",
         access_type="portal", coverage="global",
         domains=["maritime"],
-        trust_level=4, confidence_category="maritime_security_alert",
+        trust_level=TrustTier.REGIONAL, confidence_category="maritime_security_alert",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -483,7 +508,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         url="https://unctad.org",
         access_type="portal", coverage="global",
         domains=["maritime", "supply_chain"],
-        trust_level=3, confidence_category="economic_indicator",
+        trust_level=TrustTier.RESEARCH, confidence_category="economic_indicator",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -494,7 +519,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="portal", coverage="country",
         countries=["PH"],
         domains=["climate"],
-        trust_level=1, confidence_category="official_observation",
+        trust_level=TrustTier.OFFICIAL, confidence_category="official_observation",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -505,7 +530,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="portal", coverage="country",
         countries=["PH"],
         domains=["natural_hazards"],
-        trust_level=1, confidence_category="official_observation",
+        trust_level=TrustTier.OFFICIAL, confidence_category="official_observation",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -516,7 +541,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="portal", coverage="country",
         countries=["PH"],
         domains=["natural_hazards"],
-        trust_level=1, confidence_category="model_forecast",
+        trust_level=TrustTier.OFFICIAL, confidence_category="model_forecast",
         enabled=False, auto_sync_enabled=False,
         license_notes="Ported from frontend registry; connector not yet implemented",
     ),
@@ -560,7 +585,8 @@ def get_registry_summary() -> list[dict]:
             "countries": s.countries,
             "regions": s.regions,
             "domains": s.domains,
-            "trust_level": s.trust_level,
+            "trust_level": int(s.trust_level),
+            "trust_label": TRUST_TIER_LABELS[s.trust_level],
             "confidence_category": s.confidence_category,
             "enabled": s.enabled,
             "auto_sync_enabled": s.auto_sync_enabled,

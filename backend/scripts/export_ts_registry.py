@@ -167,7 +167,7 @@ def _source_to_ts(source: RiskSource) -> str:
     if source.regions:
         lines.append(f"    regions: {_ts_string_array(source.regions)},")
     lines.append(f"    domains: {_ts_string_array(source.domains)},")
-    lines.append(f"    trustLevel: {source.trust_level},")
+    lines.append(f"    trustLevel: {int(source.trust_level)},")
     lines.append(f"    confidenceCategory: {_ts_string(source.confidence_category)},")
     lines.append(f"    enabled: {'true' if source.enabled else 'false'},")
     lines.append(f"    autoSyncEnabled: {'true' if source.auto_sync_enabled else 'false'},")
@@ -185,9 +185,14 @@ def _source_to_ts(source: RiskSource) -> str:
     return "\n".join(lines)
 
 
-def main() -> None:
+def render_ts() -> str:
+    """The full generated TS file as a string (no I/O), so tests can check it for drift."""
     body = "\n".join(_source_to_ts(s) for s in SOURCE_REGISTRY)
-    OUTPUT_PATH.write_text(HEADER + body + "\n" + FOOTER)
+    return HEADER + body + "\n" + FOOTER
+
+
+def main() -> None:
+    OUTPUT_PATH.write_text(render_ts())
     print(f"Wrote {len(SOURCE_REGISTRY)} sources to {OUTPUT_PATH}")
 
 
