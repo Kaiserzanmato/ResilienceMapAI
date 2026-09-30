@@ -42,6 +42,7 @@ const SYNC_STATUS_COLOR: Record<string, string> = {
   partial: "var(--risk-medium)",
   disabled: "var(--fg-muted)",
   never: "var(--fg-muted)",
+  not_configured: "var(--fg-muted)",
 };
 
 const EMPTY_FORM = {
@@ -686,7 +687,7 @@ export default function DatasetsPage() {
                     <div className="flex items-center justify-between gap-2">
                       <span>Last sync</span>
                       <span className="font-medium" style={{ color: SYNC_STATUS_COLOR[s.last_sync_status ?? "never"] }}>
-                        {s.last_sync_status ?? "never"}
+                        {(s.last_sync_status ?? "never").replace(/_/g, " ")}
                       </span>
                     </div>
                     {s.last_sync_status === "failed" && s.error && (

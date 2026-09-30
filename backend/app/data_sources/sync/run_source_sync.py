@@ -15,6 +15,7 @@ from ...config import get_settings
 from ...redaction import redact_secrets
 from ...repositories.sync_health_repo import get_sync_health_repo
 from ..registry.sources_registry import RiskSource, get_enabled_sources, get_source_by_id
+from .credentials import missing_credentials
 from .reason_codes import classify_error
 from .source_sync_health import is_due, record_sync_success, record_sync_failure
 from .sync_audit_log import log_sync_attempt
@@ -27,14 +28,6 @@ logger = logging.getLogger(__name__)
 # "success, 0 records" the moment _dispatch_connector's fallback returns [].
 # Keep this in lockstep with the `if source_id == ...` branches below.
 WIRED_SOURCE_IDS = {"gdacs", "nasa-eonet", "usgs-earthquake", "reliefweb", "nasa-firms"}
-
-
-def _missing_credentials(source_id: str) -> bool:
-    """A wired source that needs a credential we don't have must be skipped, not
-    recorded as a successful empty sync."""
-    if source_id == "nasa-firms":
-        return not get_settings().nasa_firms_map_key
-    return False
 
 
 async def _persist_events(source_id: str, records: list[dict]) -> None:
@@ -61,7 +54,7 @@ async def run_source_sync(source_id: str, http_client: Any) -> dict:
     if not source.auto_sync_enabled:
         return {"source_id": source_id, "status": "skipped", "reason": "Auto-sync disabled — manual grounding only"}
 
-    if _missing_credentials(source_id):
+    if missing_credentials(source_id):
         logger.warning("[sync] %s skipped: required credential not configured", source_id)
         return {"source_id": source_id, "status": "skipped", "reason": "not_configured"}
 

@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from ...repositories.sync_health_repo import get_sync_health_repo
 from ..registry.sources_registry import SOURCE_REGISTRY, RiskSource
+from .credentials import missing_credentials
 from .reason_codes import REASON_LABELS, safe_reason
 
 
@@ -66,6 +67,9 @@ async def get_sync_health_report() -> list[dict]:
     report = []
     for source in SOURCE_REGISTRY:
         health = all_health.get(source.id, {})
+        # A wired source missing its credential is skipped by the runner; report that
+        # plainly rather than as "never synced" / "stale".
+        not_configured = source.auto_sync_enabled and missing_credentials(source.id)
         report.append({
             "source_id": source.id,
             "source_name": source.name,
@@ -80,12 +84,13 @@ async def get_sync_health_report() -> list[dict]:
             "sync_frequency_minutes": source.sync_frequency_minutes,
             "last_sync_at": health.get("last_sync_at"),
             "last_successful_sync_at": health.get("last_successful_sync_at"),
-            "last_sync_status": health.get("last_sync_status", "disabled" if not source.auto_sync_enabled else "never"),
+            "last_sync_status": "not_configured" if not_configured else health.get(
+                "last_sync_status", "disabled" if not source.auto_sync_enabled else "never"),
             "records_synced": health.get("records_synced", 0),
             # Closed vocabulary only — legacy raw strings map to "unknown_error".
-            "reason_code": safe_reason(health.get("error")),
-            "error": REASON_LABELS.get(safe_reason(health.get("error")) or ""),
-            "is_stale": _is_stale(health, source),
+            "reason_code": "not_configured" if not_configured else safe_reason(health.get("error")),
+            "error": REASON_LABELS.get("not_configured" if not_configured else (safe_reason(health.get("error")) or "")),
+            "is_stale": False if not_configured else _is_stale(health, source),
             "source_url": source.url,
             "docs_url": source.docs_url,
             "requires_api_key": source.requires_api_key,
