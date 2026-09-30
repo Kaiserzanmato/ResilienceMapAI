@@ -167,7 +167,7 @@ def _source_to_ts(source: RiskSource) -> str:
     if source.regions:
         lines.append(f"    regions: {_ts_string_array(source.regions)},")
     lines.append(f"    domains: {_ts_string_array(source.domains)},")
-    lines.append(f"    trustLevel: {source.trust_level},")
+    lines.append(f"    trustLevel: {int(source.trust_level)},")
     lines.append(f"    confidenceCategory: {_ts_string(source.confidence_category)},")
     lines.append(f"    enabled: {'true' if source.enabled else 'false'},")
     lines.append(f"    autoSyncEnabled: {'true' if source.auto_sync_enabled else 'false'},")

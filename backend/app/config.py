@@ -89,6 +89,14 @@ class Settings(BaseSettings):
     # Database (RBAC/auth-ready; the MVP runs on curated sample datasets)
     database_url: str = os.getenv("DATABASE_URL", "")
     redis_url: str = os.getenv("REDIS_URL", "")
+    # Production keeps sync health, the audit log and synced events in Postgres.
+    # Set ALLOW_EPHEMERAL_STATE=true only to knowingly run production without it.
+    allow_ephemeral_state: bool = os.getenv("ALLOW_EPHEMERAL_STATE", "false").lower() == "true"
+
+    # NASA FIRMS (fire hotspots). Without a MAP_KEY the source is skipped, never
+    # recorded as a successful empty sync. "world" or a "west,south,east,north" bbox.
+    nasa_firms_map_key: str = os.getenv("NASA_FIRMS_MAP_KEY", "")
+    nasa_firms_area: str = os.getenv("NASA_FIRMS_AREA", "world")
 
     # Geocoding is server-side only. Configure a self-hosted Photon instance
     # for autocomplete; the backend returns local curated results when unset.
@@ -127,6 +135,20 @@ class Settings(BaseSettings):
     events_max_response_bytes: int = int(os.getenv("EVENTS_MAX_RESPONSE_BYTES", str(2 * 1024 * 1024)))
 
 
+def require_durable_state(settings: Settings) -> None:
+    """Sync health, the audit log, uploaded-dataset metadata and synced events
+    fall back to in-memory stores without DATABASE_URL, so they vanish on every
+    restart or sleep and freshness reporting becomes meaningless. Unlike the
+    warnings in get_settings(), this fails fast: silently running production on
+    throwaway state is the failure mode this guards against."""
+    if settings.environment == "production" and not settings.database_url and not settings.allow_ephemeral_state:
+        raise RuntimeError(
+            "DATABASE_URL is required when ENVIRONMENT=production so sync health, "
+            "the audit log and synced events persist. Set DATABASE_URL, or set "
+            "ALLOW_EPHEMERAL_STATE=true to knowingly run on in-memory state."
+        )
+
+
 @lru_cache()
 def get_settings() -> Settings:
     settings = Settings()
@@ -157,5 +179,7 @@ def get_settings() -> Settings:
             "CRON_SECRET is not set — /api/cron/sync-sources will reject all "
             "requests (including Vercel's own scheduler) until it's configured."
         )
+
+    require_durable_state(settings)
 
     return settings

@@ -26,7 +26,7 @@ def test_usgs_normalization_preserves_authority_and_provenance():
     }, NOW)
     assert event.event_id == "usgs-earthquake:us7000test"
     assert event.official is True
-    assert event.source_tier == 5
+    assert event.source_tier == 1  # TrustTier.OFFICIAL; tier 5 is reserved for user uploads
     assert event.latitude == 11.2
     assert event.magnitude == 5.4
 
@@ -36,7 +36,9 @@ def test_supplemental_normalizers_never_become_official():
     eonet = normalize_eonet({"id": "eonet-1", "title": "Fire", "categories": [{"title": "Wildfires"}], "geometry": [{"date": "2026-08-13T00:00:00Z", "type": "Point", "coordinates": [121, 11]}], "sources": [{"url": "https://example.nasa.gov/event"}]}, NOW)
     reliefweb = normalize_reliefweb({"id": "rw-1", "fields": {"name": "Situation report", "date": {"created": "2026-08-13T00:00:00Z"}, "country": [{"iso3": "PHL"}], "type": [{"name": "Flood"}]}}, NOW)
     assert gdacs.hazard_type == "cyclone"
-    assert all(event.official is False and event.source_tier == 4 for event in (gdacs, eonet, reliefweb))
+    assert all(event.official is False for event in (gdacs, eonet, reliefweb))
+    # source_tier is the registry's canonical tier, independent of the official/supplemental display policy.
+    assert (gdacs.source_tier, eonet.source_tier, reliefweb.source_tier) == (1, 1, 2)
     assert reliefweb.geometry is None
 
 

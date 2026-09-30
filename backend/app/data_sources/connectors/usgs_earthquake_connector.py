@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from .safety import provider_json
+from ...redaction import redact_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -26,5 +27,5 @@ async def fetch_usgs_earthquakes(
         logger.info("[usgs] Fetched %d earthquake events from %s", len(features), feed)
         return features
     except Exception as exc:
-        logger.error("[usgs] Fetch failed: %s", exc)
+        logger.error("[usgs] Fetch failed: %s", redact_secrets(exc))
         raise

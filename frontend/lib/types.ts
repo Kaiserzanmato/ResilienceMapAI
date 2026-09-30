@@ -154,6 +154,11 @@ export interface Dataset {
   url: string;
   records: number;
   status: string;
+  /** Tier 5 = user upload; only "approved" uploads may affect scoring or AI. */
+  trust_level?: number;
+  review_status?: "pending" | "approved" | "rejected";
+  license?: string | null;
+  last_verified_at?: string | null;
 }
 
 export interface GeocodeResult {

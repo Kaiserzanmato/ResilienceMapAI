@@ -14,10 +14,15 @@ from .data_sources.sync.run_source_sync import run_all_wired_sources
 from .data_sources.event_intelligence import get_event_intelligence_service
 from .repositories.dataset_repo import get_dataset_repo
 from .schemas import (AgentQueryRequest, AIReportRequest, AISummaryRequest,
-                      AskAIRequest, CompareRequest, DatasetUpload, DataStatusResponse,
+                      AskAIRequest, CompareRequest, DatasetReview, DatasetUpload, DataStatusResponse,
                       ExportCSVRequest, ExportPDFRequest, ShareLinkRequest,
                       SpatialVisionRequest, GlobalAssessmentRequest)
-from .security import AuditLogMiddleware, RateLimitMiddleware, require_permission
+from .data_sources.connectors.manual_upload_connector import validate_manual_upload
+from .data_sources.sync.source_sync_health import get_data_version
+from .http_cache import cached_json
+from .redaction import install_log_redaction
+from .security import (AuditLogMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware,
+                       get_role, require_permission)
 from .services import geospatial_query as geo
 from .services.ask_ai import ask_ai_guardrailed
 from .services.dashboard import dashboard_stats
@@ -31,6 +36,7 @@ from .services.providers import build_providers, pick_provider
 from .services import usage_quota
 
 settings = get_settings()
+install_log_redaction()
 app = FastAPI(title=settings.app_name, version=settings.version)
 
 app.add_middleware(RateLimitMiddleware)
@@ -41,6 +47,9 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+# Added last so it is the outermost layer and covers every response, including
+# CORS preflights and rate-limit rejections.
+app.add_middleware(SecurityHeadersMiddleware)
 
 @app.get("/health")
 def health():
@@ -102,14 +111,13 @@ def global_assessment(req: GlobalAssessmentRequest):
 
 # ---------------------------------------------------------------- hazards
 @app.get("/api/hazard-layers")
-def hazard_layers(layer: str = Query("overall", max_length=32),
-                  format: str = Query("geojson", max_length=16)):
+async def hazard_layers(request: Request, layer: str = Query("overall", max_length=32),
+                        format: str = Query("geojson", max_length=16)):
     valid = {l["key"] for l in geo.available_layers()}
     if layer not in valid:
         raise HTTPException(400, f"Unknown layer '{layer}'. Valid: {sorted(valid)}")
-    if format == "heatmap":
-        return geo.heatmap_points(layer)
-    return geo.hazard_layer_geojson(layer)
+    payload = geo.heatmap_points(layer) if format == "heatmap" else geo.hazard_layer_geojson(layer)
+    return cached_json(request, payload, await get_data_version())
 
 
 @app.get("/api/hazard-layers/index")
@@ -129,6 +137,7 @@ def hazard_events():
 
 @app.get("/api/events")
 async def current_events(
+    request: Request,
     hazard_type: str | None = Query(None, max_length=64),
     provider: str | None = Query(None, max_length=32),
     authority: str | None = Query(None, pattern="^(official|supplemental)$"),
@@ -154,11 +163,13 @@ async def current_events(
         if len(parts) != 4 or not (-180 <= parts[0] <= 180 and -90 <= parts[1] <= 90 and -180 <= parts[2] <= 180 and -90 <= parts[3] <= 90 and parts[0] <= parts[2] and parts[1] <= parts[3]):
             raise HTTPException(422, "bbox is invalid")
         parsed_bbox = parts
-    return await get_event_intelligence_service().list_events(
+    result = await get_event_intelligence_service().list_events(
         hazard_type=hazard_type, provider=provider, authority=authority,
         severity=severity, start_time=start_time, end_time=end_time,
         bbox=parsed_bbox, offset=offset, limit=limit,
     )
+    # The in-process event cache can refresh independently of a scheduled sync.
+    return cached_json(request, result, f"{await get_data_version()}|{result.get('refreshed_at')}")
 
 
 # ---------------------------------------------------------------- AI
@@ -346,7 +357,7 @@ async def data_status():
     """Report current data freshness and sync status, derived from real sync
     health (see app/data_sources/sync/) rather than a hardcoded MVP status."""
     from .data_sources.sync.run_source_sync import WIRED_SOURCE_IDS
-    from .data_sources.sync.source_sync_health import get_sync_health_report
+    from .data_sources.sync.source_sync_health import get_data_version, get_sync_health_report
 
     health = await get_sync_health_report()
     wired = [h for h in health if h["source_id"] in WIRED_SOURCE_IDS]
@@ -376,6 +387,7 @@ async def data_status():
         sync_method="scheduled" if wired else "static-file",
         is_fresh=is_fresh,
         message=message,
+        data_version=await get_data_version(),
     )
 
 
@@ -385,7 +397,7 @@ async def data_sync(request: Request):
     dispatch logic with the Vercel Cron-triggered endpoint below, so a manual
     admin trigger and the scheduled one never diverge in behavior."""
     require_permission(request, "manage_datasets")
-    result = await run_all_wired_sources()
+    result = await run_all_wired_sources(force=True)
     return {
         "message": f"Sync triggered for {len(result['sources_synced'])} wired source(s).",
         **result,
@@ -478,14 +490,44 @@ async def sync_audit_log_endpoint(source_id: str = Query(None), limit: int = Que
 
 
 # ---------------------------------------------------------------- datasets
+# Internal fields never shown on the public listing.
+_ADMIN_ONLY_DATASET_FIELDS = {"checksum", "created_by"}
+
+
 @app.get("/api/datasets")
 async def datasets():
-    uploaded = await get_dataset_repo().list()
-    return {"datasets": DATASETS + uploaded}
+    """Public listing: curated datasets plus *approved* uploads only, without
+    internal fields. Pending and rejected uploads are visible through the
+    admin-gated GET /api/admin/datasets."""
+    approved = await get_dataset_repo().list(approved_only=True)
+    public = [{k: v for k, v in d.items() if k not in _ADMIN_ONLY_DATASET_FIELDS} for d in approved]
+    return {"datasets": DATASETS + public}
+
+
+@app.get("/api/admin/datasets")
+async def admin_datasets(request: Request):
+    """Every uploaded dataset (pending, approved, rejected) with full governance fields."""
+    require_permission(request, "manage_datasets")
+    return {"datasets": await get_dataset_repo().list()}
 
 
 @app.post("/api/datasets/upload")
 async def upload_dataset(meta: DatasetUpload, request: Request):
     require_permission(request, "manage_datasets")
-    entry = await get_dataset_repo().add(meta.model_dump())
-    return {"dataset": entry, "message": "Dataset metadata registered for review."}
+    payload = meta.model_dump()
+    valid, errors = validate_manual_upload(payload)
+    if not valid:
+        raise HTTPException(422, "; ".join(errors))
+    entry = await get_dataset_repo().add(payload, created_by=get_role(request))
+    return {"dataset": entry, "message": "Dataset registered as tier 5 (user upload), pending review."}
+
+
+@app.post("/api/datasets/{dataset_id}/review")
+async def review_dataset(dataset_id: str, body: DatasetReview, request: Request):
+    """Approve or reject a tier-5 upload. Only approved datasets may affect
+    scoring or AI grounding."""
+    require_permission(request, "manage_datasets")
+    entry = await get_dataset_repo().review(dataset_id, body.decision, reviewer=get_role(request))
+    if entry is None:
+        raise HTTPException(404, "Dataset not found")
+    return {"dataset": entry, "message": f"Dataset {body.decision}."}

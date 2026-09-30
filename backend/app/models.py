@@ -66,6 +66,13 @@ class UploadedDatasetRow(Base):
     records: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Governance (migration 0004): uploads are tier 5 until approved.
+    trust_level: Mapped[int] = mapped_column(Integer, default=5, server_default="5")
+    review_status: Mapped[str] = mapped_column(String, default="pending", server_default="pending")
+    license: Mapped[Optional[str]] = mapped_column(String)
+    last_verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    checksum: Mapped[Optional[str]] = mapped_column(String)
+    created_by: Mapped[Optional[str]] = mapped_column(String)
 
 
 class ReportRow(Base):

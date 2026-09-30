@@ -17,6 +17,7 @@ import httpx
 from pydantic import BaseModel, Field, HttpUrl, ValidationError, field_validator
 
 from ..config import get_settings
+from .registry.sources_registry import TrustTier, get_source_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +128,15 @@ def _hazard(value: Any) -> str:
     return mappings.get(text, text[:64])
 
 
+def _tier(provider: str) -> int:
+    """Event source_tier is the registry's canonical TrustTier for the provider.
+    (It used to be hard-coded on its own inverted scale, e.g. USGS=5, which
+    collided with tier 5 now meaning user upload.) Unknown providers fall back
+    to REGIONAL, never USER_UPLOAD."""
+    source = get_source_by_id(provider)
+    return int(source.trust_level if source else TrustTier.REGIONAL)
+
+
 def normalize_usgs(raw: dict[str, Any], retrieved_at: datetime) -> NormalizedEvent:
     props = raw.get("properties") or {}
     event_id = str(raw.get("id") or "")
@@ -137,7 +147,7 @@ def normalize_usgs(raw: dict[str, Any], retrieved_at: datetime) -> NormalizedEve
     severity = props.get("alert") or ("significant" if isinstance(magnitude, (int, float)) and magnitude >= 6 else "observed")
     return NormalizedEvent(
         event_id=f"usgs-earthquake:{event_id}", provider_event_id=event_id, provider="usgs-earthquake",
-        source_tier=5, hazard_type="earthquake", title=str(props.get("title") or "USGS earthquake"),
+        source_tier=_tier("usgs-earthquake"), hazard_type="earthquake", title=str(props.get("title") or "USGS earthquake"),
         geometry=geometry, latitude=lat, longitude=lon, severity=str(severity),
         magnitude=float(magnitude) if isinstance(magnitude, (int, float)) else None,
         magnitude_unit=str(props.get("magType")) if props.get("magType") else None,
@@ -156,7 +166,7 @@ def normalize_gdacs(raw: dict[str, Any], retrieved_at: datetime) -> NormalizedEv
     event_type = props.get("eventtype") or props.get("eventType") or props.get("type")
     url = props.get("url") or props.get("details") or props.get("eventurl")
     return NormalizedEvent(
-        event_id=f"gdacs:{provider_id}", provider_event_id=provider_id, provider="gdacs", source_tier=4,
+        event_id=f"gdacs:{provider_id}", provider_event_id=provider_id, provider="gdacs", source_tier=_tier("gdacs"),
         hazard_type=_hazard(event_type), title=str(props.get("name") or props.get("title") or "GDACS event"),
         description=str(props.get("description"))[:MAX_DESCRIPTION_LENGTH] if props.get("description") else None,
         geometry=geometry, latitude=lat, longitude=lon, severity=str(props.get("alertlevel") or "unknown"),
@@ -178,7 +188,7 @@ def normalize_eonet(raw: dict[str, Any], retrieved_at: datetime) -> NormalizedEv
     sources = raw.get("sources") or []
     source_url = sources[0].get("url") if sources and isinstance(sources[0], dict) else raw.get("link")
     return NormalizedEvent(
-        event_id=f"nasa-eonet:{provider_id}", provider_event_id=provider_id, provider="nasa-eonet", source_tier=4,
+        event_id=f"nasa-eonet:{provider_id}", provider_event_id=provider_id, provider="nasa-eonet", source_tier=_tier("nasa-eonet"),
         hazard_type=_hazard(category), title=str(raw.get("title") or "NASA EONET event"),
         description=str(raw.get("description"))[:MAX_DESCRIPTION_LENGTH] if raw.get("description") else None,
         geometry=geometry, latitude=lat, longitude=lon, severity="supplemental",
@@ -200,7 +210,7 @@ def normalize_reliefweb(raw: dict[str, Any], retrieved_at: datetime) -> Normaliz
     hazard = types[0].get("name") if types and isinstance(types[0], dict) else "humanitarian"
     dates = fields.get("date") or {}
     return NormalizedEvent(
-        event_id=f"reliefweb:{provider_id}", provider_event_id=provider_id, provider="reliefweb", source_tier=4,
+        event_id=f"reliefweb:{provider_id}", provider_event_id=provider_id, provider="reliefweb", source_tier=_tier("reliefweb"),
         hazard_type=_hazard(hazard), title=str(fields.get("name") or "ReliefWeb disaster report"),
         description=str(fields.get("body"))[:MAX_DESCRIPTION_LENGTH] if fields.get("body") else None,
         severity="supplemental", event_time=_utc(dates.get("created") if isinstance(dates, dict) else None),
@@ -211,6 +221,18 @@ def normalize_reliefweb(raw: dict[str, Any], retrieved_at: datetime) -> Normaliz
 
 
 NORMALIZERS = {"usgs-earthquake": normalize_usgs, "gdacs": normalize_gdacs, "nasa-eonet": normalize_eonet, "reliefweb": normalize_reliefweb}
+
+
+def normalize_records(provider: str, records: list[dict], retrieved_at: datetime) -> tuple[list[NormalizedEvent], int]:
+    """Normalize a provider batch (first 500 records). Returns (accepted, rejected_count)."""
+    accepted: list[NormalizedEvent] = []
+    rejected = 0
+    for record in records[:500]:
+        try:
+            accepted.append(NORMALIZERS[provider](record, retrieved_at))
+        except (ValidationError, ValueError, TypeError):
+            rejected += 1
+    return accepted, rejected
 
 
 def _distance_km(a: NormalizedEvent, b: NormalizedEvent) -> float | None:
@@ -311,13 +333,7 @@ class EventIntelligenceService:
         caller, while keeping normalization in one place.
         """
         retrieved_at = retrieved_at or datetime.now(timezone.utc)
-        accepted: list[NormalizedEvent] = []
-        rejected = 0
-        for record in records[:500]:
-            try:
-                accepted.append(NORMALIZERS[provider](record, retrieved_at))
-            except (ValidationError, ValueError, TypeError):
-                rejected += 1
+        accepted, rejected = normalize_records(provider, records, retrieved_at)
         retained = [event for event in self._events if event.provider != provider]
         self._events = deduplicate_events(retained + accepted)
         self._refreshed_at = retrieved_at

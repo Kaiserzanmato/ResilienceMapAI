@@ -15,15 +15,11 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { api, API_BASE } from "@/lib/api";
 import { cn, formatNumber } from "@/lib/utils";
 import { FLAGS } from "@/lib/feature-flags";
-
-const REFRESH_RATE_LIMIT_MS = 60 * 60 * 1000; // 1 hour in milliseconds
-const STORAGE_KEY_LAST_REFRESH = 'last_sync_refresh_timestamp';
-const STORAGE_KEY_SYNC_UPDATES = 'last_sync_updates';
 
 const CONFIDENCE_TONE: Record<string, string> = {
   High: "var(--risk-low)",
@@ -31,12 +27,13 @@ const CONFIDENCE_TONE: Record<string, string> = {
   Low: "var(--risk-high)",
 };
 
+// Canonical tiers — mirrors TrustTier in backend/app/data_sources/registry/sources_registry.py.
 const TRUST_LABEL: Record<number, string> = {
-  1: "Official warning",
-  2: "UN-backed report",
+  1: "Official agency",
+  2: "UN / humanitarian",
   3: "Research-grade",
-  4: "Specialized ops",
-  5: "Manual curated",
+  4: "Regional / specialised",
+  5: "User upload",
 };
 
 const SYNC_STATUS_COLOR: Record<string, string> = {
@@ -54,6 +51,7 @@ const EMPTY_FORM = {
   url: "",
   confidence: "Medium",
   records: 0,
+  license: "",
   adminKey: "",
 };
 
@@ -73,6 +71,8 @@ interface SyncHealthEntry {
   last_successful_sync_at: string | null;
   last_sync_status: string | null;
   records_synced: number;
+  /** Closed-vocabulary reason for the last failure (never a raw upstream error). */
+  reason_code: string | null;
   error: string | null;
   is_stale: boolean;
   source_url: string;
@@ -102,12 +102,34 @@ async function fetchSyncHealth(): Promise<{ sync_health: SyncHealthEntry[] }> {
   return res.json();
 }
 
+interface DataStatus {
+  last_sync_timestamp: string | null;
+  data_version: string;
+}
+
+async function fetchDataStatus(): Promise<DataStatus> {
+  const res = await fetch(`${API_BASE}/api/data-status`);
+  if (!res.ok) throw new Error("Failed to load data status");
+  return res.json();
+}
+
+// Everything derived from synced data; refetched after a successful sync so the
+// map, layers and assessments never keep serving pre-sync results.
+const SYNC_DEPENDENT_QUERY_KEYS = ["zones", "heat", "current-events", "hazard-events", "assessment"] as const;
+
 export default function DatasetsPage() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["datasets"], queryFn: api.datasets });
-  const { data: syncData, isLoading: syncLoading } = useQuery({
+  const { data: syncData, isLoading: syncLoading, refetch: refetchSyncHealth } = useQuery({
     queryKey: ["sync-health"],
     queryFn: fetchSyncHealth,
+    enabled: FLAGS.SOURCE_HEALTH_MONITORING,
+    refetchInterval: 60_000,
+  });
+  // Freshness comes from the server (last successful sync), never from a client timestamp.
+  const { data: dataStatus } = useQuery({
+    queryKey: ["data-status"],
+    queryFn: fetchDataStatus,
     enabled: FLAGS.SOURCE_HEALTH_MONITORING,
     refetchInterval: 60_000,
   });
@@ -117,89 +139,41 @@ export default function DatasetsPage() {
   const [activeTab, setActiveTab] = useState<"sources" | "datasets">(
     FLAGS.SOURCE_HEALTH_MONITORING ? "sources" : "datasets"
   );
-  const [lastRefreshTime, setLastRefreshTime] = useState<number | null>(() => {
-    if (typeof window === "undefined") return null;
-    const value = localStorage.getItem(STORAGE_KEY_LAST_REFRESH);
-    const timestamp = value ? Number.parseInt(value, 10) : Number.NaN;
-    return Number.isFinite(timestamp) ? timestamp : null;
-  });
-  const [timeUntilRefresh, setTimeUntilRefresh] = useState<number | null>(null);
   const [showUpdates, setShowUpdates] = useState(false);
-  const [lastUpdates, setLastUpdates] = useState<SyncUpdates | null>(() => {
-    if (typeof window === "undefined") return null;
-    const value = localStorage.getItem(STORAGE_KEY_SYNC_UPDATES);
-    if (!value) return null;
-    try {
-      return JSON.parse(value) as SyncUpdates;
-    } catch {
-      return null;
-    }
-  });
+  // Session-only diff of the last manual refresh; deliberately not persisted.
+  const [lastUpdates, setLastUpdates] = useState<SyncUpdates | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (lastRefreshTime) {
-        const now = Date.now();
-        const elapsed = now - lastRefreshTime;
-        const remaining = Math.max(0, REFRESH_RATE_LIMIT_MS - elapsed);
-        setTimeUntilRefresh(remaining);
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [lastRefreshTime]);
-
-  const canRefresh = lastRefreshTime === null || timeUntilRefresh === 0;
-
   const handleRefresh = async () => {
-    if (!canRefresh) return;
-
     const prevData = syncData?.sync_health ?? [];
-    const now = Date.now();
-
     try {
-      qc.invalidateQueries({ queryKey: ["sync-health"] });
-      localStorage.setItem(STORAGE_KEY_LAST_REFRESH, now.toString());
-      setLastRefreshTime(now);
-
-      // Calculate what was updated
-      setTimeout(() => {
-        const newData = qc.getQueryData<{ sync_health: SyncHealthEntry[] }>(["sync-health"]);
-        if (newData?.sync_health) {
-          const updates = {
-            timestamp: now,
-            previousCount: prevData.length,
-            currentCount: newData.sync_health.length,
-            changedSources: newData.sync_health.filter((s) => {
-              const prev = prevData.find(p => p.source_id === s.source_id);
-              return prev && (
-                prev.last_sync_status !== s.last_sync_status ||
-                prev.records_synced !== s.records_synced ||
-                prev.last_successful_sync_at !== s.last_successful_sync_at
-              );
-            }).map((s) => ({
-              name: s.source_name,
-              status: s.last_sync_status,
-              records: s.records_synced,
-              lastSync: s.last_successful_sync_at,
-            })),
-          };
-          localStorage.setItem(STORAGE_KEY_SYNC_UPDATES, JSON.stringify(updates));
-          setLastUpdates(updates);
-          setMessage('Sync status refreshed. No source synchronization was triggered.');
-          setTimeout(() => setMessage(null), 5000);
-        }
-      }, 500);
+      const [{ data: newData }] = await Promise.all([refetchSyncHealth(), qc.invalidateQueries({ queryKey: ["data-status"] })]);
+      if (newData?.sync_health) {
+        setLastUpdates({
+          timestamp: Date.now(),
+          previousCount: prevData.length,
+          currentCount: newData.sync_health.length,
+          changedSources: newData.sync_health.filter((s) => {
+            const prev = prevData.find((p) => p.source_id === s.source_id);
+            return prev && (
+              prev.last_sync_status !== s.last_sync_status ||
+              prev.records_synced !== s.records_synced ||
+              prev.last_successful_sync_at !== s.last_successful_sync_at
+            );
+          }).map((s) => ({
+            name: s.source_name,
+            status: s.last_sync_status,
+            records: s.records_synced,
+            lastSync: s.last_successful_sync_at,
+          })),
+        });
+        setMessage("Sync status refreshed. No source synchronization was triggered.");
+        setTimeout(() => setMessage(null), 5000);
+      }
     } catch (error) {
       setMessage(`Refresh failed: ${(error as Error).message}`);
       setTimeout(() => setMessage(null), 5000);
     }
-  };
-
-  const formatTimeRemaining = (ms: number): string => {
-    const mins = Math.floor(ms / 60000);
-    const secs = Math.floor((ms % 60000) / 1000);
-    return `${mins}m ${secs}s`;
   };
 
   const upload = useMutation({
@@ -223,9 +197,37 @@ export default function DatasetsPage() {
       setShowSyncKeyInput(false);
       setSyncAdminKey("");
       qc.invalidateQueries({ queryKey: ["sync-health"] });
+      qc.invalidateQueries({ queryKey: ["data-status"] });
+      for (const key of SYNC_DEPENDENT_QUERY_KEYS) qc.invalidateQueries({ queryKey: [key] });
       setTimeout(() => setMessage(null), 5000);
     },
     onError: (e) => setMessage(`Sync failed: ${(e as Error).message}`),
+  });
+
+  const [reviewAdminKey, setReviewAdminKey] = useState("");
+  // Pending/rejected uploads are admin-only; this loads only on demand with the admin key.
+  const {
+    data: adminData,
+    refetch: loadAdminDatasets,
+    isFetching: adminLoading,
+    error: adminError,
+  } = useQuery({
+    queryKey: ["admin-datasets"],
+    queryFn: () => api.adminDatasets(reviewAdminKey),
+    enabled: false,
+    retry: false,
+  });
+  const pendingUploads = adminData?.datasets.filter((d) => d.review_status === "pending") ?? [];
+  const review = useMutation({
+    mutationFn: (v: { id: string; decision: "approved" | "rejected" }) =>
+      api.reviewDataset(v.id, v.decision, reviewAdminKey),
+    onSuccess: (res) => {
+      setMessage(res.message);
+      qc.invalidateQueries({ queryKey: ["datasets"] });
+      loadAdminDatasets();
+      setTimeout(() => setMessage(null), 5000);
+    },
+    onError: (e) => setMessage(`Review failed: ${(e as Error).message}`),
   });
 
   const inputCls =
@@ -268,8 +270,8 @@ export default function DatasetsPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleRefresh}
-                  disabled={syncLoading || !canRefresh}
-                  title={!canRefresh ? `Rate limited. Refresh available in ${formatTimeRemaining(timeUntilRefresh || 0)}` : 'Refresh sync status'}
+                  disabled={syncLoading}
+                  title="Refresh sync status"
                   className="focus-ring glass flex h-10 cursor-pointer items-center gap-2 rounded-xl px-4 text-[13px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {syncLoading ? (
@@ -340,17 +342,14 @@ export default function DatasetsPage() {
                   )}
                 </div>
               </div>
-              {lastRefreshTime && (
+              {dataStatus && (
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] border border-[var(--surface-border)]">
                   <Clock size={14} className="text-[var(--accent)]" />
                   <div className="text-[12px]">
-                    <span className="text-[var(--fg-muted)]">Last status refresh: </span>
-                    <span className="font-medium text-[var(--fg)]">{new Date(lastRefreshTime).toLocaleString()}</span>
-                    {!canRefresh && (
-                      <span className="text-[var(--risk-medium)] ml-2">
-                        (Next refresh in {formatTimeRemaining(timeUntilRefresh || 0)})
-                      </span>
-                    )}
+                    <span className="text-[var(--fg-muted)]">Last successful sync (server): </span>
+                    <span className="font-medium text-[var(--fg)]">
+                      {dataStatus.last_sync_timestamp ? new Date(dataStatus.last_sync_timestamp).toLocaleString() : "No sync has completed yet"}
+                    </span>
                   </div>
                 </div>
               )}
@@ -478,6 +477,7 @@ export default function DatasetsPage() {
               ADMIN_SHARED_SECRET
             </code>
             ). Sources must be HTTPS and from trusted agencies (USGS, NOAA, PAGASA, PHIVOLCS, Copernicus…).
+            Registered datasets are tier 5 (user upload) and stay pending until reviewed; only approved datasets can affect scoring or AI answers.
           </p>
           <form
             className="grid gap-3 sm:grid-cols-2"
@@ -543,6 +543,15 @@ export default function DatasetsPage() {
                 value={form.url}
                 onChange={(e) => setForm({ ...form, url: e.target.value })}
                 placeholder="https://earthquake.usgs.gov/…"
+              />
+            </label>
+            <label className="text-[12px] font-medium sm:col-span-2">
+              License (optional)
+              <input
+                className={cn(inputCls, "mt-1")}
+                value={form.license}
+                onChange={(e) => setForm({ ...form, license: e.target.value })}
+                placeholder="e.g. CC BY 4.0"
               />
             </label>
             <label className="text-[12px] font-medium sm:col-span-2">
@@ -680,6 +689,12 @@ export default function DatasetsPage() {
                         {s.last_sync_status ?? "never"}
                       </span>
                     </div>
+                    {s.last_sync_status === "failed" && s.error && (
+                      <div className="flex items-start justify-between gap-2">
+                        <span>Reason</span>
+                        <span className="text-right font-medium text-[var(--risk-high)]">{s.error}</span>
+                      </div>
+                    )}
                     {s.last_successful_sync_at && (
                       <div className="flex items-center justify-between gap-2">
                         <span>Last success</span>
@@ -763,6 +778,80 @@ export default function DatasetsPage() {
       {/* Datasets Tab */}
       {activeTab === "datasets" && (
         <>
+          <GlassCard className="mb-4 p-4">
+            <div className="flex flex-wrap items-center gap-2 text-[12px]">
+              <span className="text-[var(--fg-muted)]">
+                Pending uploads are visible to admins only. Admin key:
+              </span>
+              <form
+                className="flex items-center gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (reviewAdminKey) loadAdminDatasets();
+                }}
+              >
+                <input
+                  type="password"
+                  autoComplete="off"
+                  className={cn(inputCls, "w-56")}
+                  value={reviewAdminKey}
+                  onChange={(e) => setReviewAdminKey(e.target.value)}
+                  placeholder="Server ADMIN_SHARED_SECRET"
+                />
+                <button
+                  type="submit"
+                  disabled={!reviewAdminKey || adminLoading}
+                  className="focus-ring cursor-pointer rounded-xl bg-[var(--accent)] px-3 py-2 text-[12.5px] font-medium text-white hc:text-black disabled:opacity-50"
+                >
+                  {adminLoading ? "Loading…" : "Load pending"}
+                </button>
+              </form>
+            </div>
+            {adminError && (
+              <p className="mt-2 text-[12px] text-[var(--risk-high)]">
+                Could not load uploads: {(adminError as Error).message}
+              </p>
+            )}
+            {adminData && pendingUploads.length === 0 && (
+              <p className="mt-2 text-[12px] text-[var(--fg-muted)]">No uploads are waiting for review.</p>
+            )}
+            {pendingUploads.length > 0 && (
+              <ul className="mt-3 space-y-2">
+                {pendingUploads.map((d) => (
+                  <li
+                    key={d.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--surface-border)] px-3 py-2"
+                  >
+                    <div className="min-w-0 text-[12.5px]">
+                      <p className="truncate font-medium">{d.name}</p>
+                      <p className="text-[11.5px] text-[var(--fg-muted)]">
+                        {d.agency} · {d.category.replace(/_/g, " ")} · Tier {d.trust_level} ({TRUST_LABEL[d.trust_level ?? 5]}) ·{" "}
+                        <a href={d.url} target="_blank" rel="noopener noreferrer" className="text-[var(--accent)] hover:underline">
+                          Source
+                        </a>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={review.isPending}
+                        onClick={() => review.mutate({ id: d.id, decision: "approved" })}
+                        className="focus-ring cursor-pointer rounded-lg border border-[var(--surface-border)] px-2.5 py-1 text-[11.5px] font-medium text-[var(--risk-low)] disabled:opacity-50"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        disabled={review.isPending}
+                        onClick={() => review.mutate({ id: d.id, decision: "rejected" })}
+                        className="focus-ring cursor-pointer rounded-lg border border-[var(--surface-border)] px-2.5 py-1 text-[11.5px] font-medium text-[var(--risk-high)] disabled:opacity-50"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </GlassCard>
           {isLoading ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -808,6 +897,7 @@ export default function DatasetsPage() {
                       >
                         {d.status.replace(/_/g, " ")}
                       </span>
+                      {d.trust_level ? ` · Tier ${d.trust_level} (${TRUST_LABEL[d.trust_level] ?? "Unknown"})` : ""}
                     </p>
                     <a
                       href={d.url}
@@ -830,11 +920,11 @@ export default function DatasetsPage() {
         <div className="flex items-start gap-2">
           <ShieldCheck size={15} className="mt-0.5 shrink-0 text-[var(--accent)]" aria-hidden="true" />
           <p className="text-[11.5px] leading-relaxed text-[var(--fg-muted)]">
-            Trust Level 1 = Official government warning (PAGASA, PHIVOLCS, USGS, NOAA, GDACS).
-            Trust Level 2 = UN-backed humanitarian reports (ReliefWeb, UNICEF, UNHCR).
-            Trust Level 3 = Research-grade datasets (ACLED, UCDP, World Bank).
-            Trust Level 4 = Regional/specialized ops (ICAO, EASA, Copernicus).
-            Trust Level 5 = Manual curated uploads.
+            Tier 1 = Official agencies (PAGASA, PHIVOLCS, USGS, NOAA, GDACS).
+            Tier 2 = UN and humanitarian bodies (ReliefWeb, UNICEF, UNHCR).
+            Tier 3 = Research-grade datasets (ACLED, UCDP, World Bank).
+            Tier 4 = Regional and specialised sources (ICAO, EASA, Copernicus).
+            Tier 5 = User uploads; pending until reviewed, and never used for scoring or AI until approved.
             When sources conflict, the higher-trust source takes precedence.
           </p>
         </div>

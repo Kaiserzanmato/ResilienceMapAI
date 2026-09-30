@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import Optional
 
 from ...repositories.audit_log_repo import get_audit_log_repo
+from .reason_codes import REASON_LABELS, safe_reason
 
 
 async def log_sync_attempt(
@@ -20,4 +21,9 @@ async def log_sync_attempt(
 
 
 async def get_audit_log(source_id: Optional[str] = None, limit: int = 100) -> list[dict]:
-    return await get_audit_log_repo().get(source_id=source_id, limit=limit)
+    entries = await get_audit_log_repo().get(source_id=source_id, limit=limit)
+    sanitized = []
+    for entry in entries:
+        reason = safe_reason(entry.get("error"))
+        sanitized.append({**entry, "reason_code": reason, "error": REASON_LABELS.get(reason or "")})
+    return sanitized

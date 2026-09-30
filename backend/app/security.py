@@ -65,6 +65,16 @@ def require_permission(request: Request, permission: str) -> None:
         raise HTTPException(status_code=403, detail=f"Role '{role}' lacks '{permission}' permission")
 
 
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Headers every API response gets, including errors, 304s and rate-limit
+    429s — so it must be the outermost middleware (added last in main.py)."""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """In-memory sliding window per client IP; AI endpoints get a tighter
     budget. Swap the store for Redis in multi-instance deployments."""
