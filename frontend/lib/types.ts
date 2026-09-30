@@ -4,8 +4,24 @@ export interface RiskLevel {
   color: "green" | "yellow" | "red" | "gray";
 }
 
+/** Closed vocabulary from docs/SPRINT_1_COVERAGE_AND_PUBLIC_DISPLAY_DECISION.md section 4. */
+export type CoverageStatus =
+  | "available"
+  | "not_applicable"
+  | "out_of_coverage"
+  | "unknown"
+  | "unavailable"
+  | "stale"
+  | "expired"
+  | "suppressed";
+
 export interface HazardScore extends RiskLevel {
   label: string;
+  coverage_status?: CoverageStatus;
+  reason_code?: string;
+  /** Curated/baseline value shown only as an unverified indicator, never as `score`. */
+  indicative_score?: number | null;
+  indicative_source_type?: string;
 }
 
 export interface RiskAssessment {
@@ -13,6 +29,9 @@ export interface RiskAssessment {
   latitude: number;
   longitude: number;
   overall: RiskLevel;
+  /** How many hazard components contributed to `overall` (null overall when 0). */
+  components_available?: number;
+  components_total?: number;
   hazards: Record<string, HazardScore>;
   main_drivers: string[];
   nearest_zone: {
@@ -36,7 +55,12 @@ export interface AssessmentHazard {
   classification: string;
   score: number | null;
   confidence: "none" | "low" | "medium" | "high";
-  coverage_status: string;
+  coverage_status: CoverageStatus;
+  reason_code?: string;
+  registry_coverage?: string | null;
+  indicative_score?: number | null;
+  indicative_source_type?: string;
+  indicative_confidence?: string;
   sources: Array<{ name: string; publication_date?: string; reliability?: string }>;
   evidence: Array<{ source: string; timestamp: string }>;
   limitations: string[];
@@ -46,7 +70,12 @@ export interface GlobalAssessment {
   location: { name: string; latitude: number; longitude: number; country_code: string | null };
   assessment_geometry: { type: string; fallback_used: boolean; confidence: string; default_buffers_m: number[] };
   hazards: Record<string, AssessmentHazard>;
-  multi_hazard_summary: { highest_priority_hazards: string[]; coverage_score: number };
+  multi_hazard_summary: {
+    highest_priority_hazards: string[];
+    coverage_score: number;
+    components_available?: number;
+    components_total?: number;
+  };
   scoring_version: string;
   coverage_registry_version: string;
   generated_at: string;
