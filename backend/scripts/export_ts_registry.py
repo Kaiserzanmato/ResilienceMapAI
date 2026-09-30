@@ -185,9 +185,14 @@ def _source_to_ts(source: RiskSource) -> str:
     return "\n".join(lines)
 
 
-def main() -> None:
+def render_ts() -> str:
+    """The full generated TS file as a string (no I/O), so tests can check it for drift."""
     body = "\n".join(_source_to_ts(s) for s in SOURCE_REGISTRY)
-    OUTPUT_PATH.write_text(HEADER + body + "\n" + FOOTER)
+    return HEADER + body + "\n" + FOOTER
+
+
+def main() -> None:
+    OUTPUT_PATH.write_text(render_ts())
     print(f"Wrote {len(SOURCE_REGISTRY)} sources to {OUTPUT_PATH}")
 
 

@@ -79,7 +79,8 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="rss", coverage="global",
         domains=["natural_hazards"],
         trust_level=TrustTier.OFFICIAL, confidence_category="official_warning",
-        enabled=True, auto_sync_enabled=False  # no connector yet; flip on when one is wired in run_source_sync, sync_frequency_minutes=10,
+        # no connector yet; flip on when one is wired in run_source_sync
+        enabled=True, auto_sync_enabled=False, sync_frequency_minutes=10,
     ),
     RiskSource(
         id="nasa-eonet", name="NASA EONET",
@@ -119,7 +120,8 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="api", coverage="global",
         domains=["natural_hazards", "climate"],
         trust_level=TrustTier.OFFICIAL, confidence_category="official_warning",
-        enabled=True, auto_sync_enabled=False  # no connector yet; flip on when one is wired in run_source_sync, sync_frequency_minutes=15,
+        # no connector yet; flip on when one is wired in run_source_sync
+        enabled=True, auto_sync_enabled=False, sync_frequency_minutes=15,
     ),
     RiskSource(
         id="copernicus-ems", name="Copernicus EMS",
@@ -149,7 +151,8 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="api", coverage="global",
         domains=["humanitarian"],
         trust_level=TrustTier.HUMANITARIAN, confidence_category="humanitarian_report",
-        enabled=True, auto_sync_enabled=False  # no connector yet; flip on when one is wired in run_source_sync, sync_frequency_minutes=360,
+        # no connector yet; flip on when one is wired in run_source_sync
+        enabled=True, auto_sync_enabled=False, sync_frequency_minutes=360,
     ),
     RiskSource(
         id="ifrc-go", name="IFRC GO Platform",
@@ -158,7 +161,8 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="api", coverage="global",
         domains=["humanitarian"],
         trust_level=TrustTier.HUMANITARIAN, confidence_category="humanitarian_report",
-        enabled=True, auto_sync_enabled=False  # no connector yet; flip on when one is wired in run_source_sync, sync_frequency_minutes=180,
+        # no connector yet; flip on when one is wired in run_source_sync
+        enabled=True, auto_sync_enabled=False, sync_frequency_minutes=180,
     ),
     RiskSource(
         id="unhcr-data", name="UNHCR Operational Data Portal",
@@ -181,7 +185,8 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="api", coverage="global",
         domains=["climate", "humanitarian"],
         trust_level=TrustTier.RESEARCH, confidence_category="economic_indicator",
-        enabled=True, auto_sync_enabled=False  # no connector yet; flip on when one is wired in run_source_sync, sync_frequency_minutes=43200,
+        # no connector yet; flip on when one is wired in run_source_sync
+        enabled=True, auto_sync_enabled=False, sync_frequency_minutes=43200,
     ),
     RiskSource(
         id="emdat", name="EM-DAT",
