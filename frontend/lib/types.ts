@@ -62,7 +62,14 @@ export interface AssessmentHazard {
   indicative_source_type?: string;
   indicative_confidence?: string;
   sources: Array<{ name: string; publication_date?: string; reliability?: string }>;
-  evidence: Array<{ source: string; timestamp: string }>;
+  evidence: Array<{
+    source: string;
+    timestamp: string;
+    source_type?: string;
+    uncertainty?: string;
+    /** "country" when the value is a country-level baseline rather than local/zone evidence. */
+    resolution?: string;
+  }>;
   limitations: string[];
 }
 

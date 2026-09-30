@@ -27,6 +27,29 @@ def _geometry(kind: str | None) -> dict[str, Any]:
     return {"type": requested, "fallback_used": requested == "point", "confidence": confidence, "default_buffers_m": [50, 100, 500]}
 
 
+def _modelled_evidence(score: float, data_coverage: str, timestamp: str) -> dict[str, Any]:
+    """Evidence record for a legacy modelled value, labelled by what actually produced it.
+
+    `covered`: the point falls inside a curated hazard zone. `regional`: no zone
+    covers the point, so the value is the country-level baseline; it must not be
+    presented as local, zone-level evidence."""
+    common = {"timestamp": timestamp, "raw_value": score, "normalized_value": score, "cache_policy": "request"}
+    if data_coverage == "regional":
+        return {
+            "source": "ResilienceMap country risk baseline",
+            "source_type": "modelled-baseline",
+            "uncertainty": "Country-level baseline; not local detail for this location.",
+            "resolution": "country",
+            **common,
+        }
+    return {
+        "source": "ResilienceMap curated zone dataset",
+        "source_type": "modelled",
+        "uncertainty": "Indicative zone-based model; not a parcel-level measurement.",
+        **common,
+    }
+
+
 def _coverage_state(score: float | None, providers: list, selected: dict | None,
                     country_code: str | None, legacy_coverage: str) -> tuple[str, str]:
     """Closed-vocabulary coverage_status + reason_code (public display decision, section 4)."""
@@ -75,8 +98,10 @@ def assess_location(lat: float, lng: float, name: str | None = None, country_cod
             limitations.append("No country-specific source is registered; the global fallback is shown with reduced confidence.")
         # Curated legacy scores are retained only as explicitly modelled indicators.
         if score is not None and selected and legacy["data_coverage"] != "limited":
-            evidence = [{"source": "ResilienceMap curated zone dataset", "source_type": "modelled", "timestamp": legacy["generated_at"], "raw_value": score, "normalized_value": score, "uncertainty": "Indicative zone-based model; not a parcel-level measurement.", "cache_policy": "request"}]
-            confidence = "medium" if selected and not uses_global_fallback else "low"
+            evidence = [_modelled_evidence(score, legacy["data_coverage"], legacy["generated_at"])]
+            # A country-level baseline is never better than low confidence.
+            is_baseline = legacy["data_coverage"] == "regional"
+            confidence = "low" if is_baseline or uses_global_fallback else "medium"
         else:
             score, evidence, confidence = None, [], "none"
         coverage_status, reason_code = _coverage_state(score, providers, selected, country_code, legacy["data_coverage"])

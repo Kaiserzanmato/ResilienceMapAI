@@ -1,6 +1,9 @@
+import re
+from pathlib import Path
+
 import pytest
 
-from app.services.country_lookup import country_for_point
+from app.services.country_lookup import SMALL_COUNTRY_BOXES, country_for_point
 from app.services.global_assessment import assess_location
 
 COVERAGE_VOCABULARY = {"available", "not_applicable", "out_of_coverage", "unknown", "unavailable", "stale", "expired", "suppressed"}
@@ -56,3 +59,64 @@ def test_zero_baseline_is_not_reported_as_indicative_risk():
     # Nepal's baseline stores 0 for hazards that are not modelled there.
     result = assess_location(28.39, 84.12, "Nepal", "NP")
     assert result["hazards"]["tropical_cyclone"]["indicative_score"] is None
+
+
+def test_bangkok_earthquake_is_labelled_as_a_country_baseline():
+    earthquake = assess_location(13.746, 100.498, "Bangkok", "TH")["hazards"]["earthquake"]
+    (evidence,) = earthquake["evidence"]
+    assert evidence["source"] == "ResilienceMap country risk baseline"
+    assert evidence["source_type"] == "modelled-baseline"
+    assert evidence["resolution"] == "country"
+    assert "country-level baseline" in evidence["uncertainty"].lower()
+    assert "not local detail" in evidence["uncertainty"].lower()
+    # Still an available component, but never better than low confidence.
+    assert earthquake["coverage_status"] == "available" and earthquake["score"] is not None
+    assert earthquake["confidence"] == "low"
+
+
+def test_manila_earthquake_is_labelled_as_a_curated_zone():
+    earthquake = assess_location(14.5995, 120.9842, "Metro Manila", "PH")["hazards"]["earthquake"]
+    (evidence,) = earthquake["evidence"]
+    assert evidence["source"] == "ResilienceMap curated zone dataset"
+    assert evidence["source_type"] == "modelled"
+    assert "zone-based" in evidence["uncertainty"].lower()
+    assert "resolution" not in evidence
+    assert earthquake["coverage_status"] == "available"
+
+
+# ---- small states missing from the Natural Earth 110m polygons
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_singapore_and_hong_kong_resolve_to_their_own_countries():
+    assert country_for_point(1.29, 103.85) == "SG"
+    assert country_for_point(22.3, 114.17) == "HK"
+    assert assess_location(1.29, 103.85, "Singapore")["location"]["country_code"] == "SG"
+
+
+@pytest.mark.parametrize("code,west,south,east,north", SMALL_COUNTRY_BOXES)
+def test_every_small_country_box_resolves_at_its_centre(code, west, south, east, north):
+    assert country_for_point((south + north) / 2, (west + east) / 2) == code
+
+
+def test_small_country_list_covers_the_required_states():
+    assert {box[0] for box in SMALL_COUNTRY_BOXES} >= {"SG", "HK", "MO", "BH", "MT", "MV", "LU", "AD", "MC", "LI", "SM", "BN"}
+
+
+def test_small_country_boxes_do_not_swallow_nearby_neighbours():
+    assert country_for_point(1.4927, 103.7414) == "MY"   # Johor Bahru, just over the causeway
+    # Batam is absent from the 110m polygons (the coastal fallback picks a neighbour), but the
+    # Singapore box must not claim it.
+    assert country_for_point(1.05, 104.03) != "SG"
+    assert country_for_point(22.5431, 114.0579) == "CN"  # Shenzhen
+    assert country_for_point(13.746, 100.498) == "TH"    # unchanged for ordinary points
+
+
+def test_python_and_typescript_small_country_boxes_are_identical():
+    source = (REPO_ROOT / "frontend" / "lib" / "locations" / "point-to-country.ts").read_text(encoding="utf-8")
+    block = source.split("SMALL_COUNTRY_BOXES:", 1)[1].split("];", 1)[0]
+    ts_boxes = tuple(
+        (code, *map(float, nums))
+        for code, *nums in re.findall(r'\["([A-Z]{2})",\s*(-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+)\]', block)
+    )
+    assert ts_boxes == SMALL_COUNTRY_BOXES
