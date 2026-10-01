@@ -165,7 +165,8 @@ async def test_firms_without_a_key_is_skipped_not_recorded_as_success(monkeypatc
     firms = next(r for r in result["results"] if r["source_id"] == "nasa-firms")
     assert firms == {"source_id": "nasa-firms", "status": "skipped", "reason": "not_configured"}
     health = {h["source_id"]: h for h in await get_sync_health_report()}
-    assert health["nasa-firms"]["last_sync_status"] == "never"
+    assert health["nasa-firms"]["last_sync_status"] == "not_configured"
+    assert health["nasa-firms"]["is_stale"] is False
 
 
 def test_sources_without_connectors_no_longer_claim_auto_sync():
