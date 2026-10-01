@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ChatMessage, RiskAssessment } from "./types";
 import type { EvacuationCenterWithDistance } from "./evacuation-centers";
+import type { Bbox } from "./flood-evidence";
 
 export interface SelectedLocation {
   lat: number;
@@ -81,6 +82,10 @@ interface AppState {
   // Satellite-derived flood extents + user flood flags (NEXT_PUBLIC_ENABLE_FLOOD_CAPTURE)
   showFloodExtents: boolean;
   setShowFloodExtents: (b: boolean) => void;
+  // Ask the map to fit a capture box (after a flag completes, or "Zoom to capture").
+  // The nonce makes asking for the same box twice move the map twice.
+  floodFocus: { bbox: Bbox; nonce: number } | null;
+  focusFloodCapture: (bbox: Bbox) => void;
   selectedEvacuationCenter: EvacuationCenterWithDistance | null;
   setSelectedEvacuationCenter: (c: EvacuationCenterWithDistance | null) => void;
 
@@ -141,6 +146,9 @@ export const useAppStore = create<AppState>()(
       setShowEvacuationCenters: (showEvacuationCenters) => set({ showEvacuationCenters }),
       showFloodExtents: true,
       setShowFloodExtents: (showFloodExtents) => set({ showFloodExtents }),
+      floodFocus: null,
+      // Zooming to a capture only makes sense with the flood layers on.
+      focusFloodCapture: (bbox) => set((s) => ({ showFloodExtents: true, floodFocus: { bbox, nonce: (s.floodFocus?.nonce ?? 0) + 1 } })),
       selectedEvacuationCenter: null,
       setSelectedEvacuationCenter: (selectedEvacuationCenter) => set({ selectedEvacuationCenter }),
 

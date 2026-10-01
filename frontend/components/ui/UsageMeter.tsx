@@ -1,37 +1,57 @@
 "use client";
 import { Gauge, Clock } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { UsageStatus } from "@/lib/api";
-
-function formatDuration(seconds: number): string {
-  if (seconds <= 0) return "now";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.ceil((seconds % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-}
+import { formatDuration, formatResetClock, secondsUntil } from "@/lib/usage-reset";
 
 /** Usage-quota meter — mirrors the app's existing 429 messaging
  * (app/services/usage_quota.py) so the UI never surprises a user with a
- * blocked action it didn't warn them about first. */
+ * blocked action it didn't warn them about first.
+ *
+ * The countdown is computed from `resets_at` against the clock, not from the
+ * seconds the server reported when the status was fetched, so it keeps moving
+ * and never shows a reset time that has already passed. When that time passes
+ * (the oldest use left the window) `onExpire` asks the owner to refetch. While
+ * nothing is used there is nothing to reset, so no reset time is shown. */
 export function UsageMeter({
   label,
   unitLabel = "requests",
   status,
   className,
+  onExpire,
 }: {
   label: string;
   unitLabel?: string;
   status: UsageStatus | null;
   className?: string;
+  onExpire?: () => void;
 }) {
+  const [now, setNow] = useState(() => Date.now());
+  const resetsAt = status?.resets_at ?? null;
+  useEffect(() => {
+    if (!resetsAt) return;
+    const timer = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(timer);
+  }, [resetsAt]);
+
+  const secondsLeft = secondsUntil(resetsAt, now);
+  const expiredFor = useRef<string | null>(null);
+  const onExpireRef = useRef(onExpire);
+  useEffect(() => {
+    onExpireRef.current = onExpire;
+  });
+  useEffect(() => {
+    // Refetch once per reset time that has passed, not on every tick.
+    if (resetsAt && secondsLeft === 0 && expiredFor.current !== resetsAt) {
+      expiredFor.current = resetsAt;
+      onExpireRef.current?.();
+    }
+  }, [resetsAt, secondsLeft]);
+
   if (!status) return null;
   const percent = status.limit > 0 ? Math.min(100, Math.round((status.used / status.limit) * 100)) : 0;
   const exhausted = status.remaining <= 0;
-  const resetClock = new Date(status.resets_at).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 
   return (
     <div
@@ -48,10 +68,12 @@ export function UsageMeter({
           <Gauge size={13} aria-hidden="true" />
           {percent}% of {label} used
         </span>
-        <span className="flex items-center gap-1 text-[var(--fg-muted)]">
-          <Clock size={12} aria-hidden="true" />
-          Resets in {formatDuration(status.resets_in_seconds)}
-        </span>
+        {resetsAt && (
+          <span className="flex items-center gap-1 text-[var(--fg-muted)]">
+            <Clock size={12} aria-hidden="true" />
+            {exhausted ? "Available again in" : "Next use frees up in"} {formatDuration(secondsLeft)}
+          </span>
+        )}
       </div>
       <div
         role="progressbar"
@@ -70,7 +92,7 @@ export function UsageMeter({
         <span>
           {status.used} / {status.limit} {unitLabel}
         </span>
-        <span>Resets at {resetClock}</span>
+        <span>{resetsAt ? `At ${formatResetClock(resetsAt, now)}` : "Nothing used yet"}</span>
       </div>
     </div>
   );

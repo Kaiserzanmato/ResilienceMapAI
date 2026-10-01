@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Waves } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api, APIError, type FloodJob } from "@/lib/api";
+import { useAppStore } from "@/lib/store";
 
 const FAST_POLL_MS = 3_000;
 const SLOW_POLL_MS = 8_000;
@@ -28,6 +29,7 @@ type Phase =
  * ends. The parent keys this by location so a new selection starts fresh. */
 export function FloodFlagButton({ lat, lng }: { lat: number; lng: number }) {
   const queryClient = useQueryClient();
+  const focusFloodCapture = useAppStore((s) => s.focusFloodCapture);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
 
   const jobId = phase.kind === "working" ? phase.jobId : null;
@@ -43,7 +45,10 @@ export function FloodFlagButton({ lat, lng }: { lat: number; lng: number }) {
         if (cancelled) return;
         if (job.status === "done") {
           queryClient.invalidateQueries({ queryKey: ["flood-extents"] });
+          queryClient.invalidateQueries({ queryKey: ["flood-evidence"] });
           queryClient.invalidateQueries({ queryKey: ["flood-flags"] });
+          // Fit the map to the capture so the result is actually seen, not left as a speck at city zoom.
+          if (job.extent?.aoi_bbox) focusFloodCapture(job.extent.aoi_bbox);
           setPhase(job.extent ? { kind: "done", extent: job.extent } : { kind: "failed", message: "No result was stored." });
           return;
         }
@@ -73,7 +78,7 @@ export function FloodFlagButton({ lat, lng }: { lat: number; lng: number }) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [jobId, queryClient]);
+  }, [jobId, queryClient, focusFloodCapture]);
 
   async function flag() {
     setPhase({ kind: "submitting" });
@@ -95,18 +100,19 @@ export function FloodFlagButton({ lat, lng }: { lat: number; lng: number }) {
   const busy = phase.kind === "submitting" || phase.kind === "working";
 
   return (
-    <div className="mt-3 shrink-0 rounded-xl border border-[var(--surface-border)] p-2.5">
+    <div className="mt-2 shrink-0 rounded-xl border border-[var(--surface-border)] px-2 py-1">
       <button
         onClick={flag}
         disabled={busy}
-        className="focus-ring flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] font-semibold text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] disabled:cursor-default disabled:opacity-60"
+        title="Saves your report and maps the water from the newest Sentinel satellite scene"
+        className="focus-ring flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-semibold text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] disabled:cursor-default disabled:opacity-60"
       >
         {busy ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Waves size={14} aria-hidden="true" />}
         Flag flooding here
       </button>
 
-      <div role="status" aria-live="polite" className="mt-1.5 text-[10.5px] leading-snug text-[var(--fg-muted)]">
-        {phase.kind === "idle" && "Saves your report and looks for the latest Sentinel satellite scene to map the water."}
+      <div role="status" aria-live="polite" className="text-[10.5px] leading-snug text-[var(--fg-muted)]">
+        {phase.kind === "idle" && <span className="block pb-0.5 text-center">Maps the water from the newest Sentinel scene.</span>}
         {phase.kind === "submitting" && "Saving your report…"}
         {phase.kind === "working" &&
           (phase.status === "running"
@@ -117,7 +123,7 @@ export function FloodFlagButton({ lat, lng }: { lat: number; lng: number }) {
             <span className="font-semibold text-[var(--fg)]">Captured.</span>{" "}
             {SOURCE_LABEL[phase.extent.source] ?? "Satellite"}, scene of {phase.extent.acquired_at.slice(0, 10)}:{" "}
             {phase.extent.water_area_m2 > 0
-              ? `about ${Math.round(phase.extent.water_area_m2 / 10_000).toLocaleString()} ha of water in the 5 km box (shown on the map).`
+              ? `about ${Math.round(phase.extent.water_area_m2 / 10_000).toLocaleString("en-US")} ha of water in the 5 km box (the map zooms to it).`
               : "no open water detected in the 5 km box."}{" "}
             Satellite-derived estimate that may include permanent water; not an official flood map.
           </>

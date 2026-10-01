@@ -97,6 +97,7 @@ def test_extents_are_a_feature_collection_with_attribution_and_an_etag(flood_ena
     assert "Copernicus Sentinel" in body["attribution"] and body["truncated"] is False
     props = body["features"][0]["properties"]
     assert props["source"] == "s1-rtc-pc" and props["water_area_m2"] == 250_000.0 and props["source_tier"] == 3
+    assert props["aoi_bbox"] is None  # this fixture stored an empty AOI; a real capture stores its box (below)
     assert client.get("/api/flood/extents", headers={"if-none-match": res.headers["etag"]}).status_code == 304
     _extent(scene_id="S1A_NEW", tile_key="k2")  # new data changes the version, so the old ETag misses
     assert client.get("/api/flood/extents", headers={"if-none-match": res.headers["etag"]}).status_code == 200
@@ -154,4 +155,8 @@ def test_an_inline_run_captures_the_flag_after_the_response(flood_enabled, monke
     job = client.get(f"/api/flood/jobs/{job_id}").json()
     assert job["status"] == "done" and job["extent"]["scene_id"] == "S1A_INLINE"
     assert job["extent"]["water_area_m2"] == 123_400.0
+    west, south, east, north = job["extent"]["aoi_bbox"]          # the capture box, so the UI can zoom to it
+    assert west < POINT["lng"] < east and south < POINT["lat"] < north and (north - south) * 111_320 > 4_900
+    feature = client.get("/api/flood/extents").json()["features"][0]["properties"]
+    assert feature["aoi_bbox"] == job["extent"]["aoi_bbox"]
     assert len(client.get("/api/flood/extents").json()["features"]) == 1
