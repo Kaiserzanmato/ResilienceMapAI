@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, downloadExport, type UsageStatus } from "@/lib/api";
+import { FLAGS } from "@/lib/feature-flags";
 import { useAppStore } from "@/lib/store";
 import { captureMapSnapshot, formatNumber, riskColor } from "@/lib/utils";
 import { buildReportSnapshot, downloadTextFile } from "@/lib/report-snapshot";
@@ -13,6 +14,7 @@ import { snapshotToText, snapshotToMarkdown, snapshotToCsv } from "@/lib/report-
 import { GlassCard } from "@/components/ui/GlassCard";
 import { RiskBadge } from "@/components/ui/RiskBadge";
 import { UsageMeter } from "@/components/ui/UsageMeter";
+import { FloodFlagButton } from "./FloodFlagButton";
 import { InsightsPanel } from "./InsightsPanel";
 import type { InsightResponse } from "@/lib/types";
 
@@ -283,6 +285,10 @@ export function RiskSummaryWidget() {
               </p>
             )}
           </div>
+
+          {FLAGS.FLOOD_CAPTURE && (
+            <FloodFlagButton key={`${risk.latitude},${risk.longitude}`} lat={risk.latitude} lng={risk.longitude} />
+          )}
 
           <div ref={exportMenuRef} className="relative mt-3.5 shrink-0">
             {/* Export dropdown menu — opens above the action row */}

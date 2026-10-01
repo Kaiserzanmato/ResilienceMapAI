@@ -48,13 +48,14 @@ def test_scheme_and_other_params_are_preserved(raw, expected):
     assert to_asyncpg_url(raw) == expected
 
 
-def test_alembic_chain_is_linear_and_ends_with_postgis():
+def test_alembic_chain_is_linear_and_ends_with_flood_capture():
     cfg = Config(str(BACKEND / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND / "alembic"))
     script = ScriptDirectory.from_config(cfg)
-    assert script.get_heads() == ["0005"]
+    assert script.get_heads() == ["0006"]
     chain = [rev.revision for rev in script.walk_revisions()]
-    assert chain == ["0005", "0004", "0002", "0001"]
+    # 0003 was reserved for flood extents and never used; 0006 took that role.
+    assert chain == ["0006", "0005", "0004", "0002", "0001"]
 
 
 def test_postgis_migration_is_idempotent_and_its_downgrade_is_a_no_op():

@@ -54,6 +54,12 @@ const RISK_LEVEL_TO_SEVERITY: Record<string, "low" | "medium" | "high"> = {
   "No Data": "low",
 };
 
+const EMPTY_COLLECTION: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+const FLOOD_SOURCE_LABEL: Record<string, string> = {
+  "s1-rtc-pc": "Sentinel-1 radar",
+  "s2-l2a-e84": "Sentinel-2 optical",
+};
+
 export default function RiskMap() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
@@ -65,7 +71,7 @@ export default function RiskMap() {
   const {
     mapView, mapProjection, activeLayer, showZones, showHeatmap, showAlerts, showEvents,
     selected, setSelected, aiOpen, lastAssessmentCoords, risk,
-    showEvacuationCenters, selectedEvacuationCenter, setSelectedEvacuationCenter,
+    showEvacuationCenters, selectedEvacuationCenter, setSelectedEvacuationCenter, showFloodExtents,
   } = useAppStore();
 
   const [evacCardPos, setEvacCardPos] = useState<{ x: number; top: number } | null>(null);
@@ -98,6 +104,22 @@ export default function RiskMap() {
     refetchInterval: 300_000,
     retry: 1,
   });
+  const { data: floodExtents } = useQuery({
+    queryKey: ["flood-extents"],
+    queryFn: api.floodExtents,
+    enabled: FLAGS.FLOOD_CAPTURE,
+    staleTime: 60_000,
+    refetchInterval: 300_000,
+    retry: 1,
+  });
+  const { data: floodFlags } = useQuery({
+    queryKey: ["flood-flags"],
+    queryFn: api.floodFlags,
+    enabled: FLAGS.FLOOD_CAPTURE,
+    staleTime: 60_000,
+    refetchInterval: 300_000,
+    retry: 1,
+  });
   const currentEventGeoJson = useMemo<GeoJSON.FeatureCollection>(() => ({
     type: "FeatureCollection",
     features: (currentEvents?.events ?? [])
@@ -120,8 +142,14 @@ export default function RiskMap() {
   }), [currentEvents]);
 
   // Keep latest data in refs so style reloads can re-add overlays
-  const dataRef = useRef<{ zones?: GeoJSON.FeatureCollection; heat?: GeoJSON.FeatureCollection; currentEvents?: GeoJSON.FeatureCollection }>({});
-  dataRef.current = { zones, heat, currentEvents: currentEventGeoJson };
+  const dataRef = useRef<{
+    zones?: GeoJSON.FeatureCollection;
+    heat?: GeoJSON.FeatureCollection;
+    currentEvents?: GeoJSON.FeatureCollection;
+    floodExtents?: GeoJSON.FeatureCollection;
+    floodFlags?: GeoJSON.FeatureCollection;
+  }>({});
+  dataRef.current = { zones, heat, currentEvents: currentEventGeoJson, floodExtents, floodFlags };
 
   function addOverlays(map: MLMap) {
     const { zones: z, heat: h } = dataRef.current;
@@ -177,8 +205,41 @@ export default function RiskMap() {
         },
       });
     }
+    addFloodOverlay(map);
     addCurrentEventOverlay(map);
     applyVisibility(map);
+  }
+
+  // Satellite-derived water polygons (blue) and user flood flags (orange dots).
+  // The sources are created empty so they exist for style reloads and fill in
+  // via setData once the queries resolve.
+  function addFloodOverlay(map: MLMap) {
+    if (!FLAGS.FLOOD_CAPTURE || map.getSource("flood-extents")) return;
+    map.addSource("flood-extents", { type: "geojson", data: dataRef.current.floodExtents ?? EMPTY_COLLECTION });
+    map.addLayer({
+      id: "flood-extents-fill",
+      type: "fill",
+      source: "flood-extents",
+      paint: { "fill-color": "#38bdf8", "fill-opacity": 0.45 },
+    });
+    map.addLayer({
+      id: "flood-extents-line",
+      type: "line",
+      source: "flood-extents",
+      paint: { "line-color": "#0284c7", "line-width": 1.2, "line-opacity": 0.9 },
+    });
+    map.addSource("flood-flags", { type: "geojson", data: dataRef.current.floodFlags ?? EMPTY_COLLECTION });
+    map.addLayer({
+      id: "flood-flags-circle",
+      type: "circle",
+      source: "flood-flags",
+      paint: {
+        "circle-color": "#f97316",
+        "circle-radius": 6,
+        "circle-stroke-color": "#fff",
+        "circle-stroke-width": 1.5,
+      },
+    });
   }
 
   function addCurrentEventOverlay(map: MLMap) {
@@ -235,6 +296,9 @@ export default function RiskMap() {
     if (map.getLayer("risk-heatmap")) {
       map.setLayoutProperty("risk-heatmap", "visibility", st.showHeatmap ? "visible" : "none");
     }
+    for (const id of ["flood-extents-fill", "flood-extents-line", "flood-flags-circle"]) {
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", st.showFloodExtents ? "visible" : "none");
+    }
   }
 
   // ---- init map once
@@ -278,6 +342,30 @@ export default function RiskMap() {
     });
     map.on("mouseenter", "risk-zones-fill", () => (map.getCanvas().style.cursor = "pointer"));
     map.on("mouseleave", "risk-zones-fill", () => (map.getCanvas().style.cursor = ""));
+    map.on("mouseenter", "flood-extents-fill", () => (map.getCanvas().style.cursor = "pointer"));
+    map.on("mouseleave", "flood-extents-fill", () => (map.getCanvas().style.cursor = ""));
+    map.on("click", "flood-extents-fill", (event) => {
+      const props = event.features?.[0]?.properties;
+      if (!props) return;
+      const hectares = Math.round(Number(props.water_area_m2 ?? 0) / 10_000);
+      const scene = String(props.acquired_at ?? "").slice(0, 10) || "unknown date";
+      const content = buildPopupContent("Satellite-detected surface water", [
+        `${FLOOD_SOURCE_LABEL[String(props.source)] ?? "Satellite"} · scene of ${scene}`,
+        `Water in the captured box: about ${hectares.toLocaleString()} ha`,
+        "Automated estimate; may include permanent water. Not an official flood map.",
+      ]);
+      new maplibregl.Popup({ offset: 10, closeButton: true }).setDOMContent(content).setLngLat(event.lngLat).addTo(map);
+    });
+    map.on("click", "flood-flags-circle", (event) => {
+      const feature = event.features?.[0];
+      if (!feature || feature.geometry.type !== "Point") return;
+      const reported = String(feature.properties?.created_at ?? "").slice(0, 10) || "recently";
+      const content = buildPopupContent("Flooding reported here", [`Flagged by a user on ${reported}`, "Unverified report"]);
+      new maplibregl.Popup({ offset: 10, closeButton: true })
+        .setDOMContent(content)
+        .setLngLat(feature.geometry.coordinates as [number, number])
+        .addTo(map);
+    });
     map.on("click", "realtime-event-clusters", (event) => {
       const feature = event.features?.[0];
       const clusterId = feature?.properties?.cluster_id;
@@ -354,14 +442,21 @@ export default function RiskMap() {
       if (src) src.setData(currentEventGeoJson);
       else addCurrentEventOverlay(map);
     }
+    if (FLAGS.FLOOD_CAPTURE) {
+      const extents = map.getSource("flood-extents") as maplibregl.GeoJSONSource | undefined;
+      if (extents) extents.setData(floodExtents ?? EMPTY_COLLECTION);
+      const flags = map.getSource("flood-flags") as maplibregl.GeoJSONSource | undefined;
+      if (flags) flags.setData(floodFlags ?? EMPTY_COLLECTION);
+      if (!extents) addFloodOverlay(map);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zones, heat, currentEventGeoJson]);
+  }, [zones, heat, currentEventGeoJson, floodExtents, floodFlags]);
 
   // ---- toggle layer visibility
   useEffect(() => {
     const map = mapRef.current;
     if (map && styleReadyRef.current) applyVisibility(map);
-  }, [showZones, showHeatmap]);
+  }, [showZones, showHeatmap, showFloodExtents]);
 
   // ---- alert + event DOM markers (survive style switches automatically)
   useEffect(() => {

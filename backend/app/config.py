@@ -98,6 +98,29 @@ class Settings(BaseSettings):
     nasa_firms_map_key: str = os.getenv("NASA_FIRMS_MAP_KEY", "")
     nasa_firms_area: str = os.getenv("NASA_FIRMS_AREA", "world")
 
+    # Flood auto-capture (user flags + Sentinel-1/2 water extents). Off until the
+    # feature is switched on; every /api/flood route 404s while it is off.
+    enable_flood_capture: bool = os.getenv("ENABLE_FLOOD_CAPTURE", "false").lower() == "true"
+    flood_flags_per_hour: int = int(os.getenv("FLOOD_FLAGS_PER_HOUR", "3"))
+    # Side of the square capture box in km. Clamped in app/flood/processing.py:
+    # areas over 100 km2 (a side above 10 km) are refused.
+    flood_aoi_km: float = float(os.getenv("FLOOD_AOI_KM", "5"))
+    flood_scene_window_days: int = int(os.getenv("FLOOD_SCENE_WINDOW_DAYS", "12"))
+    flood_max_attempts: int = int(os.getenv("FLOOD_MAX_ATTEMPTS", "3"))
+    flood_lease_seconds: int = int(os.getenv("FLOOD_LEASE_SECONDS", "300"))
+    # Start a capture right after the flag is saved (best effort; the cron
+    # endpoint picks up anything left unfinished, e.g. after the instance slept).
+    flood_inline_processing: bool = os.getenv("FLOOD_INLINE_PROCESSING", "true").lower() == "true"
+    flood_cron_budget_seconds: int = int(os.getenv("FLOOD_CRON_BUDGET_SECONDS", "90"))
+    # Pepper for hashing client IPs before they are stored; the raw IP is never persisted.
+    flood_hash_salt: str = os.getenv("FLOOD_HASH_SALT", "")
+    # Which header carries the real client IP behind a proxy (see app/client_ip.py).
+    # Empty = the socket peer address. FLOOD_CLIENT_IP_HEADER is the older name.
+    client_ip_header: str = (os.getenv("CLIENT_IP_HEADER") or os.getenv("FLOOD_CLIENT_IP_HEADER", "")).lower()
+    # Proxies you trust to append one entry each; the entry that many from the
+    # right of X-Forwarded-For is the client. 1 = a single trusted proxy.
+    client_ip_trusted_hops: int = int(os.getenv("CLIENT_IP_TRUSTED_HOPS", "1"))
+
     # ReliefWeb API v2 only accepts an appname that ReliefWeb has approved
     # (https://apidoc.reliefweb.int/parameters#appname). Without one the source is
     # skipped as not_configured instead of failing on every sync.

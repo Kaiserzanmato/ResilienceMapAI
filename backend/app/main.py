@@ -20,6 +20,7 @@ from .schemas import (AgentQueryRequest, AIReportRequest, AISummaryRequest,
 from .data_sources.connectors.manual_upload_connector import validate_manual_upload
 from .data_sources.sync.source_sync_health import get_data_version
 from .http_cache import cached_json
+from .flood.routes import cron_router as flood_cron_router, router as flood_router
 from .redaction import install_log_redaction
 from .security import (AuditLogMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware,
                        get_role, require_permission)
@@ -50,6 +51,11 @@ app.add_middleware(
 # Added last so it is the outermost layer and covers every response, including
 # CORS preflights and rate-limit rejections.
 app.add_middleware(SecurityHeadersMiddleware)
+
+# Flood auto-capture: /api/flood/* 404s until ENABLE_FLOOD_CAPTURE is on.
+app.include_router(flood_router)
+app.include_router(flood_cron_router)
+
 
 @app.get("/health")
 def health():

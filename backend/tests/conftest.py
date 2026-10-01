@@ -32,3 +32,26 @@ def _reset_usage_quota():
     yield
     usage_quota._insights_hits.clear()
     usage_quota._chat_counts.clear()
+
+
+@pytest.fixture(autouse=True)
+def _reset_flood_state():
+    """The flood repo is a process-wide singleton; clear it between tests."""
+    from app.repositories.flood_repo import get_flood_repo
+
+    repo = get_flood_repo()
+    if hasattr(repo, "clear"):
+        repo.clear()
+    yield
+
+
+@pytest.fixture
+def flood_enabled(monkeypatch):
+    """Feature on, no inline processing (tests drive the worker explicitly)."""
+    from app.config import get_settings
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "enable_flood_capture", True)
+    monkeypatch.setattr(settings, "flood_inline_processing", False)
+    monkeypatch.setattr(settings, "flood_flags_per_hour", 3)
+    return settings
