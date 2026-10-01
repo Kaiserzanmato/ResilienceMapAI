@@ -51,6 +51,7 @@ def _isolate(monkeypatch):
         monkeypatch.setattr(module, name, _fake_fetch)
     settings = get_settings()
     monkeypatch.setattr(settings, "nasa_firms_map_key", "test-map-key")
+    monkeypatch.setattr(settings, "reliefweb_appname", "test-appname")
     monkeypatch.setattr(settings, "admin_shared_secret", ADMIN_SECRET)
     for repo, attr in ((get_sync_health_repo(), "_health"), (get_audit_log_repo(), "_log"),
                        (get_hazard_event_repo(), "rows")):

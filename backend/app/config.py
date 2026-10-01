@@ -98,6 +98,11 @@ class Settings(BaseSettings):
     nasa_firms_map_key: str = os.getenv("NASA_FIRMS_MAP_KEY", "")
     nasa_firms_area: str = os.getenv("NASA_FIRMS_AREA", "world")
 
+    # ReliefWeb API v2 only accepts an appname that ReliefWeb has approved
+    # (https://apidoc.reliefweb.int/parameters#appname). Without one the source is
+    # skipped as not_configured instead of failing on every sync.
+    reliefweb_appname: str = os.getenv("RELIEFWEB_APPNAME", "")
+
     # Geocoding is server-side only. Configure a self-hosted Photon instance
     # for autocomplete; the backend returns local curated results when unset.
     photon_url: str = os.getenv("PHOTON_URL", "").rstrip("/")

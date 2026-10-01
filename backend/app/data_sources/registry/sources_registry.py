@@ -142,6 +142,7 @@ SOURCE_REGISTRY: list[RiskSource] = [
         access_type="api", coverage="global",
         domains=["humanitarian", "natural_hazards"],
         trust_level=TrustTier.HUMANITARIAN, confidence_category="humanitarian_report",
+        requires_api_key=True, rate_limit_notes="Requires an approved appname (RELIEFWEB_APPNAME)",
         enabled=True, auto_sync_enabled=True, sync_frequency_minutes=120,
     ),
     RiskSource(
