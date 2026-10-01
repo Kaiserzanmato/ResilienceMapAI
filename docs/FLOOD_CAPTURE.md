@@ -71,5 +71,5 @@ lease that expires means the instance died mid-job; `GET /api/cron/flood-capture
 
 `ENABLE_FLOOD_CAPTURE`, `FLOOD_FLAGS_PER_HOUR` (3), `FLOOD_AOI_KM` (5),
 `FLOOD_SCENE_WINDOW_DAYS` (12), `FLOOD_MAX_ATTEMPTS` (3), `FLOOD_LEASE_SECONDS` (300),
-`FLOOD_INLINE_PROCESSING` (true), `FLOOD_CRON_BUDGET_SECONDS` (90), `FLOOD_HASH_SALT`,
-`FLOOD_CLIENT_IP_HEADER`. See `backend/.env.example`.
+`FLOOD_INLINE_PROCESSING` (true), `FLOOD_CRON_BUDGET_SECONDS` (90), `FLOOD_HASH_SALT`.
+Client attribution (shared with the usage quotas): `CLIENT_IP_HEADER`, `CLIENT_IP_TRUSTED_HOPS`. See `backend/.env.example`.

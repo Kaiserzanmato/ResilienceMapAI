@@ -76,7 +76,7 @@ def test_fourth_flag_in_an_hour_is_429_with_retry_after(flood_enabled):
 
 
 def test_the_limit_is_per_client_not_global(flood_enabled, monkeypatch):
-    monkeypatch.setattr(get_settings(), "flood_client_ip_header", "x-forwarded-for")
+    monkeypatch.setattr(get_settings(), "client_ip_header", "x-forwarded-for")
     for _ in range(3):
         assert client.post("/api/flood/flags", json=POINT, headers={"x-forwarded-for": "198.51.100.1"}).status_code == 202
     assert client.post("/api/flood/flags", json=POINT, headers={"x-forwarded-for": "198.51.100.1"}).status_code == 429

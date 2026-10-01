@@ -114,9 +114,12 @@ class Settings(BaseSettings):
     flood_cron_budget_seconds: int = int(os.getenv("FLOOD_CRON_BUDGET_SECONDS", "90"))
     # Pepper for hashing client IPs before they are stored; the raw IP is never persisted.
     flood_hash_salt: str = os.getenv("FLOOD_HASH_SALT", "")
-    # Optional header carrying the real client IP behind a proxy (its last
-    # comma-separated value is used). Empty = the socket peer address.
-    flood_client_ip_header: str = os.getenv("FLOOD_CLIENT_IP_HEADER", "").lower()
+    # Which header carries the real client IP behind a proxy (see app/client_ip.py).
+    # Empty = the socket peer address. FLOOD_CLIENT_IP_HEADER is the older name.
+    client_ip_header: str = (os.getenv("CLIENT_IP_HEADER") or os.getenv("FLOOD_CLIENT_IP_HEADER", "")).lower()
+    # Proxies you trust to append one entry each; the entry that many from the
+    # right of X-Forwarded-For is the client. 1 = a single trusted proxy.
+    client_ip_trusted_hops: int = int(os.getenv("CLIENT_IP_TRUSTED_HOPS", "1"))
 
     # ReliefWeb API v2 only accepts an appname that ReliefWeb has approved
     # (https://apidoc.reliefweb.int/parameters#appname). Without one the source is

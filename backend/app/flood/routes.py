@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field, field_validator
 
+from ..client_ip import client_ip
 from ..config import get_settings
 from ..http_cache import cached_json
 from ..repositories.flood_repo import MAX_FEATURES, Bbox, get_flood_repo
@@ -60,14 +61,8 @@ class FloodFlagRequest(BaseModel):
 def client_hash(request: Request) -> str:
     """HMAC of the client IP. The raw address is never stored or logged here."""
     settings = get_settings()
-    ip = None
-    if settings.flood_client_ip_header:
-        forwarded = request.headers.get(settings.flood_client_ip_header)
-        # The last entry is the one appended by the nearest trusted proxy.
-        ip = forwarded.split(",")[-1].strip() if forwarded else None
-    ip = ip or (request.client.host if request.client else "unknown")
     pepper = settings.flood_hash_salt or settings.cron_secret or "resiliencemap-flood"
-    return hmac.new(pepper.encode(), ip.encode(), hashlib.sha256).hexdigest()
+    return hmac.new(pepper.encode(), client_ip(request).encode(), hashlib.sha256).hexdigest()
 
 
 def parse_bbox(raw: str | None) -> Bbox | None:

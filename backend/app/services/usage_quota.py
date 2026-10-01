@@ -20,6 +20,7 @@ from typing import Deque, Dict, Literal
 
 from fastapi import HTTPException, Request
 
+from ..client_ip import client_ip
 from ..config import get_settings
 
 Bucket = Literal["insights", "chat"]
@@ -85,9 +86,10 @@ def _chat_status(key: str) -> UsageStatus:
 
 
 def client_key(request: Request) -> str:
-    """Same IP-keying as RateLimitMiddleware (app/security.py) — no
-    per-user identity exists yet, see get_role()'s docstring there."""
-    return request.client.host if request.client else "unknown"
+    """Keyed by client IP, resolved by app/client_ip.py (the forwarded address
+    behind a trusted proxy, otherwise the socket peer). No per-user identity
+    exists yet, see get_role()'s docstring in app/security.py."""
+    return client_ip(request)
 
 
 def get_status(bucket: Bucket, key: str) -> UsageStatus:
