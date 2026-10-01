@@ -11,9 +11,18 @@ finding #20 — recurring for a second in-memory-state module was reason
 enough to fix it generically here rather than with another one-off
 per-file fixture.
 """
-import pytest
+import os
 
-from app.services import usage_quota
+# Must run before anything imports app.config: its load_dotenv() skips names
+# that are already set, so blanking these here keeps backend/.env.local's real
+# Neon strings out of the process. Without this the suite writes test rows into
+# whichever database that file points at (it did once, into staging).
+os.environ["DATABASE_URL"] = ""
+os.environ["ALEMBIC_DATABASE_URL"] = ""
+
+import pytest  # noqa: E402
+
+from app.services import usage_quota  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
