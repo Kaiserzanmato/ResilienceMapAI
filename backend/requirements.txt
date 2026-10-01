@@ -25,3 +25,12 @@ alembic==1.14.0
 # Firecrawl advisory scraper (optional — only used when FIRECRAWL_API_KEY is
 # set; see app/data_sources/scrapers/firecrawl_worker.py).
 firecrawl-py==4.34.0
+
+# Flood auto-capture (optional — imported lazily by app/flood/worker.py only when
+# a capture runs, so the app starts without them). cp313 and cp314 manylinux
+# wheels exist for every pin, so no compiler is needed on Render or Vercel.
+numpy==2.5.3
+rasterio==1.5.2
+shapely==2.1.2
+pystac-client==0.9.0
+planetary-computer==1.0.0

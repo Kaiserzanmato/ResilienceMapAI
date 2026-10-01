@@ -19,4 +19,7 @@ export const FLAGS = {
   DEEPSEEK_GROUNDED_CONTEXT: flag("NEXT_PUBLIC_ENABLE_DEEPSEEK_GROUNDED_CONTEXT", true),
   HOME_GLOBE_LOADER: flag("NEXT_PUBLIC_ENABLE_HOME_GLOBE_LOADER", true),
   REALTIME_EVENTS: flag("NEXT_PUBLIC_ENABLE_REALTIME_EVENTS", false),
+  // Satellite flood extents + the "Flag flooding here" button. The backend has its
+  // own ENABLE_FLOOD_CAPTURE switch; turn both on together.
+  FLOOD_CAPTURE: flag("NEXT_PUBLIC_ENABLE_FLOOD_CAPTURE", false),
 } as const;

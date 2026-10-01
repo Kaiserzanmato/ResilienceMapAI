@@ -13,6 +13,28 @@ export class APIError extends Error {
   }
 }
 
+export type FloodJobStatus = "queued" | "running" | "done" | "no_scene" | "failed";
+
+export interface FloodJob {
+  id: number;
+  flag_id: number;
+  status: FloodJobStatus;
+  attempts: number;
+  reason_code: string | null;
+  message: string | null;
+  extent: { id: number; source: string; scene_id: string; acquired_at: string; water_area_m2: number } | null;
+}
+
+export interface FloodExtentProperties {
+  id: number;
+  source: "s1-rtc-pc" | "s2-l2a-e84";
+  scene_id: string;
+  acquired_at: string;
+  water_area_m2: number;
+}
+
+export type FloodFeatureCollection = GeoJSON.FeatureCollection & { truncated?: boolean; attribution?: string };
+
 export interface UsageStatus {
   bucket: "insights" | "chat";
   used: number;
@@ -125,6 +147,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+
+  // Flood auto-capture (only reachable when the backend's ENABLE_FLOOD_CAPTURE is on).
+  flagFlood: (lat: number, lng: number, note?: string) =>
+    request<{ flag_id: number; job_id: number; status: FloodJobStatus }>("/api/flood/flags", {
+      method: "POST",
+      body: JSON.stringify({ lat, lng, ...(note ? { note } : {}) }),
+    }),
+
+  floodJob: (jobId: number) => request<FloodJob>(`/api/flood/jobs/${jobId}`),
+
+  floodExtents: () => request<FloodFeatureCollection>("/api/flood/extents"),
+
+  floodFlags: () => request<FloodFeatureCollection>("/api/flood/flags"),
 
   usageStatus: () =>
     request<{ insights: UsageStatus; chat: UsageStatus }>("/api/usage-status"),

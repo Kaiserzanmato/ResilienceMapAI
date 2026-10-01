@@ -78,6 +78,9 @@ interface AppState {
   setShowEvents: (b: boolean) => void;
   showEvacuationCenters: boolean;
   setShowEvacuationCenters: (b: boolean) => void;
+  // Satellite-derived flood extents + user flood flags (NEXT_PUBLIC_ENABLE_FLOOD_CAPTURE)
+  showFloodExtents: boolean;
+  setShowFloodExtents: (b: boolean) => void;
   selectedEvacuationCenter: EvacuationCenterWithDistance | null;
   setSelectedEvacuationCenter: (c: EvacuationCenterWithDistance | null) => void;
 
@@ -136,6 +139,8 @@ export const useAppStore = create<AppState>()(
       setShowEvents: (showEvents) => set({ showEvents }),
       showEvacuationCenters: false,
       setShowEvacuationCenters: (showEvacuationCenters) => set({ showEvacuationCenters }),
+      showFloodExtents: true,
+      setShowFloodExtents: (showFloodExtents) => set({ showFloodExtents }),
       selectedEvacuationCenter: null,
       setSelectedEvacuationCenter: (selectedEvacuationCenter) => set({ selectedEvacuationCenter }),
 

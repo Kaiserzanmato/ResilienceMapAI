@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, Globe, Layers, Map as MapIcon } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { api } from "@/lib/api";
+import { FLAGS } from "@/lib/feature-flags";
 import { MAP_VIEWS } from "@/lib/mapStyles";
 import { useAppStore, type MapProjection } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -86,7 +87,7 @@ export function LayerControlWidget() {
     mapView, setMapView, mapProjection, setMapProjection, activeLayer, setActiveLayer,
     showZones, setShowZones, showHeatmap, setShowHeatmap,
     showAlerts, setShowAlerts, showEvents, setShowEvents,
-    showEvacuationCenters, setShowEvacuationCenters,
+    showEvacuationCenters, setShowEvacuationCenters, showFloodExtents, setShowFloodExtents,
   } = useAppStore();
 
   const { data: layerIndex } = useQuery({ queryKey: ["layer-index"], queryFn: api.layerIndex });
@@ -162,6 +163,9 @@ export function LayerControlWidget() {
             <Toggle label="Heatmap" checked={showHeatmap} onChange={setShowHeatmap} />
             <Toggle label="Active alerts" checked={showAlerts} onChange={setShowAlerts} />
             <Toggle label="Historical events" checked={showEvents} onChange={setShowEvents} />
+            {FLAGS.FLOOD_CAPTURE && (
+              <Toggle label="Satellite flood extent" checked={showFloodExtents} onChange={setShowFloodExtents} />
+            )}
           </div>
 
           <div>

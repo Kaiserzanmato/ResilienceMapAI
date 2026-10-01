@@ -1,8 +1,11 @@
 name: Sync hazard sources
 
 # Render does not run the Vercel cron in vercel.json, so this calls the same
-# route (GET /api/cron/sync-sources) on a schedule. It also keeps the free
-# Render instance from sitting asleep for long stretches.
+# routes on a schedule: the source sync (GET /api/cron/sync-sources) and the
+# flood-capture drain (GET /api/cron/flood-captures, which picks up capture jobs
+# left unfinished, e.g. when the free instance slept mid-job; it is a no-op until
+# ENABLE_FLOOD_CAPTURE is on). It also keeps the free Render instance from sitting
+# asleep for long stretches.
 on:
   schedule:
     - cron: "0 */6 * * *"
@@ -17,12 +20,13 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       SYNC_URL: https://resiliencemap-api.onrender.com/api/cron/sync-sources
+      FLOOD_URL: https://resiliencemap-api.onrender.com/api/cron/flood-captures
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
-      - name: Call the sync route
+      - name: Call the cron routes
         shell: bash
         run: |
           if [ -z "$CRON_SECRET" ]; then
@@ -35,21 +39,27 @@ jobs:
             # The header comes from a curl config on stdin, not argv.
             printf 'header = "Authorization: Bearer %s"\n' "$CRON_SECRET" |
               curl --silent --show-error --max-time 120 --config - \
-                --output response.json --write-out '%{http_code}' "$SYNC_URL"
+                --output "$2" --write-out '%{http_code}' "$1"
           }
 
-          status=$(call) || status=000
-          if [ "$status" = "000" ] || [ "${status:0:1}" = "5" ]; then
-            echo "Attempt 1 returned HTTP $status; retrying once in 60s."
-            sleep 60
-            status=$(call) || status=000
-          fi
+          run() {
+            name="$1"; url="$2"; out="$name.json"
+            code=$(call "$url" "$out") || code=000
+            if [ "$code" = "000" ] || [ "${code:0:1}" = "5" ]; then
+              echo "[$name] attempt 1 returned HTTP $code; retrying once in 60s."
+              sleep 60
+              code=$(call "$url" "$out") || code=000
+            fi
+            echo "[$name] HTTP $code"
+            # Responses hold only per-source / per-job status, counts and reason codes.
+            [ -s "$out" ] && cat "$out" && echo
+            case "$code" in
+              2??) return 0 ;;
+              *) echo "::error::$name returned HTTP $code"; return 1 ;;
+            esac
+          }
 
-          echo "HTTP $status"
-          # Response holds only per-source status, counts and reason codes.
-          [ -s response.json ] && cat response.json && echo
-
-          case "$status" in
-            2??) ;;
-            *) echo "::error::Sync route returned HTTP $status"; exit 1 ;;
-          esac
+          rc=0
+          run sync "$SYNC_URL" || rc=1
+          run flood "$FLOOD_URL" || rc=1
+          exit $rc
