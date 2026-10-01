@@ -1,6 +1,6 @@
 "use client";
 import { pointToCountry } from "@/lib/locations/point-to-country";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import "@/lib/maplibre-worker";
 import * as maplibregl from "maplibre-gl";
 import { Map as MLMap, Marker, type StyleSpecification } from "maplibre-gl";
@@ -8,6 +8,9 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { FLAGS } from "@/lib/feature-flags";
+import {
+  aoiCollection, FLOOD_SOURCE_LABEL, markerCollection, viewportBboxParam, type FloodFeature,
+} from "@/lib/flood-evidence";
 import { cn } from "@/lib/utils";
 import { getMapStyle } from "@/lib/mapStyles";
 import { useAppStore, type MapProjection } from "@/lib/store";
@@ -54,11 +57,10 @@ const RISK_LEVEL_TO_SEVERITY: Record<string, "low" | "medium" | "high"> = {
   "No Data": "low",
 };
 
+// Drawn bottom to top; raised above every other overlay (see raiseFloodLayers).
+const FLOOD_LAYER_IDS = ["flood-extents-fill", "flood-extents-line", "flood-aoi-line", "flood-capture-marker", "flood-flags-circle"];
+
 const EMPTY_COLLECTION: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
-const FLOOD_SOURCE_LABEL: Record<string, string> = {
-  "s1-rtc-pc": "Sentinel-1 radar",
-  "s2-l2a-e84": "Sentinel-2 optical",
-};
 
 export default function RiskMap() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,7 +73,7 @@ export default function RiskMap() {
   const {
     mapView, mapProjection, activeLayer, showZones, showHeatmap, showAlerts, showEvents,
     selected, setSelected, aiOpen, lastAssessmentCoords, risk,
-    showEvacuationCenters, selectedEvacuationCenter, setSelectedEvacuationCenter, showFloodExtents,
+    showEvacuationCenters, selectedEvacuationCenter, setSelectedEvacuationCenter, showFloodExtents, floodFocus,
   } = useAppStore();
 
   const [evacCardPos, setEvacCardPos] = useState<{ x: number; top: number } | null>(null);
@@ -104,10 +106,14 @@ export default function RiskMap() {
     refetchInterval: 300_000,
     retry: 1,
   });
+  // The extents shown follow the map view (padded and rounded, so small pans reuse the
+  // cached query); a view wider than the API accepts falls back to the capped global list.
+  const [floodBbox, setFloodBbox] = useState<string | null>(null);
   const { data: floodExtents } = useQuery({
-    queryKey: ["flood-extents"],
-    queryFn: api.floodExtents,
+    queryKey: ["flood-extents", floodBbox],
+    queryFn: () => api.floodExtents(floodBbox ?? undefined),
     enabled: FLAGS.FLOOD_CAPTURE,
+    placeholderData: keepPreviousData, // keep drawing the old view's extents while the next loads
     staleTime: 60_000,
     refetchInterval: 300_000,
     retry: 1,
@@ -141,6 +147,9 @@ export default function RiskMap() {
       })),
   }), [currentEvents]);
 
+  const floodAoi = useMemo(() => aoiCollection(floodExtents?.features as unknown as FloodFeature[] | undefined), [floodExtents]);
+  const floodMarkers = useMemo(() => markerCollection(floodExtents?.features as unknown as FloodFeature[] | undefined), [floodExtents]);
+
   // Keep latest data in refs so style reloads can re-add overlays
   const dataRef = useRef<{
     zones?: GeoJSON.FeatureCollection;
@@ -148,8 +157,10 @@ export default function RiskMap() {
     currentEvents?: GeoJSON.FeatureCollection;
     floodExtents?: GeoJSON.FeatureCollection;
     floodFlags?: GeoJSON.FeatureCollection;
+    floodAoi?: GeoJSON.FeatureCollection;
+    floodMarkers?: GeoJSON.FeatureCollection;
   }>({});
-  dataRef.current = { zones, heat, currentEvents: currentEventGeoJson, floodExtents, floodFlags };
+  dataRef.current = { zones, heat, currentEvents: currentEventGeoJson, floodExtents, floodFlags, floodAoi, floodMarkers };
 
   function addOverlays(map: MLMap) {
     const { zones: z, heat: h } = dataRef.current;
@@ -210,36 +221,74 @@ export default function RiskMap() {
     applyVisibility(map);
   }
 
-  // Satellite-derived water polygons (blue) and user flood flags (orange dots).
-  // The sources are created empty so they exist for style reloads and fill in
-  // via setData once the queries resolve.
+  // Satellite-derived water (blue polygons), the capture box (dashed outline), a marker at
+  // the capture's centre for low zoom, and user flood flags (orange dots).
+  //
+  // A 5 km capture of small ponds is only a few pixels wide at overview zooms, which made
+  // captures look like they had not rendered. The dashed box and the marker are what you see
+  // when zoomed out; the water polygons take over as you zoom in (and "zoom to capture" fits
+  // the map to the box). The sources are created empty, so they exist for style reloads and
+  // fill in via setData once the queries resolve.
   function addFloodOverlay(map: MLMap) {
-    if (!FLAGS.FLOOD_CAPTURE || map.getSource("flood-extents")) return;
-    map.addSource("flood-extents", { type: "geojson", data: dataRef.current.floodExtents ?? EMPTY_COLLECTION });
-    map.addLayer({
-      id: "flood-extents-fill",
-      type: "fill",
-      source: "flood-extents",
-      paint: { "fill-color": "#38bdf8", "fill-opacity": 0.45 },
-    });
-    map.addLayer({
-      id: "flood-extents-line",
-      type: "line",
-      source: "flood-extents",
-      paint: { "line-color": "#0284c7", "line-width": 1.2, "line-opacity": 0.9 },
-    });
-    map.addSource("flood-flags", { type: "geojson", data: dataRef.current.floodFlags ?? EMPTY_COLLECTION });
-    map.addLayer({
-      id: "flood-flags-circle",
-      type: "circle",
-      source: "flood-flags",
-      paint: {
-        "circle-color": "#f97316",
-        "circle-radius": 6,
-        "circle-stroke-color": "#fff",
-        "circle-stroke-width": 1.5,
-      },
-    });
+    if (!FLAGS.FLOOD_CAPTURE) return;
+    if (!map.getSource("flood-extents")) {
+      map.addSource("flood-extents", { type: "geojson", data: dataRef.current.floodExtents ?? EMPTY_COLLECTION });
+      map.addSource("flood-aoi", { type: "geojson", data: dataRef.current.floodAoi ?? EMPTY_COLLECTION });
+      map.addSource("flood-markers", { type: "geojson", data: dataRef.current.floodMarkers ?? EMPTY_COLLECTION });
+      map.addSource("flood-flags", { type: "geojson", data: dataRef.current.floodFlags ?? EMPTY_COLLECTION });
+      map.addLayer({
+        id: "flood-extents-fill",
+        type: "fill",
+        source: "flood-extents",
+        paint: { "fill-color": "#0ea5e9", "fill-opacity": 0.6 },
+      });
+      map.addLayer({
+        id: "flood-extents-line",
+        type: "line",
+        source: "flood-extents",
+        paint: {
+          "line-color": "#e0f2fe",
+          "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.4, 13, 1.4] as never,
+          "line-opacity": 0.95,
+        },
+      });
+      map.addLayer({
+        id: "flood-aoi-line",
+        type: "line",
+        source: "flood-aoi",
+        paint: { "line-color": "#38bdf8", "line-width": 1.6, "line-dasharray": [3, 2] },
+      });
+      map.addLayer({
+        id: "flood-capture-marker",
+        type: "circle",
+        source: "flood-markers",
+        maxzoom: 11,
+        paint: {
+          "circle-color": "#0ea5e9",
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 5, 10, 11] as never,
+          "circle-stroke-color": "#fff",
+          "circle-stroke-width": 2,
+        },
+      });
+      map.addLayer({
+        id: "flood-flags-circle",
+        type: "circle",
+        source: "flood-flags",
+        paint: {
+          "circle-color": "#f97316",
+          "circle-radius": 6,
+          "circle-stroke-color": "#fff",
+          "circle-stroke-width": 1.5,
+        },
+      });
+    }
+    raiseFloodLayers(map);
+  }
+
+  /** Keep the flood layers above the risk zones, heatmap and event layers, whatever order
+   * those were added in (the zones are added later, once their query resolves). */
+  function raiseFloodLayers(map: MLMap) {
+    for (const id of FLOOD_LAYER_IDS) if (map.getLayer(id)) map.moveLayer(id);
   }
 
   function addCurrentEventOverlay(map: MLMap) {
@@ -296,7 +345,7 @@ export default function RiskMap() {
     if (map.getLayer("risk-heatmap")) {
       map.setLayoutProperty("risk-heatmap", "visibility", st.showHeatmap ? "visible" : "none");
     }
-    for (const id of ["flood-extents-fill", "flood-extents-line", "flood-flags-circle"]) {
+    for (const id of FLOOD_LAYER_IDS) {
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", st.showFloodExtents ? "visible" : "none");
     }
   }
@@ -342,20 +391,22 @@ export default function RiskMap() {
     });
     map.on("mouseenter", "risk-zones-fill", () => (map.getCanvas().style.cursor = "pointer"));
     map.on("mouseleave", "risk-zones-fill", () => (map.getCanvas().style.cursor = ""));
-    map.on("mouseenter", "flood-extents-fill", () => (map.getCanvas().style.cursor = "pointer"));
-    map.on("mouseleave", "flood-extents-fill", () => (map.getCanvas().style.cursor = ""));
-    map.on("click", "flood-extents-fill", (event) => {
-      const props = event.features?.[0]?.properties;
+    const showCapturePopup = (props: Record<string, unknown> | null | undefined, lngLat: maplibregl.LngLatLike) => {
       if (!props) return;
       const hectares = Math.round(Number(props.water_area_m2 ?? 0) / 10_000);
       const scene = String(props.acquired_at ?? "").slice(0, 10) || "unknown date";
       const content = buildPopupContent("Satellite-detected surface water", [
         `${FLOOD_SOURCE_LABEL[String(props.source)] ?? "Satellite"} · scene of ${scene}`,
-        `Water in the captured box: about ${hectares.toLocaleString()} ha`,
+        `Water in the captured box: about ${hectares.toLocaleString("en-US")} ha`,
         "Automated estimate; may include permanent water. Not an official flood map.",
       ]);
-      new maplibregl.Popup({ offset: 10, closeButton: true }).setDOMContent(content).setLngLat(event.lngLat).addTo(map);
-    });
+      new maplibregl.Popup({ offset: 10, closeButton: true }).setDOMContent(content).setLngLat(lngLat).addTo(map);
+    };
+    for (const layer of ["flood-extents-fill", "flood-capture-marker"]) {
+      map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
+      map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
+      map.on("click", layer, (event) => showCapturePopup(event.features?.[0]?.properties, event.lngLat));
+    }
     map.on("click", "flood-flags-circle", (event) => {
       const feature = event.features?.[0];
       if (!feature || feature.geometry.type !== "Point") return;
@@ -397,9 +448,24 @@ export default function RiskMap() {
       setTelemetry(data);
     });
 
+    // Follow the view for the flood extents query (debounced so a pan or zoom is one request).
+    let floodBboxTimer: ReturnType<typeof setTimeout> | undefined;
+    const updateFloodBbox = () => {
+      clearTimeout(floodBboxTimer);
+      floodBboxTimer = setTimeout(() => {
+        const b = map.getBounds();
+        setFloodBbox(viewportBboxParam([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]));
+      }, 400);
+    };
+    if (FLAGS.FLOOD_CAPTURE) {
+      map.on("moveend", updateFloodBbox);
+      updateFloodBbox();
+    }
+
     mapRef.current = map;
     return () => {
       detachTelemetry();
+      clearTimeout(floodBboxTimer);
       map.remove();
       mapRef.current = null;
       styleReadyRef.current = false;
@@ -447,10 +513,28 @@ export default function RiskMap() {
       if (extents) extents.setData(floodExtents ?? EMPTY_COLLECTION);
       const flags = map.getSource("flood-flags") as maplibregl.GeoJSONSource | undefined;
       if (flags) flags.setData(floodFlags ?? EMPTY_COLLECTION);
+      (map.getSource("flood-aoi") as maplibregl.GeoJSONSource | undefined)?.setData(floodAoi);
+      (map.getSource("flood-markers") as maplibregl.GeoJSONSource | undefined)?.setData(floodMarkers);
       if (!extents) addFloodOverlay(map);
+      else raiseFloodLayers(map);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zones, heat, currentEventGeoJson, floodExtents, floodFlags]);
+  }, [zones, heat, currentEventGeoJson, floodExtents, floodFlags, floodAoi, floodMarkers]);
+
+  // ---- fit the map to a capture (after a flag completes, or "Zoom to capture")
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !floodFocus) return;
+    const [west, south, east, north] = floodFocus.bbox;
+    // Leave room for the layer panel (left) and the risk panel (right) on wide screens.
+    const wide = map.getContainer().clientWidth >= 1200;
+    map.fitBounds([[west, south], [east, north]], {
+      padding: { top: 120, bottom: 70, left: wide ? 300 : 40, right: wide ? 420 : 40 },
+      maxZoom: 13,
+      duration: 1400,
+      essential: true,
+    });
+  }, [floodFocus]);
 
   // ---- toggle layer visibility
   useEffect(() => {
@@ -650,28 +734,24 @@ export default function RiskMap() {
           </div>
           {telemetry.name && (
             <div className="rm-telemetry-zone">
-              <strong>{telemetry.name}</strong>
-              {telemetry.country ? ` · ${telemetry.country}` : ""}
-              {typeof telemetry.score === "number" && (
-                <>
-                  <div className="rm-telemetry-score">
-                    {telemetry.hazard ?? "Overall"} risk: {Math.round(telemetry.score)}/100
-                    {telemetry.level ? ` (${telemetry.level})` : ""}
-                  </div>
-                  {/* This hover readout comes from a small built-in set of
-                      major-city sample zones (see attachHoverTelemetry) —
-                      always illustrative, never a live/verified source. The
-                      Right Inspector's per-location assessment (a separate,
-                      registry-backed call) is the one that only shows a
-                      score when a real provider is configured for it. */}
-                  <div className="rm-telemetry-illustrative">Illustrative sample data — not a verified assessment</div>
-                </>
-              )}
-              {typeof telemetry.population === "number" && (
-                <div className="rm-telemetry-pop">
-                  Population: {telemetry.population.toLocaleString()}
+              <span className="rm-telemetry-sample-tag">Sample map zone</span>
+              <div>
+                <strong>{telemetry.name}</strong>
+                {telemetry.country ? ` · ${telemetry.country}` : ""}
+              </div>
+              {/* This readout comes from the built-in sample zones (major cities) that colour
+                  the map. It is illustrative only. It deliberately shows no 0-100 score: the
+                  panel's per-location assessment is the only place a score appears, and only
+                  where a real source backs it, so the two can never disagree. */}
+              {typeof telemetry.level === "string" && (
+                <div className="rm-telemetry-score">
+                  {telemetry.hazard && telemetry.hazard !== "overall" ? `${telemetry.hazard} zone shading: ` : "Zone shading: "}
+                  {telemetry.level.toLowerCase()} (illustrative)
                 </div>
               )}
+              <div className="rm-telemetry-illustrative">
+                Sample overlay, not an assessment. See the risk panel for verified data.
+              </div>
             </div>
           )}
         </div>
@@ -719,7 +799,10 @@ export default function RiskMap() {
         .rm-telemetry-zone { margin-top: 4px; }
         .rm-telemetry-score { margin-top: 2px; opacity: 0.85; }
         .rm-telemetry-illustrative { margin-top: 2px; opacity: 0.55; font-size: 10.5px; font-style: italic; }
-        .rm-telemetry-pop { opacity: 0.65; }
+        .rm-telemetry-sample-tag {
+          display: inline-block; margin-bottom: 2px; padding: 0 6px; border-radius: 999px;
+          border: 1px solid currentColor; opacity: 0.7; font-size: 9.5px; letter-spacing: 0.04em; text-transform: uppercase;
+        }
       `}</style>
       <style jsx global>{`
         .rm-alert-marker { position: relative; width: 26px; height: 26px; background: none; border: none; cursor: pointer; }

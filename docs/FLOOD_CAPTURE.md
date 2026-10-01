@@ -56,6 +56,24 @@ lease that expires means the instance died mid-job; `GET /api/cron/flood-capture
 * Raster libraries are imported lazily: the API starts without them
   (`tests/test_db_isolation.py` blocks them and imports the app).
 
+## How captures are drawn and found (frontend)
+
+* Each extent carries `aoi_bbox` (the whole 5 km capture box). The map draws the water
+  polygons, a dashed outline of the box, and a marker at the box centre below zoom 11:
+  a box of small ponds is only a few pixels wide at overview zooms, so polygons alone
+  looked like nothing had rendered. All flood layers are kept above the risk zones,
+  heatmap and event layers.
+* After a capture finishes, and from "Zoom to capture" in the risk panel, the map fits
+  the box (max zoom 13).
+* The extents shown follow the map view (padded, rounded `bbox`, debounced); a view wider
+  than the API's 30 degree cap falls back to the newest 500 worldwide.
+* `GET /api/flood/extents` is cacheable for 60 s, so the frontend asks with
+  `cache: "no-cache"` (the ETag makes that a cheap 304). Without it the refetch after a
+  capture was answered from the browser cache and the new water never appeared.
+* With the Flood layer selected, the risk panel shows the newest capture whose box covers
+  the clicked spot (scene date, source, water area), or the nearest one within 15 km. It
+  never shows a flood score.
+
 ## Limits of the method
 
 * It maps **open surface water**, not "flood". Permanent water (rivers, lakes,

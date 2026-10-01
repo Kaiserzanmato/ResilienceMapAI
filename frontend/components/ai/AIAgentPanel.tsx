@@ -16,6 +16,7 @@ import type { AIResponse } from "@/lib/types";
 import { formatMapTargetForPrompt } from "@/lib/map-target-builder";
 import { getPersona } from "@/lib/personas";
 import { useAppStore } from "@/lib/store";
+import { formatResetClock } from "@/lib/usage-reset";
 import { cn } from "@/lib/utils";
 import { Markdown } from "./Markdown";
 import { SourceGroundingCard } from "./SourceGroundingCard";
@@ -68,7 +69,7 @@ export function AIAgentPanel({ hidden = false }: { hidden?: boolean } = {}) {
         role: "assistant",
         content:
           `You've used all ${chatUsage.limit} AI chat requests for today. ` +
-          `Try again after ${new Date(chatUsage.resets_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
+          `Try again after ${(chatUsage.resets_at ? formatResetClock(chatUsage.resets_at) : "a little later")}.`,
       });
       return;
     }
@@ -324,7 +325,7 @@ export function AIAgentPanel({ hidden = false }: { hidden?: boolean } = {}) {
 
             {/* Usage meter — shared with AI Workspace (/agents), same "chat" bucket */}
             <div className="border-t border-[var(--surface-border)] px-3 pt-3">
-              <UsageMeter label="daily AI usage" status={chatUsage} />
+              <UsageMeter label="daily AI usage" status={chatUsage} onExpire={() => api.usageStatus().then((s) => setChatUsage(s.chat)).catch(() => {})} />
             </div>
 
             {/* Input */}

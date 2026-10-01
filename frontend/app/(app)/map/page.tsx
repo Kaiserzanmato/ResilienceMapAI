@@ -31,6 +31,14 @@ export default function MapPage() {
     enabled: !!selected,
   });
 
+  // A new selection invalidates whatever the store holds for the previous one. Without this the
+  // previous click's assessment (name, coordinates) stayed in the store until the new fetch
+  // resolved, and for ever if it failed, so AI context and exports could describe the wrong spot.
+  useEffect(() => {
+    setRisk(null);
+    setActiveTarget(null);
+  }, [selected?.lat, selected?.lng, selected?.name, selected?.countryCode, setRisk, setActiveTarget]);
+
   useEffect(() => {
     if (risk && selected) {
       // Store risk data in state

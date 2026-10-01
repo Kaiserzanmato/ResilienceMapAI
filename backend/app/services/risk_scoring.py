@@ -289,8 +289,15 @@ def score_location(lat: float, lng: float, name: Optional[str] = None, country_c
         overall = None
 
     primary = contributions[0]["zone"] if contributions else None
+    primary_distance_km = contributions[0]["distance_km"] if contributions else None
     if contributions:
-        primary = max(contributions, key=lambda c: c["weight"])["zone"]
+        best = max(contributions, key=lambda c: c["weight"])
+        primary, primary_distance_km = best["zone"], best["distance_km"]
+    # A sample zone's influence fades out to FALLOFF_MULTIPLIER x its radius, but the
+    # point is only *in* that place inside the core radius. Beyond it the zone still
+    # shapes the indicative scores; it must not rename the clicked point (a click at
+    # Candaba, 55 km from Metro Manila's centre, was titled "Metro Manila").
+    in_core = primary is not None and primary_distance_km <= primary["radius_km"]
 
     drivers = []
     if has_data:
@@ -301,7 +308,7 @@ def score_location(lat: float, lng: float, name: Optional[str] = None, country_c
         drivers = [HAZARD_LABELS[k] for k, s in ranked[:3] if s > 25]
 
     return {
-        "location_name": name or (primary["name"] if primary else f"{lat:.3f}, {lng:.3f}"),
+        "location_name": name or (primary["name"] if in_core else f"{lat:.3f}, {lng:.3f}"),
         "latitude": lat,
         "longitude": lng,
         "overall": {"score": overall, **level_for_score(overall)},

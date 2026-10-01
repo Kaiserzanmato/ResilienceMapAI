@@ -104,7 +104,7 @@ async def get_job(job_id: int):
     return {
         "id": job["id"], "flag_id": job["flag_id"], "status": job["status"], "attempts": job["attempts"],
         "reason_code": job["reason_code"], "message": REASON_LABELS.get(job["reason_code"] or ""),
-        "extent": job["extent"],
+        "extent": job["extent"],  # includes aoi_bbox, so the client can zoom to the capture
         "created_at": job["created_at"].isoformat(), "updated_at": job["updated_at"].isoformat(),
     }
 

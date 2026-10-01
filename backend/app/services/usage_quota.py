@@ -38,7 +38,9 @@ class UsageStatus:
     limit: int
     remaining: int
     resets_in_seconds: int
-    resets_at: str  # ISO 8601 UTC
+    # ISO 8601 UTC, or None while nothing is used: there is nothing to reset. (It used
+    # to be "now", which the UI showed as a reset time that was already in the past.)
+    resets_at: str | None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -62,9 +64,7 @@ def _insights_status(key: str) -> UsageStatus:
         dq.popleft()
     used = len(dq)
     resets_in = max(0, int((dq[0] + window) - now)) if dq else 0
-    resets_at = datetime.fromtimestamp(
-        (dq[0] + window) if dq else now, tz=timezone.utc
-    ).isoformat()
+    resets_at = datetime.fromtimestamp(dq[0] + window, tz=timezone.utc).isoformat() if dq else None
     return UsageStatus(
         bucket="insights", used=used, limit=limit, remaining=max(0, limit - used),
         resets_in_seconds=resets_in, resets_at=resets_at,

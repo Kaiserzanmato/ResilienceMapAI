@@ -32,7 +32,7 @@ def _iso(value: Any) -> str | None:
     return value.isoformat() if isinstance(value, datetime) else value
 
 
-def _coords_bbox(geometry: dict[str, Any]) -> Bbox:
+def _coords_bbox(geometry: dict[str, Any]) -> Bbox | None:
     xs: list[float] = []
     ys: list[float] = []
 
@@ -45,19 +45,25 @@ def _coords_bbox(geometry: dict[str, Any]) -> Bbox:
                 walk(child)
 
     walk(geometry["coordinates"])
-    return min(xs), min(ys), max(xs), max(ys)
+    return (min(xs), min(ys), max(xs), max(ys)) if xs else None
 
 
-def _intersects(box: Bbox, other: Bbox | None) -> bool:
+def _intersects(box: Bbox | None, other: Bbox | None) -> bool:
     if other is None:
         return True
+    if box is None:
+        return False
     return not (box[2] < other[0] or box[0] > other[2] or box[3] < other[1] or box[1] > other[3])
 
 
-def extent_summary(extent: dict[str, Any]) -> dict[str, Any]:
+def extent_summary(extent: dict[str, Any], aoi_bbox: Bbox | None = None) -> dict[str, Any]:
+    """`aoi_bbox` (west, south, east, north) is the whole capture box, not just the
+    water inside it, so a client can tell that a spot was covered by a capture even
+    when no water polygon is near it."""
     return {
         "id": extent["id"], "source": extent["source"], "scene_id": extent["scene_id"],
         "acquired_at": _iso(extent["acquired_at"]), "water_area_m2": extent["water_area_m2"],
+        "aoi_bbox": list(aoi_bbox) if aoi_bbox else None,
     }
 
 
@@ -167,7 +173,7 @@ class InMemoryFloodRepo(FloodRepo):
         if not job:
             return None
         extent = self.extents.get(job["extent_id"]) if job["extent_id"] else None
-        return {**job, "extent": extent_summary(extent) if extent else None}
+        return {**job, "extent": extent_summary(extent, _coords_bbox(extent["aoi"])) if extent else None}
 
     async def claim_job(self, *, job_id=None, lease_seconds=300, max_attempts=3):
         now = _now()
@@ -229,7 +235,8 @@ class InMemoryFloodRepo(FloodRepo):
         rows.sort(key=lambda e: (e["acquired_at"], e["id"]), reverse=True)
         features = [{
             "type": "Feature", "geometry": e["geom"],
-            "properties": {**extent_summary(e), "source_tier": e["source_tier"], "method": e["method"]},
+            "properties": {**extent_summary(e, _coords_bbox(e["aoi"])), "source_tier": e["source_tier"],
+                           "method": e["method"]},
         } for e in rows[:limit]]
         return features, len(rows) > limit
 
@@ -290,7 +297,8 @@ class PostgresFloodRepo(FloodRepo):
         row = await self._one("""
             SELECT j.id, j.flag_id, j.status, j.attempts, j.reason_code, j.extent_id, j.created_at, j.updated_at,
                    e.source AS e_source, e.scene_id AS e_scene_id, e.acquired_at AS e_acquired_at,
-                   e.water_area_m2 AS e_water_area_m2
+                   e.water_area_m2 AS e_water_area_m2,
+                   ST_XMin(e.aoi) AS e_w, ST_YMin(e.aoi) AS e_s, ST_XMax(e.aoi) AS e_e, ST_YMax(e.aoi) AS e_n
             FROM flood_capture_jobs j LEFT JOIN flood_extents e ON e.id = j.extent_id
             WHERE j.id = :id
         """, id=job_id)
@@ -298,9 +306,12 @@ class PostgresFloodRepo(FloodRepo):
             return None
         extent = None
         if row["extent_id"] is not None:
-            extent = {"id": row["extent_id"], "source": row["e_source"], "scene_id": row["e_scene_id"],
-                      "acquired_at": _iso(row["e_acquired_at"]), "water_area_m2": row["e_water_area_m2"]}
-        for key in ("e_source", "e_scene_id", "e_acquired_at", "e_water_area_m2"):
+            extent = extent_summary(
+                {"id": row["extent_id"], "source": row["e_source"], "scene_id": row["e_scene_id"],
+                 "acquired_at": row["e_acquired_at"], "water_area_m2": row["e_water_area_m2"]},
+                (row["e_w"], row["e_s"], row["e_e"], row["e_n"]) if row["e_w"] is not None else None,
+            )
+        for key in ("e_source", "e_scene_id", "e_acquired_at", "e_water_area_m2", "e_w", "e_s", "e_e", "e_n"):
             row.pop(key)
         return {**row, "extent": extent}
 
@@ -390,13 +401,15 @@ class PostgresFloodRepo(FloodRepo):
         async with get_sessionmaker()() as session:
             rows = (await session.execute(text(f"""
                 SELECT e.id, e.source, e.scene_id, e.acquired_at, e.water_area_m2, e.source_tier, e.method,
-                       ST_AsGeoJSON(e.geom, 6) AS geom
+                       ST_AsGeoJSON(e.geom, 6) AS geom,
+                       ST_XMin(e.aoi) AS aoi_w, ST_YMin(e.aoi) AS aoi_s, ST_XMax(e.aoi) AS aoi_e, ST_YMax(e.aoi) AS aoi_n
                 FROM flood_extents e WHERE {' AND '.join(where)}
                 ORDER BY e.acquired_at DESC, e.id DESC LIMIT :limit
             """), params)).mappings().all()
         features = [{
             "type": "Feature", "geometry": json.loads(r["geom"]),
-            "properties": {**extent_summary(r), "source_tier": r["source_tier"], "method": r["method"]},
+            "properties": {**extent_summary(r, (r["aoi_w"], r["aoi_s"], r["aoi_e"], r["aoi_n"])),
+                           "source_tier": r["source_tier"], "method": r["method"]},
         } for r in rows[:limit]]
         return features, len(rows) > limit
 

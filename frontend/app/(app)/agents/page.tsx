@@ -10,6 +10,7 @@ import { UsageMeter } from "@/components/ui/UsageMeter";
 import { api, API_BASE, type UsageStatus } from "@/lib/api";
 import { getPersona, PERSONAS } from "@/lib/personas";
 import { useAppStore } from "@/lib/store";
+import { formatResetClock } from "@/lib/usage-reset";
 import { formatMapTargetForPrompt } from "@/lib/map-target-builder";
 import { cn } from "@/lib/utils";
 import type { InsightResponse } from "@/lib/types";
@@ -103,7 +104,7 @@ export default function AgentsPage() {
         role: "assistant",
         content:
           `You've used all ${chatUsage.limit} AI chat requests for today. ` +
-          `Try again after ${new Date(chatUsage.resets_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
+          `Try again after ${(chatUsage.resets_at ? formatResetClock(chatUsage.resets_at) : "a little later")}.`,
       });
       return;
     }
@@ -453,7 +454,7 @@ export default function AgentsPage() {
 
         {/* Usage meter — shared with the map nav's AI Agent panel, same "chat" bucket */}
         <div className="border-t border-[var(--surface-border)] px-4 pt-3">
-          <UsageMeter label="daily AI usage" status={chatUsage} />
+          <UsageMeter label="daily AI usage" status={chatUsage} onExpire={() => api.usageStatus().then((s) => setChatUsage(s.chat)).catch(() => {})} />
         </div>
 
         <form

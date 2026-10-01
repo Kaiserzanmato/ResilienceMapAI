@@ -1,3 +1,4 @@
+import type { Bbox } from "./flood-evidence";
 import type { AIResponse, CurrentEventsResponse, Dataset, GeocodeResult, GlobalAssessment, InsightResponse, RiskAssessment } from "./types";
 
 export const API_BASE =
@@ -22,7 +23,11 @@ export interface FloodJob {
   attempts: number;
   reason_code: string | null;
   message: string | null;
-  extent: { id: number; source: string; scene_id: string; acquired_at: string; water_area_m2: number } | null;
+  extent: {
+    id: number; source: string; scene_id: string; acquired_at: string; water_area_m2: number;
+    /** The capture box (west, south, east, north); null on records stored without one. */
+    aoi_bbox: Bbox | null;
+  } | null;
 }
 
 export interface FloodExtentProperties {
@@ -41,7 +46,8 @@ export interface UsageStatus {
   limit: number;
   remaining: number;
   resets_in_seconds: number;
-  resets_at: string;
+  /** ISO time the oldest use leaves the window; null while nothing is used (nothing to reset). */
+  resets_at: string | null;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -157,7 +163,14 @@ export const api = {
 
   floodJob: (jobId: number) => request<FloodJob>(`/api/flood/jobs/${jobId}`),
 
-  floodExtents: () => request<FloodFeatureCollection>("/api/flood/extents"),
+  /** bbox is "west,south,east,north"; omit for the newest captures worldwide (the API caps the list). */
+  // `no-cache` makes the browser revalidate (a cheap 304 via the ETag) instead of answering from
+  // its HTTP cache: the endpoint is cacheable for 60 s, which hid a capture that had just
+  // finished (the refetch after it returned the old list and the new water was never drawn).
+  floodExtents: (bbox?: string) =>
+    request<FloodFeatureCollection>(`/api/flood/extents${bbox ? `?bbox=${encodeURIComponent(bbox)}` : ""}`, {
+      cache: "no-cache",
+    }),
 
   floodFlags: () => request<FloodFeatureCollection>("/api/flood/flags"),
 
