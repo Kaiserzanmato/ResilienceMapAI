@@ -32,6 +32,7 @@ def _mock_connectors(monkeypatch):
     monkeypatch.setattr(reliefweb_connector, "fetch_reliefweb_disasters", _fake_fetch)
     monkeypatch.setattr(nasa_firms_connector, "fetch_firms_fire_data", _fake_fetch)
     monkeypatch.setattr(get_settings(), "nasa_firms_map_key", "test-map-key")
+    monkeypatch.setattr(get_settings(), "reliefweb_appname", "test-appname")
 
 
 @pytest.fixture(autouse=True)

@@ -8,7 +8,9 @@ from ...redaction import redact_secrets
 
 logger = logging.getLogger(__name__)
 
-GDACS_GEOJSON_URL = "https://www.gdacs.org/gdacsapi/api/events/geteventlist/GDACS"
+# The old ".../geteventlist/GDACS" path now returns 404; SEARCH serves the same
+# GeoJSON FeatureCollection (recent events, all types and alert levels).
+GDACS_GEOJSON_URL = "https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH"
 
 async def fetch_gdacs_events(http_client: Any) -> list[dict]:
     """Fetch current GDACS events and return normalized list."""

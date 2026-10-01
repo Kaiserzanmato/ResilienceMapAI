@@ -201,6 +201,8 @@ export const SOURCE_REGISTRY: RiskSource[] = [
     enabled: true,
     autoSyncEnabled: true,
     syncFrequencyMinutes: 120,
+    requiresApiKey: true,
+    rateLimitNotes: "Requires an approved appname (RELIEFWEB_APPNAME)",
   },
   {
     id: "hdx",

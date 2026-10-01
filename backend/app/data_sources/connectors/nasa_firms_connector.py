@@ -28,13 +28,19 @@ async def fetch_firms_fire_data(
         resp = await http_client.get(url, timeout=30)
         resp.raise_for_status()
         lines = resp.text.strip().split("\n")
-        headers = lines[0].split(",") if lines else []
+        headers = [h.strip() for h in lines[0].split(",")] if lines else []
+        # FIRMS reports some problems (bad key, exhausted quota) as a plain-text
+        # body. Without this check that parses as a header with no rows and is
+        # recorded as a successful empty sync.
+        if "latitude" not in headers:
+            raise ValueError("NASA FIRMS returned a non-CSV response")
         records = []
         for line in lines[1:]:
-            values = line.split(",")
+            values = [v.strip() for v in line.split(",")]
             if len(values) == len(headers):
                 records.append(dict(zip(headers, values)))
-        logger.info("[nasa-firms] Fetched %d fire detections", len(records))
+        logger.info("[nasa-firms] Fetched %d fire detections (area=%s, days=%d, %d bytes)",
+                    len(records), area_url, days, len(resp.content))
         return records
     except httpx.HTTPStatusError as exc:
         message = f"NASA FIRMS request failed with HTTP {exc.response.status_code}"

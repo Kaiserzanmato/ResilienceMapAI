@@ -10,4 +10,6 @@ from ...config import get_settings
 def missing_credentials(source_id: str) -> bool:
     if source_id == "nasa-firms":
         return not get_settings().nasa_firms_map_key
+    if source_id == "reliefweb":
+        return not get_settings().reliefweb_appname
     return False
