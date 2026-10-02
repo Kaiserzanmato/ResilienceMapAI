@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Waves } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api, APIError, type FloodJob } from "@/lib/api";
+import { describeFloodArea } from "@/lib/flood-evidence";
 import { useAppStore } from "@/lib/store";
 
 const FAST_POLL_MS = 3_000;
@@ -122,10 +123,11 @@ export function FloodFlagButton({ lat, lng }: { lat: number; lng: number }) {
           <>
             <span className="font-semibold text-[var(--fg)]">Captured.</span>{" "}
             {SOURCE_LABEL[phase.extent.source] ?? "Satellite"}, scene of {phase.extent.acquired_at.slice(0, 10)}:{" "}
-            {phase.extent.water_area_m2 > 0
-              ? `about ${Math.round(phase.extent.water_area_m2 / 10_000).toLocaleString("en-US")} ha of water in the 5 km box (the map zooms to it).`
-              : "no open water detected in the 5 km box."}{" "}
-            Satellite-derived estimate that may include permanent water; not an official flood map.
+            {describeFloodArea(phase.extent).text} in the 5 km box
+            {phase.extent.water_area_m2 > 0 ? " (the map zooms to it)." : "."}{" "}
+            {phase.extent.permanent_water_filtered
+              ? "Satellite-derived estimate; permanent water removed using JRC Global Surface Water. Not an official flood map."
+              : `${describeFloodArea(phase.extent).unfilteredNote} Satellite-derived estimate; not an official flood map.`}
           </>
         )}
         {phase.kind === "no_scene" && `Your flag is saved. ${phase.message}`}

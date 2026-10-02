@@ -25,6 +25,8 @@ export interface FloodJob {
   message: string | null;
   extent: {
     id: number; source: string; scene_id: string; acquired_at: string; water_area_m2: number;
+    /** All open water seen in the box; flood_ha is that minus permanent water, null when the filter did not run. */
+    total_water_ha?: number; flood_ha?: number | null; permanent_water_filtered?: boolean;
     /** The capture box (west, south, east, north); null on records stored without one. */
     aoi_bbox: Bbox | null;
   } | null;
@@ -36,6 +38,9 @@ export interface FloodExtentProperties {
   scene_id: string;
   acquired_at: string;
   water_area_m2: number;
+  total_water_ha?: number;
+  flood_ha?: number | null;
+  permanent_water_filtered?: boolean;
 }
 
 export type FloodFeatureCollection = GeoJSON.FeatureCollection & { truncated?: boolean; attribution?: string };

@@ -44,7 +44,8 @@ def test_cron_drains_unfinished_jobs(monkeypatch, flood_enabled):
     scene = SceneRef("s1-rtc-pc", "S1A_CRON", datetime(2026, 9, 29, tzinfo=timezone.utc), {"vv": "x"})
     monkeypatch.setattr(worker, "_find_scenes", lambda lat, lng, days: [scene])
     monkeypatch.setattr(worker, "_capture", lambda sc, aoi: SimpleNamespace(
-        geometry=SQUARE, water_area_m2=1.0, polygon_count=1, method={}))
+        geometry=SQUARE, water_area_m2=1.0, polygon_count=1, method={},
+        total_water_ha=0.01, flood_ha=0.01))
     repo = get_flood_repo()
 
     async def seed():

@@ -10,6 +10,11 @@ export interface FloodExtentProps {
   scene_id: string;
   acquired_at: string;
   water_area_m2: number;
+  /** All open water in the box. Absent on records stored before the permanent-water filter. */
+  total_water_ha?: number;
+  /** Total minus permanent water; null/absent when the filter did not run (unfiltered). */
+  flood_ha?: number | null;
+  permanent_water_filtered?: boolean;
   /** The whole capture box. Older responses lack it; then the water polygons' own bounds are used. */
   aoi_bbox?: Bbox | null;
 }
@@ -87,6 +92,34 @@ export function nearestCapture(
   return best;
 }
 
+export interface FloodArea {
+  /** Hectares to headline: flooding when the filter ran, else all open water. */
+  hectares: number;
+  filtered: boolean;
+  /** e.g. "about 1,187 ha of flooding (37 ha of permanent water excluded)". */
+  text: string;
+  /** Set only when permanent water could not be excluded. */
+  unfilteredNote: string | null;
+}
+
+const UNFILTERED_NOTE = "Permanent water (rivers, lakes, fishponds) could not be excluded for this capture.";
+const fmt = (n: number) => n.toLocaleString("en-US");
+
+export function describeFloodArea(props: Pick<FloodExtentProps, "water_area_m2" | "total_water_ha" | "flood_ha" | "permanent_water_filtered">): FloodArea {
+  const total = props.total_water_ha ?? props.water_area_m2 / 10_000;
+  if (props.flood_ha != null) {
+    const flood = Math.round(props.flood_ha);
+    const excluded = Math.max(0, Math.round(total - props.flood_ha));
+    const text = flood > 0
+      ? `about ${fmt(flood)} ha of flooding (${fmt(excluded)} ha of permanent water excluded)`
+      : `no flooding detected beyond permanent water (${fmt(excluded)} ha of permanent water excluded)`;
+    return { hectares: flood, filtered: true, text, unfilteredNote: null };
+  }
+  const hectares = Math.round(total);
+  const text = hectares > 0 ? `about ${fmt(hectares)} ha of open water` : "no open water detected";
+  return { hectares, filtered: false, text, unfilteredNote: UNFILTERED_NOTE };
+}
+
 export interface CaptureSummary {
   sourceLabel: string;
   sceneDate: string; // YYYY-MM-DD
@@ -98,11 +131,12 @@ export interface CaptureSummary {
 export function summarizeCapture(props: FloodExtentProps): CaptureSummary {
   const sourceLabel = FLOOD_SOURCE_LABEL[props.source] ?? "Satellite";
   const sceneDate = props.acquired_at.slice(0, 10);
-  const hectares = Math.round(props.water_area_m2 / 10_000);
-  const water = hectares > 0
-    ? `about ${hectares.toLocaleString("en-US")} ha of open water in the captured 5 km box`
-    : "no open water detected in the captured 5 km box";
-  return { sourceLabel, sceneDate, hectares, text: `${sourceLabel}, scene of ${sceneDate}: ${water}.` };
+  const area = describeFloodArea(props);
+  const note = area.unfilteredNote ? ` ${area.unfilteredNote}` : "";
+  return {
+    sourceLabel, sceneDate, hectares: area.hectares,
+    text: `${sourceLabel}, scene of ${sceneDate}: ${area.text} in the captured 5 km box.${note}`,
+  };
 }
 
 /** Bbox string for /api/flood/extents for the current view, padded and rounded
