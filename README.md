@@ -23,6 +23,12 @@ assessments, grounded AI explanations, and report/export workflows.
 - **Multi-hazard screening:** `POST /api/assessments` evaluates 13 hazard
   categories through the coverage registry. Unsupported evidence remains
   `null`; it is not represented as zero risk.
+- **Flood auto-capture:** a user can flag a spot as flooding; the backend reads the newest
+  Sentinel-1 radar scene (Sentinel-2 optical as the fallback) over a 5 km box, removes permanent
+  water using the JRC Global Surface Water layer, and the map draws the result. The risk panel's
+  Flood row shows it as satellite evidence with a score that joins the overall score; with no
+  capture it says "No satellite capture yet: flag flooding here". It is satellite-observed, not an
+  official flood map. See [docs/FLOOD_CAPTURE.md](docs/FLOOD_CAPTURE.md).
 - **Geocoding gateway:** Geoapify is the primary production provider,
   LocationIQ is the fallback, Photon is optional, and the local gazetteer is a
   degraded final fallback. Search candidates show their normalized addresses
@@ -33,7 +39,7 @@ assessments, grounded AI explanations, and report/export workflows.
   deterministic assessment data and does not override official advisories.
 - **Data and operations:** source registry, scheduled-source sync interfaces,
   RBAC-ready dataset management, rate limits, quotas, audit logging, and
-  optional Postgres/PostGIS persistence.
+  Postgres/PostGIS persistence (Neon in production).
 - **Security and AI guardrails:** server-only credentials, Pydantic request
   validation, prompt-injection detection, scope checks, approved-source
   grounding, output redaction, per-IP rate limits and usage quotas, restricted
@@ -59,7 +65,9 @@ FastAPI backend on Render
   +--> Geocoder gateway: Geoapify -> LocationIQ -> Photon (configured) -> local gazetteer
   +--> Hazard providers: global, national, and local source adapters
   +--> AI providers: Qwen -> Together -> DeepSeek -> OpenAI -> Gemini -> local fallback
-  +--> Optional PostgreSQL/PostGIS via DATABASE_URL; in-memory repositories otherwise
+  +--> Neon PostgreSQL/PostGIS via DATABASE_URL (Alembic, head 0007); in-memory repositories otherwise
+  +--> Flood capture: Sentinel-1/2 scenes (Planetary Computer, Earth Search) + JRC permanent water
+  GitHub Actions (every 6 h) --> /api/cron/sync-sources and /api/cron/flood-captures
 ```
 
 ### Framework And Integration Stack
@@ -70,7 +78,7 @@ FastAPI backend on Render
 | Mapping and charts | MapLibre GL, GeoJSON, Recharts, d3-geo, Framer Motion |
 | Backend | FastAPI 0.128.8, Pydantic 2.13.4, HTTPX 0.28.1, ReportLab |
 | Deployment | GitHub `main` -> Vercel frontend and Render FastAPI service |
-| Data | Coverage registry, GDACS, NASA EONET, USGS, ReliefWeb, optional PostgreSQL/PostGIS |
+| Data | Coverage registry, GDACS, NASA EONET, NASA FIRMS, USGS, ReliefWeb, Sentinel-1/2 flood captures, Neon PostgreSQL/PostGIS |
 | AI | Qwen, Together, DeepSeek, OpenAI, Gemini, deterministic local fallback |
 | Geocoding | Geoapify primary, LocationIQ fallback, optional Photon, local gazetteer fallback |
 
@@ -84,6 +92,12 @@ is available, not a low-risk result. See
 [`TECHNICAL_DOCUMENTATION.md`](TECHNICAL_DOCUMENTATION.md) and
 [`RELEASE_AUDIT_2026-08-07.md`](RELEASE_AUDIT_2026-08-07.md) for the live
 contract, deployment evidence, and release limitations.
+
+The Flood row in the risk panel is **satellite-observed, not an official flood map**: it comes
+from a user-flagged Sentinel capture, is reduced for scene age, capped when permanent water could
+not be removed, and exists only where someone has flagged. The permanent-water data (JRC) ends in
+2021. The Render free tier sleeps when idle (the first request can take 50 s or more). See
+[`docs/OPERATIONS.md`](docs/OPERATIONS.md) (Known limits).
 
 ## Architecture Overview
 
@@ -125,6 +139,7 @@ Open http://localhost:3000.
 
 ```bash
 cd backend && .venv/bin/python -m pytest tests/ -q
+cd frontend && npm test && npx tsc --noEmit && npm run lint
 ```
 
 ## Features
@@ -192,18 +207,18 @@ cd backend && .venv/bin/python -m pytest tests/ -q
 - Sliding-window rate limiting (tighter budget for AI endpoints), keyed off
   the raw ASGI-routed path (`request.scope["path"]`), not `request.url.path`
   — the latter is reconstructed from the client-supplied `Host` header in
-  the pinned `starlette==0.52.1` and can be desynced from the actual routed
+  the pinned `starlette` (see `backend/requirements.txt`) and can be desynced from the actual routed
   path by a malformed header (PYSEC-2026-161/248), which could otherwise let
   a caller dodge the tighter AI-endpoint rate limit
 - Long-window usage quotas, separate from the burst rate limiter above
   (`app/services/usage_quota.py`, per-IP): Insights is capped at 3
   generations per 5h; the AI Agent panel and AI Workspace chat share one
-  50/day budget (resets at UTC midnight). `GET /api/usage-status` reports
+  daily budget (`CHAT_QUOTA_LIMIT`, default 20; resets at UTC midnight). `GET /api/usage-status` reports
   current usage without consuming a hit — it drives the usage meters shown
   in the UI next to each of those three features.
 - Audit logging on all `/api` routes
 - RBAC-ready role model (`public_user` → `super_admin`); dataset mutation requires `dataset_admin`
-- CORS restricted to the frontend origin
+- CORS restricted to the listed frontend origins (`CORS_ORIGINS`: apex, www and the Vercel domain)
 - Spatial-vision image input (`/api/ai/spatial-vision`) is validated before
   ever reaching the AI provider: JPEG data-URL prefix, valid base64 syntax,
   decoded size bounded (100 bytes–1.2MB), JPEG magic-byte check. Provider
@@ -229,37 +244,41 @@ previous behavior, where it did).
 
 ## Data sync & persistence
 
-Four sources have real connectors and are wired into scheduled sync: GDACS,
-NASA EONET, USGS Earthquake, ReliefWeb (`backend/app/data_sources/`). The
-registry (`sources_registry.py`) also lists other approved sources — most
+Five sources have real connectors and are wired into scheduled sync: GDACS,
+NASA EONET, NASA FIRMS, USGS Earthquake and ReliefWeb (`backend/app/data_sources/`).
+The registry (`sources_registry.py`) also lists other approved sources — most
 without a connector yet, registered for discoverability, not sync
 (`GET /api/source-registry`, `GET /api/sync-health`).
 
-- **Scheduling**: `vercel.json`'s `crons` entry hits
-  `GET /api/cron/sync-sources` once daily (00:00 UTC), authenticated by
-  `CRON_SECRET`. If `CRON_SECRET` isn't set, the app still starts (it logs a
-  warning, not a fatal error — an earlier version of this check crashed the
-  whole backend on every deploy when the secret was missing; see commit
-  `b18f89b`) but the cron endpoint rejects every request, including Vercel's
-  own scheduler, until it's configured. **Note**: `b18f89b` alone did not
-  actually resolve that outage — the real cause was `sqlalchemy==2.0.36`
-  being incompatible with Python 3.14 (Render's unpinned default at the
-  time), fixed in `7659823` by upgrading SQLAlchemy and adding
-  `backend/runtime.txt` to pin the Python version. Vercel's Hobby plan only allows daily
-  cron jobs; upgrade to Pro and shorten the schedule (e.g. `*/15 * * * *`)
-  for more frequent sync. `POST /api/data-sync` (RBAC-gated) triggers the
-  same dispatch manually anytime in between.
-- **Persistence**: sync health, the sync audit log, uploaded-dataset
-  metadata, and shareable reports all live behind a repository interface
+- **Scheduling**: `.github/workflows/sync-sources.yml` runs every 6 hours
+  (and on demand with `gh workflow run sync-sources.yml`). It calls
+  `GET /api/cron/sync-sources` (only sources that are due are fetched) and
+  `GET /api/cron/flood-captures` (finishes flood jobs left unfinished when the free
+  Render instance slept), authenticated by the `CRON_SECRET` repository secret, which
+  must equal the Render `CRON_SECRET`. The run reports each source's status and record
+  count; a source whose credential is missing reports `not_configured` rather than
+  pretending it synced. `render.yaml` (Render cron) and `vercel.json` (daily Vercel cron)
+  are optional alternatives and not needed. `POST /api/data-sync` (RBAC-gated) triggers the
+  same dispatch manually. If `CRON_SECRET` isn't set the app still starts (it logs a
+  warning) but the cron routes return 403 (the earlier crash-on-missing-secret outage:
+  commit `b18f89b`, whose real cause was `sqlalchemy==2.0.36` on Python 3.14, fixed in
+  `7659823` with the pinned `backend/runtime.txt`).
+- **ReliefWeb** uses the v2 API: `RELIEFWEB_APPNAME` (an appname ReliefWeb approved) is sent
+  as the `appname` query parameter, and the request asks for `description` (`body` is not
+  a valid `/disasters` field and returns HTTP 400). **NASA FIRMS** needs `NASA_FIRMS_MAP_KEY`.
+- **Persistence**: sync health, the sync audit log, uploaded-dataset metadata,
+  shareable reports and the flood tables live behind a repository interface
   (`backend/app/repositories/`) with two implementations — in-memory
-  (default; state is lost on every restart) and Postgres-backed, selected
-  automatically by whether `DATABASE_URL` is set. **Provision Postgres via
-  the Vercel Marketplace** (e.g. Neon) — see the `marketplace` Claude Code
-  skill for that step; this repo doesn't pick a provider for you.
-- **Migrations**: Alembic (`backend/alembic/`), applied out-of-band — e.g.
-  `vercel env pull` then `alembic upgrade head` from a dev machine — never
-  automatically inside the serverless function. Prefer setting
-  `ALEMBIC_DATABASE_URL` to the direct/unpooled connection string for DDL.
+  (state is lost on every restart) and Postgres-backed, selected
+  automatically by whether `DATABASE_URL` is set. Production uses **Neon Postgres
+  with PostGIS**; with `ENVIRONMENT=production` the API refuses to start without
+  `DATABASE_URL` unless `ALLOW_EPHEMERAL_STATE=true`.
+- **Migrations**: Alembic (`backend/alembic/`, head `0007`), applied out-of-band from a
+  trusted machine against the direct, non-pooled connection string in
+  `ALEMBIC_DATABASE_URL` — never inside the API. The safe procedure and rollback are in
+  [docs/OPERATIONS.md](docs/OPERATIONS.md). Revisions: `0001` base tables, `0002`
+  `hazard_events`, `0004` dataset governance, `0005` PostGIS, `0006` flood capture, `0007`
+  total/flood hectares (permanent water excluded).
 
 **Firecrawl advisory scraper** (`backend/app/data_sources/scrapers/firecrawl_worker.py`):
 scrapes unstructured hazard advisories (PAGASA/PHIVOLCS/JMA bulletins, etc.)
@@ -292,22 +311,26 @@ editing the Python registry. Never hand-edit the `.ts` file.
   inactivity, first request after idle can take 50s+ (Render's own dashboard
   banner says as much) — this is exactly why `dashboard-stats` is now cached
   same-origin on the frontend instead of hitting the backend on every load. Env
-  vars (`DATABASE_URL`, `CRON_SECRET`, `ADMIN_SHARED_SECRET`, `QWEN_API_KEY`,
-  `QWEN_BASE_URL`, `TOGETHER_API_KEY`, `DEEPSEEK_API_KEY`, etc.) are configured
-  in the Render dashboard, not committed to the repo — see `backend/.env.example`
-  for the full list including `QWEN_VISION_MODEL` and `FIRECRAWL_API_KEY`.
+  vars (`DATABASE_URL`, `CRON_SECRET`, `ADMIN_SHARED_SECRET`, `CORS_ORIGINS`,
+  `RELIEFWEB_APPNAME`, `QWEN_API_KEY`, etc.) are configured in the Render
+  dashboard, not committed to the repo. [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)
+  lists every variable by name, purpose and secret-vs-config; `backend/.env.example`
+  has the same names with safe defaults. Day-two procedures (manual sync, migrations,
+  rollback, known limits) are in [docs/OPERATIONS.md](docs/OPERATIONS.md).
   Python version is pinned in
   `backend/runtime.txt` — do not remove it; Render's unpinned default silently
   moved to a version that broke SQLAlchemy's declarative mapping (see `7659823`)
   and cost real production downtime to diagnose.
 - **Critical link**: the frontend's `NEXT_PUBLIC_API_URL` (Vercel env var) must point
   at the Render backend URL above. If it's ever empty/unset, the frontend silently
-  falls back to same-origin relative API calls, which 404 — the map, dashboard, and
+  falls back to `http://localhost:8000`, so every API call fails — the map, dashboard, and
   AI features all break with no obvious error. This exact misconfiguration shipped
   unnoticed for 49+ days before being caught and fixed on 2026-08-01.
 - **Vercel env vars**: `NEXT_PUBLIC_API_URL` (above),
   `NEXT_PUBLIC_CARTO_BASEMAP_API_KEY` (public CARTO basemap key for dark/light
   and hybrid-label tiles — required to avoid CARTO's API-key watermark), plus
+  `NEXT_PUBLIC_ENABLE_FLOOD_CAPTURE` (shows the flood layer and flag button; pair it
+  with the backend `ENABLE_FLOOD_CAPTURE`), plus
   `OPENWEATHERMAP_API_KEY` (optional, server-only — powers `/weather`'s live
   tile layers; without it the page still renders with a notice instead of
   tiles). Set via `vercel env add <NAME> production` or the dashboard.

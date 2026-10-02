@@ -4,7 +4,7 @@
 
 1. Set `ENABLE_REALTIME_EVENTS=true` on the backend only after provider and security validation.
 2. Set `NEXT_PUBLIC_ENABLE_REALTIME_EVENTS=true` only in the matching frontend environment.
-3. Use `POST /api/data-sync` as a correctly authorized administrator or the cron endpoint with `CRON_SECRET` to refresh the shared cache.
+3. Use `POST /api/data-sync` as a correctly authorized administrator, run the scheduled workflow on demand (`gh workflow run sync-sources.yml`), or call the cron endpoint with `CRON_SECRET` to refresh the shared cache. The workflow runs every 6 hours by itself. ReliefWeb needs `RELIEFWEB_APPNAME`, NASA FIRMS needs `NASA_FIRMS_MAP_KEY`; without them the source reports `not_configured`. More in `docs/OPERATIONS.md`.
 4. Check `GET /api/events` for `providers`, `refreshed_at`, pagination, provenance, and source tier.
 
 ## Failure handling

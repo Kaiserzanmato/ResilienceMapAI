@@ -9,8 +9,10 @@ map draws them. Everything is off until `ENABLE_FLOOD_CAPTURE` (backend) and
 
 1. `POST /api/flood/flags {lat, lng, note?, observed_at?}` saves the flag and a
    queued job, returns 202 `{flag_id, job_id}`, then starts the capture after the
-   response is sent. Three flags per client per hour (429 after that). Only an HMAC
-   of the client IP is stored.
+   response is sent. Three flags per client per hour (`FLOOD_FLAGS_PER_HOUR`; 429 with
+   `Retry-After` after that). Only an HMAC of the client IP is stored. Behind Render set
+   `CLIENT_IP_HEADER=x-forwarded-for` (with `CLIENT_IP_TRUSTED_HOPS`, default 1), otherwise every
+   visitor shares the proxy's address and one bucket.
 2. The worker claims the job (`FOR UPDATE SKIP LOCKED` + a 5 minute lease), one at a
    time per process, and runs the blocking work in a thread.
 3. Scene search (`app/flood/stac.py`): newest `sentinel-1-rtc` VV on Planetary
@@ -21,10 +23,12 @@ map draws them. Everything is off until `ENABLE_FLOOD_CAPTURE` (backend) and
      median, specks under 0.5 ha dropped.
    * Sentinel-2: NDWI > 0 with cloud, shadow, cirrus, snow and no-data masked out
      using the SCL layer.
+   * Subtract permanent water (JRC Global Surface Water occurrence, see below).
    * Polygonize, reproject to EPSG:4326, simplify about 10 m, store as MultiPolygon.
 5. The result is cached per `(source, scene_id, tile_key)`; a later flag in the same
    0.025 degree cell and the same scene links the existing extent instead of
-   reading the imagery again.
+   reading the imagery again. An extent with no `flood_ha` (captured before migration
+   0007, or the JRC fetch failed) is not reused: it is recaptured and updated in place.
 6. A job that fails is retried (60 s, then 120 s back-off) up to 3 attempts, then
    `failed` with a reason code from a closed list (`app/flood/reasons.py`); raw
    exception text is never stored or returned.
@@ -45,6 +49,12 @@ lease that expires means the instance died mid-job; `GET /api/cron/flood-capture
 | `GET /api/cron/flood-captures` | `Bearer CRON_SECRET`; 403 when the secret is unset |
 
 `bbox` is `west,south,east,north`, at most 30 degrees on a side.
+
+Every extent summary (jobs and extents) carries `water_area_m2` (the area of the stored polygons: the flood once
+the filter ran), `total_water_ha` (all open water seen), `flood_ha` (total minus permanent water, or `null` when
+unfiltered) and `permanent_water_filtered` (true when `flood_ha` is not null); vector tiles carry the three area
+fields. Records from before migration 0007 report `total_water_ha` from `water_area_m2`, `flood_ha: null` and
+`permanent_water_filtered: false`.
 
 ## Guardrails
 
@@ -70,14 +80,25 @@ lease that expires means the instance died mid-job; `GET /api/cron/flood-capture
 * `GET /api/flood/extents` is cacheable for 60 s, so the frontend asks with
   `cache: "no-cache"` (the ETag makes that a cheap 304). Without it the refetch after a
   capture was answered from the browser cache and the new water never appeared.
-* With the Flood layer selected, the risk panel shows the newest capture whose box covers
-  the clicked spot (scene date, source, water area), or the nearest one within 15 km. It
-  never shows a flood score.
+* The risk panel always has a Flood row (`frontend/lib/flood-indicator.ts`). With a capture whose box covers the
+  clicked spot it shows satellite evidence ("about X ha flooded (Y ha of permanent water excluded), N% of the
+  captured box, scene of DATE. Satellite-observed, not an official flood map.") and a score, and the score joins
+  Overall (the hazard count goes from "1 of 13" to "2 of 13"). With none it says "No satellite capture yet: flag
+  flooding here" (and the nearest capture within 15 km, if any). With the Flood layer selected the Flood row is
+  first; with Overall Risk the rows are sorted by score.
+* The score is the flooded share of the 5 km box scaled so half the box is 100, times a recency weight (full to 7
+  days, falling linearly to 0.25 at 30 days). A scene older than 30 days is shown but not scored and left out of
+  Overall. An unfiltered capture (permanent water not removed) is capped at 60 and says it is unfiltered. These
+  weights are judgement, set as constants in `flood-indicator.ts`; it is a satellite observation, not an official
+  flood map, a forecast or a modelled return period.
+* The flag button says whether anything was sent when a request fails, and what an existing capture at the spot
+  means (an unfiltered one is recaptured with the filter when flagged again).
 
 ## Limits of the method
 
-* It maps **open surface water**, not "flood". Permanent water (rivers, lakes,
-  fishponds) is included; there is no reference-water or change-detection step yet.
+* It maps **open surface water**, not "flood". Permanent water is subtracted with the JRC layer (below), but
+  that layer ends in 2021, so newer water bodies are not excluded, and there is no change-detection step
+  against a pre-event scene.
 * VV radar misses flooding under dense vegetation or in built-up areas, can
   confuse smooth dry surfaces (sand, tarmac) with water, and loses data on steep
   slopes (radar shadow). Optical scenes are limited by cloud.
@@ -104,4 +125,12 @@ ends in 2021, so water bodies created since (new fishponds, reservoirs) are not 
 `FLOOD_PERMANENT_WATER_THRESHOLD` (75),
 `FLOOD_SCENE_WINDOW_DAYS` (12), `FLOOD_MAX_ATTEMPTS` (3), `FLOOD_LEASE_SECONDS` (300),
 `FLOOD_INLINE_PROCESSING` (true), `FLOOD_CRON_BUDGET_SECONDS` (90), `FLOOD_HASH_SALT`.
-Client attribution (shared with the usage quotas): `CLIENT_IP_HEADER`, `CLIENT_IP_TRUSTED_HOPS`. See `backend/.env.example`.
+Client attribution (shared with the usage quotas): `CLIENT_IP_HEADER`, `CLIENT_IP_TRUSTED_HOPS`. Frontend:
+`NEXT_PUBLIC_ENABLE_FLOOD_CAPTURE`. Full list with secret vs config: [ENVIRONMENT.md](./ENVIRONMENT.md);
+examples in `backend/.env.example`. Production runbook (migrations, sync, rollback): [OPERATIONS.md](./OPERATIONS.md).
+
+## Schema
+
+Alembic `0006` creates `flood_flags`, `flood_extents` and `flood_capture_jobs`; `0007` adds nullable
+`flood_extents.total_water_ha` and `flood_ha` (metadata-only, no backfill; its downgrade drops just those two
+columns). Downgrading `0006` drops all three tables and their data.

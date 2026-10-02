@@ -5,8 +5,10 @@
 ResilienceMap AI is a full-stack disaster risk intelligence platform combining:
 - **Frontend**: Next.js 16 with React 19, real-time interactive mapping
 - **Backend**: FastAPI with deterministic risk scoring engine
-- **Database**: PostgreSQL (optional; in-memory fallback for demo)
-- **Deployment**: Vercel (frontend) + Render (backend)
+- **Database**: Neon PostgreSQL with PostGIS in production (Alembic, head `0007`); in-memory fallback only without `DATABASE_URL`
+- **Flood auto-capture**: user-flagged spots become Sentinel-1/2 water extents with permanent water removed (JRC), see `docs/FLOOD_CAPTURE.md`
+- **Scheduling**: GitHub Actions, every 6 hours
+- **Deployment**: Vercel (frontend) + Render (backend); procedures in `docs/OPERATIONS.md`
 
 **Core Principle**: Hazard data → backend scoring → risk color → AI explanation
 The AI explains calculated scores; it never invents them or overrides official advisories.
@@ -71,12 +73,15 @@ The AI explains calculated scores; it never invents them or overrides official a
 │  │  ├─ POST /api/data-sync          - Manual data refresh          │ │
 │  │  ├─ GET  /api/sync-health        - Sync status & timestamps     │ │
 │  │  ├─ GET  /api/source-registry    - Source metadata              │ │
-│  │  ├─ GET  /api/cron/sync-sources  - Scheduled sync (1x daily)    │ │
+│  │  ├─ GET  /api/cron/sync-sources  - Scheduled sync (every 6 h)    │ │
+│  │  ├─ GET  /api/cron/flood-captures - Drain unfinished flood jobs  │ │
+│  │  ├─ POST /api/flood/flags        - Flag flooding (3/h per client) │ │
+│  │  ├─ GET  /api/flood/extents|jobs|flags|tiles - Flood capture API │ │
 │  │  └─ GET  /api/reports            - Report endpoints             │ │
 │  │                                                                    │ │
 │  │  Core Modules:                                                    │ │
 │  │  ├─ app/scoring/                 - Risk calculation engine      │ │
-│  │  ├─ app/data_sources/            - Data connectors (4 active)   │ │
+│  │  ├─ app/data_sources/            - Data connectors (5 active)   │ │
 │  │  ├─ app/ai_providers/            - LLM abstraction layer        │ │
 │  │  ├─ app/repositories/            - Data access patterns         │ │
 │  │  ├─ app/security.py              - Auth & rate limiting         │ │
@@ -87,7 +92,7 @@ The AI explains calculated scores; it never invents them or overrides official a
 │  │         Data Sync Engine & Scheduling                              │ │
 │  ├────────────────────────────────────────────────────────────────────┤ │
 │  │                                                                    │ │
-│  │  Scheduled Sync (Vercel Cron - daily at 00:00 UTC):              │ │
+│  │  Scheduled Sync (GitHub Actions - every 6 hours):                │ │
 │  │  ├─ GET /api/cron/sync-sources                                   │ │
 │  │  ├─ CRON_SECRET authentication                                   │ │
 │  │  └─ Dispatch to registered data sources                          │ │
@@ -95,8 +100,9 @@ The AI explains calculated scores; it never invents them or overrides official a
 │  │  Supported Data Sources:                                          │ │
 │  │  ├─ GDACS (Global Disaster Alert & Coordination System)          │ │
 │  │  ├─ NASA EONET (Earth Observation Natural Event Tracker)         │ │
+│  │  ├─ NASA FIRMS fire hotspots (NASA_FIRMS_MAP_KEY)                │ │
 │  │  ├─ USGS Earthquake Hazards Program                              │ │
-│  │  ├─ ReliefWeb Humanitarian Data Exchange                         │ │
+│  │  ├─ ReliefWeb v2 (approved RELIEFWEB_APPNAME)                    │ │
 │  │  └─ 40+ additional sources (registry, not yet synced)            │ │
 │  │                                                                    │ │
 │  │  Sync Artifacts:                                                  │ │
@@ -109,9 +115,10 @@ The AI explains calculated scores; it never invents them or overrides official a
                            │ (optional)
                            ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                  PostgreSQL Database (Optional)                         │
+│                  PostgreSQL + PostGIS (Neon)                            │
 │  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │              Neon (Vercel Marketplace) or Local Dev               │ │
+│  │      Neon in production (in-memory fallback without DATABASE_URL)  │ │
+│  │      Also: flood_flags, flood_extents, flood_capture_jobs (0006/7)  │ │
 │  ├────────────────────────────────────────────────────────────────────┤ │
 │  │                                                                    │ │
 │  │  Tables:                                                           │ │
@@ -430,7 +437,7 @@ GET /api/location-risk?lat=12.5&lng=121.0
 
 #### 2. Data Sync Flow
 ```
-Daily Cron: GET /api/cron/sync-sources
+Scheduled (GitHub Actions, every 6 h): GET /api/cron/sync-sources
   ↓
 [Verify CRON_SECRET]
   ↓
@@ -438,6 +445,7 @@ Daily Cron: GET /api/cron/sync-sources
   ├─ GDACS fetch → parse → store
   ├─ NASA EONET fetch → parse → store
   ├─ USGS fetch → parse → store
+  ├─ NASA FIRMS fetch → parse → store
   └─ ReliefWeb fetch → parse → store
   ↓
 [Record sync_health entry]
@@ -658,7 +666,7 @@ OPENWEATHERMAP_API_KEY=...                                  # Optional — serve
 ```env
 # Required for production
 DATABASE_URL=postgresql://...                               # PostgreSQL (Neon)
-CRON_SECRET=...                                             # Vercel cron auth
+CRON_SECRET=...                                             # Bearer secret for the cron routes (also a GitHub repo secret)
 ADMIN_SHARED_SECRET=...                                     # Admin operations
 
 # Usage quotas (long-window, per-IP — see Rate Limiting section above)
@@ -721,19 +729,18 @@ FIRECRAWL_API_KEY=...                                       # Optional — power
 ### Backend (Render)
 - Git-connected to `main` branch
 - Auto-deploy on push
-- Environment variables: DATABASE_URL, CRON_SECRET, ADMIN_SHARED_SECRET, AI keys
+- Environment variables: DATABASE_URL, CRON_SECRET, ADMIN_SHARED_SECRET, CORS_ORIGINS, RELIEFWEB_APPNAME, AI keys (full list: `docs/ENVIRONMENT.md`)
 - **Critical**: Python version pinned in `runtime.txt` (prevents silent incompatibilities)
 - **Free tier**: Spins down with inactivity (50s+ cold start)
 
-### Database (Neon via Vercel Marketplace)
-- Optional (demo works without it; in-memory fallback)
-- PostgreSQL with built-in backup/replication
-- Alembic migrations applied out-of-band (never automatic in serverless)
+### Database (Neon Postgres with PostGIS)
+- Required in production (`ENVIRONMENT=production` refuses to start without `DATABASE_URL`); in-memory fallback otherwise
+- Alembic migrations (head `0007`) applied out-of-band from a trusted machine against the direct, non-pooled string (never automatic); see `docs/OPERATIONS.md`
 
-### Cron Scheduling (Vercel)
-- Daily sync at 00:00 UTC
-- Hits `GET /api/cron/sync-sources` (authenticated by CRON_SECRET)
-- Hobbyplan: 1x daily max; upgrade to Pro for more frequent sync
+### Scheduling (GitHub Actions)
+- `.github/workflows/sync-sources.yml`, every 6 hours and on demand
+- Calls `GET /api/cron/sync-sources` and `GET /api/cron/flood-captures` (authenticated by the `CRON_SECRET` repo secret, same value as Render)
+- `render.yaml` (Render cron) and `vercel.json` (daily Vercel cron) are optional alternatives
 
 ---
 
