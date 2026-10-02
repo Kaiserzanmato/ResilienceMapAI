@@ -56,7 +56,7 @@ export function RiskSummaryWidget() {
   const { data: evidence } = useQuery({
     queryKey: ["flood-evidence", selected?.lat.toFixed(3), selected?.lng.toFixed(3)],
     queryFn: () => api.floodExtents(pointBboxParam(selected!.lat, selected!.lng, 0.15)),
-    enabled: floodLayerActive && !!selected,
+    enabled: FLAGS.FLOOD_CAPTURE && !!selected, // also feeds the flag button's recapture hint
     staleTime: 60_000,
     retry: 1,
   });
@@ -231,7 +231,8 @@ export function RiskSummaryWidget() {
 
   const ordered = orderHazards(risk.hazards, activeLayer);
   const evidenceFeatures = evidence?.features as unknown as FloodFeature[] | undefined;
-  const capture = floodLayerActive ? findFloodCapture(evidenceFeatures, selected.lat, selected.lng) : null;
+  const spotCapture = FLAGS.FLOOD_CAPTURE ? findFloodCapture(evidenceFeatures, selected.lat, selected.lng) : null;
+  const capture = floodLayerActive ? spotCapture : null;
   const nearby = floodLayerActive && !capture ? nearestCapture(evidenceFeatures, selected.lat, selected.lng) : null;
 
   const actions = [
@@ -374,7 +375,7 @@ export function RiskSummaryWidget() {
           </div>
 
           {FLAGS.FLOOD_CAPTURE && (
-            <FloodFlagButton key={`${selected.lat},${selected.lng}`} lat={selected.lat} lng={selected.lng} />
+            <FloodFlagButton key={`${selected.lat},${selected.lng}`} lat={selected.lat} lng={selected.lng} capture={spotCapture?.properties} />
           )}
 
           <div ref={exportMenuRef} className="relative mt-3.5 shrink-0">

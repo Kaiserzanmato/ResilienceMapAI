@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
-  aoiCollection, bboxContains, describeFloodArea, coverageBbox, distanceToBboxKm, findFloodCapture, geometryBbox, markerCollection,
+  aoiCollection, bboxContains, describeFlagFailure, describeFloodArea, recaptureHint, coverageBbox, distanceToBboxKm, findFloodCapture, geometryBbox, markerCollection,
   nearestCapture, pointBboxParam, summarizeCapture, viewportBboxParam,
 } from "../lib/flood-evidence.ts";
 
@@ -99,4 +99,24 @@ test("an unfiltered capture falls back to total water with an unfiltered note", 
   const area = describeFloodArea({ water_area_m2: 123_400, total_water_ha: 12.34, flood_ha: null, permanent_water_filtered: false });
   assert.deepEqual([area.hectares, area.filtered], [12, false]);
   assert.match(area.unfilteredNote, /could not be excluded/);
+});
+
+test("a failed flag always says why and whether anything was sent", () => {
+  assert.match(describeFlagFailure({ status: 429 }), /3 per hour.*within an hour/);
+  assert.match(describeFlagFailure({ status: 404 }), /isn't available/);
+  assert.match(describeFlagFailure({ status: 503 }), /HTTP 503.*wasn't saved/);
+  assert.match(describeFlagFailure({ status: 422 }), /rejected \(HTTP 422\)/);
+  // fetch() rejecting (offline, CORS, blocker) has no status: the request never got an answer
+  for (const err of [new TypeError("Failed to fetch"), { status: 0 }, undefined, null]) {
+    assert.match(describeFlagFailure(err), /Couldn't reach the server, so nothing was sent/);
+  }
+});
+
+test("the flag button explains an existing capture instead of leaving the click a mystery", () => {
+  assert.equal(recaptureHint(null), null);
+  assert.equal(recaptureHint(undefined), null);
+  // production's pre-0007 Candaba capture has no flood_ha: flagging again recaptures it with the filter
+  assert.match(recaptureHint(candaba.properties), /2026-09-19.*without the permanent-water filter.*recaptures it/);
+  const filtered = recaptureHint({ ...candaba.properties, total_water_ha: 1224.5, flood_ha: 1187.2 });
+  assert.match(filtered, /2026-09-19.*newest scene.*same scene is reused/);
 });
