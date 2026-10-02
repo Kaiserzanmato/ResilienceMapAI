@@ -88,3 +88,10 @@ def test_events_api_is_safe_when_feature_is_disabled(monkeypatch):
     response = TestClient(app).get("/api/events")
     assert response.status_code == 200
     assert response.json()["enabled"] is False
+
+
+def test_reliefweb_description_field_becomes_the_event_description():
+    event = normalize_reliefweb({"id": "rw-2", "fields": {"name": "Floods", "description": "Heavy rain displaced families.",
+                                                          "date": {"created": "2026-08-13T00:00:00Z"}}}, NOW)
+    assert event.description == "Heavy rain displaced families."
+    assert normalize_reliefweb({"id": "rw-3", "fields": {"name": "Floods"}}, NOW).description is None

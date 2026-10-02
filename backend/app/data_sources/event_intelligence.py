@@ -212,7 +212,7 @@ def normalize_reliefweb(raw: dict[str, Any], retrieved_at: datetime) -> Normaliz
     return NormalizedEvent(
         event_id=f"reliefweb:{provider_id}", provider_event_id=provider_id, provider="reliefweb", source_tier=_tier("reliefweb"),
         hazard_type=_hazard(hazard), title=str(fields.get("name") or "ReliefWeb disaster report"),
-        description=str(fields.get("body"))[:MAX_DESCRIPTION_LENGTH] if fields.get("body") else None,
+        description=str(fields.get("description"))[:MAX_DESCRIPTION_LENGTH] if fields.get("description") else None,
         severity="supplemental", event_time=_utc(dates.get("created") if isinstance(dates, dict) else None),
         updated_at=_utc(dates.get("changed") if isinstance(dates, dict) else None), retrieved_at=retrieved_at,
         countries=countries, source_url=fields.get("url"), official=False, confidence="supplemental_humanitarian_report",
