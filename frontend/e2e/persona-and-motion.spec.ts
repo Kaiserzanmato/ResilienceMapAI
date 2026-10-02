@@ -1,5 +1,15 @@
 import { expect, test } from "./fixtures";
 
+// TopNav's desktop nav links are shrink-0 and switch on at Tailwind's xl breakpoint
+// (1280px) — exactly Playwright's default desktop viewport. The full link set plus
+// logo, persona selector and theme toggle are wide enough that small font-metric
+// differences across environments (CI's Linux fallback fonts vs. a local machine's)
+// can tip the row from "fits" to "overflows", pushing trailing controls like the
+// theme toggle off the right edge entirely. These tests click those trailing header
+// controls, so they use a wider viewport to test their own behaviour rather than
+// trip on that unrelated, pre-existing layout edge case.
+test.use({ viewport: { width: 1440, height: 900 } });
+
 test.describe("Persona switch", () => {
   test("header menu switches persona and it persists across reload", async ({ app }) => {
     await app.goto("/dashboard");
@@ -57,15 +67,7 @@ test.describe("Reduced motion", () => {
     await app.emulateMedia({ reducedMotion: "reduce" });
     await app.goto("/dashboard");
 
-    const trigger = app.getByRole("button", { name: "Change theme" });
-    // A plain .click() occasionally raced a post-load layout shift (dashboard KPI
-    // cards populating) in CI's webkit/firefox, reporting the icon-only trigger as
-    // transiently outside the viewport. Waiting for it attached+visible first, and
-    // nudging the page to a known scroll position, gives the fixed header's layout
-    // one settled frame before the actionability check runs.
-    await expect(trigger).toBeVisible();
-    await app.evaluate(() => window.scrollTo(0, 0));
-    await trigger.click();
+    await app.getByRole("button", { name: "Change theme" }).click();
     const menu = app.getByRole("menu", { name: "Change theme" });
     await expect(menu).toBeVisible();
     await app.keyboard.press("Escape");
