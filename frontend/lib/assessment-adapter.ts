@@ -18,8 +18,9 @@ export function toRiskAssessment(assessment: GlobalAssessment): RiskAssessment {
         ...riskLevel(hazard.score),
         coverage_status: hazard.coverage_status,
         reason_code: hazard.reason_code,
-        indicative_score: hazard.indicative_score ?? null,
-        indicative_source_type: hazard.indicative_source_type,
+        // Volcanic has no zone-model indicator: it is scored from licensed data or shows no number.
+        indicative_score: key === "volcano" ? null : hazard.indicative_score ?? null,
+        indicative_source_type: key === "volcano" ? undefined : hazard.indicative_source_type,
         ...(hazard.note ? { note: hazard.note } : {}),
         ...(hazard.link ? { link: hazard.link } : {}),
       },

@@ -91,12 +91,18 @@ def ai_provider_info():
 
 
 # ---------------------------------------------------------------- risk
-@app.get("/api/location-risk")
-def location_risk(lat: float = Query(..., ge=-90, le=90),
-                  lng: float = Query(..., ge=-180, le=180),
-                  name: str = Query(None, max_length=120),
-                  country_code: str = Query(None, max_length=2)):
-    return score_location(lat, lng, name, country_code)
+@app.get("/api/location-risk", deprecated=True)
+async def location_risk(lat: float = Query(..., ge=-90, le=90),
+                        lng: float = Query(..., ge=-180, le=180),
+                        name: str = Query(None, max_length=120),
+                        country_code: str = Query(None, max_length=2)):
+    """Deprecated: use POST /api/assessments. Kept for existing integrations in the legacy
+    shape, but Wildfire (FIRMS) and Volcanic (null unless licensed data is on) come from the
+    same engine as the assessment, so this route can never show a number that one withholds."""
+    fire = await load_fire_context(lat, lng)
+    hazards = assess_location(lat, lng, name, country_code, fire=fire)["hazards"]
+    return score_location(lat, lng, name, country_code,
+                          overrides={key: hazards[key]["score"] for key in ("wildfire", "volcano")})
 
 
 @app.post("/api/compare-locations")

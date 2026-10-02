@@ -43,3 +43,14 @@ test("hazards without data stay no-data and are not counted as zero", () => {
   assert.equal(risk.hazards.wildfire.score, null);
   assert.equal(risk.hazards.wildfire.coverage_status, "stale");
 });
+
+test("a Volcanic indicative number never reaches the UI, even if an older backend still sends one", () => {
+  const risk = toRiskAssessment(assessment({
+    volcano: hazard("Volcanic Activity", null, { indicative_score: 86, indicative_source_type: "curated-zone-model" }),
+    flood: hazard("Flood", null, { indicative_score: 42, indicative_source_type: "curated-zone-model" }),
+  }));
+  assert.equal(risk.hazards.volcano.score, null);
+  assert.equal(risk.hazards.volcano.indicative_score, null);
+  assert.equal(risk.hazards.volcano.indicative_source_type, undefined);
+  assert.equal(risk.hazards.flood.indicative_score, 42); // other hazards keep their labelled baseline
+});
