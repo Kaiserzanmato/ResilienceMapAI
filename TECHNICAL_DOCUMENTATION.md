@@ -1,6 +1,6 @@
 # Technical Documentation
 
-**Current as of:** 2026-08-08
+**Current as of:** 2026-10-02
 
 **Scope:** deployed application contracts and implementation boundaries.
 
@@ -10,13 +10,28 @@
   It is deployed by Vercel at `https://resiliencemapai.online`.
 - Backend: FastAPI 0.128.8, Pydantic 2.13.4, HTTPX 0.28.1. It is deployed by
   Render at `https://resiliencemap-api.onrender.com`.
-- Persistence is repository-backed. Postgres/PostGIS is optional through
-  `DATABASE_URL`; in-memory fallback data is not durable across backend restarts.
+- Persistence is repository-backed. Production uses Neon Postgres with PostGIS through `DATABASE_URL`,
+  with the schema managed by Alembic (head `0007`: base tables, `hazard_events`, dataset governance,
+  PostGIS, flood capture, permanent-water columns). Without `DATABASE_URL` the repositories fall back to
+  memory, which is not durable across restarts; production refuses to start that way unless
+  `ALLOW_EPHEMERAL_STATE=true`.
+- Source sync: GitHub Actions calls `GET /api/cron/sync-sources` every 6 hours (Bearer `CRON_SECRET`). Five
+  sources are wired: GDACS, NASA EONET, NASA FIRMS, USGS Earthquake and ReliefWeb (v2 API, approved
+  `RELIEFWEB_APPNAME`). The same workflow drains flood-capture jobs via `GET /api/cron/flood-captures`.
+- Flood auto-capture (`backend/app/flood/`, `/api/flood/*`): a user flag queues a job that reads the newest
+  Sentinel-1 radar scene (Sentinel-2 optical as the fallback) over a 5 km box, subtracts permanent water using
+  the JRC Global Surface Water occurrence layer (default threshold 75%), and stores the flood polygons and
+  `total_water_ha` / `flood_ha`. See [docs/FLOOD_CAPTURE.md](docs/FLOOD_CAPTURE.md).
+- Risk panel: the registry-driven assessment has no flood connector, so the frontend scores the Flood row from
+  the capture covering the clicked spot (`frontend/lib/flood-indicator.ts`) and recomputes Overall and the hazard
+  count; with no capture the row says "No satellite capture yet: flag flooding here". It is satellite-observed,
+  not an official flood map.
 
 GitHub `main` drives both services. Frontend changes require a Vercel Ready
 deployment; backend changes require a Render deployment and a `/health` smoke
-test. Roll back by redeploying a known-good GitHub commit through the relevant
-provider; do not force-push production history.
+test. Roll back by redeploying a known-good deployment or a revert commit through the relevant
+provider; do not force-push production history. Procedures: [docs/OPERATIONS.md](docs/OPERATIONS.md).
+The browser origins the API accepts are set in `CORS_ORIGINS` (apex, `www` and the Vercel domain).
 
 ## Map search and assessment flow
 
@@ -73,7 +88,8 @@ without requiring the browser window to be resized.
 ## Configuration
 
 Set server-side only in Render or local backend `.env`; examples are in
-`backend/.env.example`.
+`backend/.env.example`. The complete catalogue (every Render, Vercel and GitHub variable, with purpose
+and secret vs config) is [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md).
 
 | Purpose | Variables |
 |---|---|
@@ -81,6 +97,9 @@ Set server-side only in Render or local backend `.env`; examples are in
 | Geocoder controls | `GEOCODER_TIMEOUT_SECONDS`, `GEOCODER_MAX_RESULTS`, `GEOCODER_CACHE_TTL_SECONDS`, `GEOCODER_MIN_QUERY_LENGTH`, `GEOCODER_ENABLE_FALLBACK` |
 | Frontend/backend link | `NEXT_PUBLIC_API_URL` (Vercel) |
 | Persistence | `DATABASE_URL`, `ALEMBIC_DATABASE_URL`, `REDIS_URL` |
+| Browser access | `CORS_ORIGINS` (apex, www, vercel) |
+| Source sync | `CRON_SECRET` (also a GitHub secret), `RELIEFWEB_APPNAME`, `NASA_FIRMS_MAP_KEY`, `NASA_FIRMS_AREA` |
+| Flood capture | `ENABLE_FLOOD_CAPTURE`, `FLOOD_*` (incl. `FLOOD_PERMANENT_WATER_THRESHOLD`), `CLIENT_IP_HEADER`, `CLIENT_IP_TRUSTED_HOPS`; frontend `NEXT_PUBLIC_ENABLE_FLOOD_CAPTURE` |
 | AI and operational controls | `QWEN_*`, `TOGETHER_*`, `DEEPSEEK_*`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, rate-limit and quota variables |
 | Admin/RBAC stopgap | `ADMIN_SHARED_SECRET` (backend and frontend, same value) — required for `/admin/datasets` dataset registration; the frontend proxy (`frontend/app/api/admin/datasets/upload/route.ts`) only forwards it after the caller presents it back via `x-admin-key` |
 
@@ -95,7 +114,7 @@ cd backend && .venv/bin/python -m pytest tests/ -q
 cd .. && bash scripts/audit-secrets.sh
 ```
 
-There is no configured frontend `npm test` script. Python formatter, linter,
+Frontend unit tests run with `cd frontend && npm test` (Node's built-in runner). Python formatter, linter,
 type checker, and dependency-audit commands are not configured in this
 repository; their absence must be reported rather than inferred as a pass.
 
@@ -106,8 +125,10 @@ repository; their absence must be reported rather than inferred as a pass.
   Users must confirm the displayed address and coordinates before assessment.
 - LocationIQ fallback requires a valid configured token and is only exercised
   when the primary provider fails or returns no results.
-- Render free instances can cold-start after inactivity.
+- Render free instances sleep after inactivity; the first request can take 50 s or more.
+- The flood score is satellite-observed, not an official flood map, and the permanent-water filter's data
+  (JRC) ends in 2021.
 - The current assessment registry has uneven regional/provider coverage;
   no-data is expected for unsupported hazard/location combinations.
-- Postgres/PostGIS-backed persistence and scalable distributed rate limiting
-  require production infrastructure configuration beyond the in-memory default.
+- Scalable distributed rate limiting needs infrastructure beyond the per-instance in-memory limiter
+  (`REDIS_URL` is reserved for it).

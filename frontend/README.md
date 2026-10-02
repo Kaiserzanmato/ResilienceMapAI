@@ -1,36 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ResilienceMap AI frontend
 
-## Getting Started
+Next.js 16 (App Router) with React 19, TypeScript, Tailwind CSS and MapLibre. Deployed to Vercel
+(root directory `frontend`) at <https://resiliencemapai.online>; it talks to the FastAPI backend on Render.
 
-First, run the development server:
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm ci
+cp .env.example .env.local     # then set NEXT_PUBLIC_API_URL (http://localhost:8000 for a local backend)
+npm run dev                    # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Check it
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm test                       # Node's built-in runner over tests/*.test.mjs (pure helpers, no browser)
+npx tsc --noEmit
+npm run lint
+npm run build                  # next build --webpack
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment
 
-## Learn More
+`NEXT_PUBLIC_*` variables are public and inlined at **build** time (a change needs a new deployment); flags are read by
+their literal name in `lib/feature-flags.ts`. Server-only variables (`OPENWEATHERMAP_API_KEY`, `ADMIN_SHARED_SECRET`) are
+never sent to the browser. Never commit values. The full list, with purpose and secret vs config, is
+[`../docs/ENVIRONMENT.md`](../docs/ENVIRONMENT.md); safe defaults are in `.env.example`.
 
-To learn more about Next.js, take a look at the following resources:
+## Where things are
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+* `app/` routes; `components/map/` the map and the risk panel (`RiskSummaryWidget.tsx`, `FloodFlagButton.tsx`)
+* `lib/flood-evidence.ts`, `lib/flood-indicator.ts` satellite flood helpers: the Flood row's evidence line and score
+  (satellite-observed, not an official flood map), see [`../docs/FLOOD_CAPTURE.md`](../docs/FLOOD_CAPTURE.md)
+* `lib/assessment-adapter.ts` turns the registry-driven `/api/assessments` response into the panel's model
+* Operations (migrations, sync, rollback, known limits): [`../docs/OPERATIONS.md`](../docs/OPERATIONS.md)

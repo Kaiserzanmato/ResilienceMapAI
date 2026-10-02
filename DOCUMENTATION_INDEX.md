@@ -1,21 +1,36 @@
 # ResilienceMap AI - Complete Documentation Index
 
-**Last Updated**: August 7, 2026. The current production release audit is
-[`RELEASE_AUDIT_2026-08-07.md`](RELEASE_AUDIT_2026-08-07.md); the API,
-geocoder, coverage-registry, environment, and deployment contracts are in
-[`TECHNICAL_DOCUMENTATION.md`](TECHNICAL_DOCUMENTATION.md). Historical entries
-below retain their original dates and should not be read as current production
-status. (README/ARCHITECTURE/PRD/PROJECT_PLAN entries
-below refreshed for the Spatial Vision / hover telemetry / Firecrawl QA audit
-— see `AUDIT_REPORT.md`; README additionally updated same day with the
-production-verification follow-up, `AUDIT_REPORT.md` §6.7; README,
-ARCHITECTURE, and PRD updated again same day for the new per-IP usage-quota
-system (Insights 3/5h; AI Agent panel + AI Workspace chat 50/day shared) —
-see `backend/app/services/usage_quota.py`; README, ARCHITECTURE, and
-PROJECT_PLAN updated once more same day (v4.2) for branding integration, map
-UX fixes, and the ambient-globe reliability + cross-browser caching fix — see
-`frontend/components/globe/useWorldAtlas.ts` and `frontend/next.config.ts`;
-other entries below this line unchanged since August 1, 2026)  
+**Last Updated**: October 2, 2026 (docs sync for PRs #22 to #30).
+
+## Current operating docs (start here)
+
+These describe production as of 2026-10-02 and are kept in step with `main`:
+
+| Doc | What it covers |
+|---|---|
+| [`README.md`](README.md) | Overview, capabilities, data sync and persistence, deployment |
+| [`DEPLOYMENT.md`](DEPLOYMENT.md) | Vercel + Render setup, `CORS_ORIGINS`, Neon + Alembic, the GitHub Actions sync |
+| [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md) | Every Render, Vercel and GitHub variable: purpose, secret vs config, default |
+| [`docs/OPERATIONS.md`](docs/OPERATIONS.md) | Safe production migrations, manual sync, rollback, known limits |
+| [`docs/FLOOD_CAPTURE.md`](docs/FLOOD_CAPTURE.md) | Flood auto-capture: Sentinel-1/2, JRC permanent-water filter, `/api/flood/*`, the risk panel's Flood row |
+| [`TECHNICAL_DOCUMENTATION.md`](TECHNICAL_DOCUMENTATION.md) | API, geocoder and assessment contracts, configuration, limits |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | System diagram and data flows |
+| [`CHANGELOG.md`](CHANGELOG.md) | What shipped, newest first |
+| `backend/.env.example`, `frontend/.env.example` | The same variables with safe defaults (no real values) |
+
+**Dated snapshots.** The audit, verification, implementation-summary and status reports
+(`AUDIT_REPORT.md`, `RELEASE_AUDIT_*.md`, `RELEASE_VALIDATION_*.md`, `DEPLOYMENT_STATUS.md`,
+`DEPLOYMENT_VERIFICATION*.md`, `VERIFICATION_REPORT.md`, `IMPLEMENTATION_*.md`,
+`PHASE_2_IMPLEMENTATION_SUMMARY.md`, `FIXES_SUMMARY.md`, `PERFORMANCE_AUDIT_REPORT.md`) record what was true on
+their own dates (June to September 2026). Do not read them as current production status. `docs/research/` and
+`docs/SPRINT_1_*` are decision records and proposals. Everything below this line is the original index and keeps
+its original dates, line counts and statistics.
+
+Earlier header note (kept for history): the August 7, 2026 release audit is
+[`RELEASE_AUDIT_2026-08-07.md`](RELEASE_AUDIT_2026-08-07.md). Entries below were refreshed in August for the
+Spatial Vision / hover telemetry / Firecrawl QA audit (`AUDIT_REPORT.md`), the per-IP usage quotas
+(`backend/app/services/usage_quota.py`; current defaults: Insights 3 per 5 h, chat `CHAT_QUOTA_LIMIT` = 20 per day),
+and branding, map UX and ambient-globe fixes (`frontend/components/globe/useWorldAtlas.ts`, `frontend/next.config.ts`).  
 **Documentation Status**: ✅ COMPLETE AND COMPREHENSIVE  
 **Repository**: https://github.com/Kaiserzanmato/ResilienceMapAI
 
@@ -140,7 +155,8 @@ section, `QWEN_VISION_MODEL`/`FIRECRAWL_API_KEY` env vars, and two
 Future Improvements items (wiring the scraper into scheduled sync;
 the deferred starlette/fastapi dependency upgrade). Two stale env vars
 (`GDACS_API_KEY`, `RELIEFWEB_API_KEY` — neither connector nor `config.py`
-ever used them) were removed.
+ever used them) were removed. (ReliefWeb v2 later needed an approved appname:
+`RELIEFWEB_APPNAME`, see `docs/ENVIRONMENT.md`.)
 
 **Link**: https://github.com/Kaiserzanmato/ResilienceMapAI/blob/main/ARCHITECTURE.md
 

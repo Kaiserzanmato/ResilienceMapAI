@@ -421,8 +421,8 @@ Stakeholders open link, see:
 ### Scalability
 - Support 1,000 concurrent users on Vercel (auto-scales)
 - Backend: Render free tier (can upgrade to Pro)
-- Database: Neon with auto-scaling (optional)
-- Daily data sync: <5 min total (parallel fetches)
+- Database: Neon Postgres with PostGIS (required in production; in-memory fallback only for local development)
+- Scheduled data sync every 6 hours (GitHub Actions): <5 min total (parallel fetches)
 
 ### Reliability
 - 99.5% uptime target (Vercel SLA)
@@ -592,7 +592,9 @@ Stakeholders open link, see:
 | GET /api/usage-status | Current quota status (NEW Aug 2026) | Standard |
 | GET /api/sync-health | Sync status & timestamps | Standard |
 | POST /api/data-sync | Manual refresh | **Tight** |
-| GET /api/cron/sync-sources | Scheduled sync (daily) | Admin-only |
+| GET /api/cron/sync-sources | Scheduled sync (every 6 h, GitHub Actions) | Bearer `CRON_SECRET` |
+| GET /api/cron/flood-captures | Drain unfinished flood jobs (same schedule) | Bearer `CRON_SECRET` |
+| POST /api/flood/flags, GET /api/flood/{jobs,extents,flags,tiles} | Flood auto-capture (flag-gated) | Standard; 3 flags per client per hour |
 
 ¹ Usage quota (NEW Aug 2026): long-window, per-IP, separate from the
 short-window "Tight" burst limit above — see Security NFR and
