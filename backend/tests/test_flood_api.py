@@ -150,13 +150,29 @@ def test_an_inline_run_captures_the_flag_after_the_response(flood_enabled, monke
     scene = SceneRef("s1-rtc-pc", "S1A_INLINE", datetime(2026, 9, 29, tzinfo=timezone.utc), {"vv": "x"})
     monkeypatch.setattr(worker, "_find_scenes", lambda lat, lng, days: [scene])
     monkeypatch.setattr(worker, "_capture", lambda sc, aoi: SimpleNamespace(
-        geometry=SQUARE, water_area_m2=123_400.0, polygon_count=1, method={"algorithm": "stub"}))
+        geometry=SQUARE, water_area_m2=123_400.0, polygon_count=1, method={"algorithm": "stub"},
+        total_water_ha=20.0, flood_ha=12.34))
     job_id = client.post("/api/flood/flags", json=POINT).json()["job_id"]
     job = client.get(f"/api/flood/jobs/{job_id}").json()
     assert job["status"] == "done" and job["extent"]["scene_id"] == "S1A_INLINE"
     assert job["extent"]["water_area_m2"] == 123_400.0
+    assert (job["extent"]["total_water_ha"], job["extent"]["flood_ha"]) == (20.0, 12.34)
+    assert job["extent"]["permanent_water_filtered"] is True
     west, south, east, north = job["extent"]["aoi_bbox"]          # the capture box, so the UI can zoom to it
     assert west < POINT["lng"] < east and south < POINT["lat"] < north and (north - south) * 111_320 > 4_900
     feature = client.get("/api/flood/extents").json()["features"][0]["properties"]
     assert feature["aoi_bbox"] == job["extent"]["aoi_bbox"]
+    assert (feature["total_water_ha"], feature["flood_ha"], feature["permanent_water_filtered"]) == (20.0, 12.34, True)
     assert len(client.get("/api/flood/extents").json()["features"]) == 1
+
+
+def test_an_unfiltered_extent_reports_total_water_and_says_so(flood_enabled, monkeypatch):
+    monkeypatch.setattr(get_settings(), "flood_inline_processing", True)
+    scene = SceneRef("s1-rtc-pc", "S1A_UNFILTERED", datetime(2026, 9, 29, tzinfo=timezone.utc), {"vv": "x"})
+    monkeypatch.setattr(worker, "_find_scenes", lambda lat, lng, days: [scene])
+    monkeypatch.setattr(worker, "_capture", lambda sc, aoi: SimpleNamespace(
+        geometry=SQUARE, water_area_m2=200_000.0, polygon_count=1, method={"permanent_water": {"status": "unfiltered"}},
+        total_water_ha=20.0, flood_ha=None))
+    job_id = client.post("/api/flood/flags", json=POINT).json()["job_id"]
+    extent = client.get(f"/api/flood/jobs/{job_id}").json()["extent"]
+    assert (extent["total_water_ha"], extent["flood_ha"], extent["permanent_water_filtered"]) == (20.0, None, False)

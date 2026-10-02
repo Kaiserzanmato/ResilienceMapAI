@@ -93,7 +93,9 @@ async def _run(job: dict[str, Any], repo: FloodRepo) -> dict[str, Any]:
 
     for scene in scenes:
         cached = await repo.find_extent(scene.source, scene.scene_id, aoi.tile_key)
-        if cached:
+        # An extent without a flood_ha predates the permanent-water filter or could
+        # not fetch JRC; it is recaptured (and upserted) rather than reused.
+        if cached and cached.get("flood_ha") is not None:
             await repo.finish_job(job["id"], "done", extent_id=cached["id"])
             return {"job_id": job["id"], "status": "done", "extent_id": cached["id"], "cache_hit": True}
         try:
@@ -106,6 +108,7 @@ async def _run(job: dict[str, Any], repo: FloodRepo) -> dict[str, Any]:
         extent_id = await repo.save_extent(
             source=scene.source, scene_id=scene.scene_id, acquired_at=scene.acquired_at, tile_key=aoi.tile_key,
             aoi=aoi.polygon, geom=result.geometry, water_area_m2=result.water_area_m2, method=result.method,
+            total_water_ha=result.total_water_ha, flood_ha=result.flood_ha,
         )
         await repo.finish_job(job["id"], "done", extent_id=extent_id)
         return {"job_id": job["id"], "status": "done", "extent_id": extent_id, "cache_hit": False,

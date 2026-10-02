@@ -24,7 +24,8 @@ def _scene(scene_id="S1A_TEST", source="s1-rtc-pc"):
 
 
 def _ok(*_args):
-    return SimpleNamespace(geometry=SQUARE, water_area_m2=100_000.0, polygon_count=1, method={"algorithm": "stub"})
+    return SimpleNamespace(geometry=SQUARE, water_area_m2=100_000.0, polygon_count=1, method={"algorithm": "stub"},
+                           total_water_ha=10.0, flood_ha=10.0)
 
 
 @pytest.fixture
@@ -239,3 +240,18 @@ async def test_run_job_now_never_raises_even_if_the_repo_breaks(monkeypatch):
 
     monkeypatch.setattr(worker, "get_flood_repo", broken)
     await worker.run_job_now(1)  # must not raise: a background task failure would be silent anyway
+
+
+async def test_an_extent_without_flood_ha_is_recaptured_not_reused(stubs):
+    """A pre-0007 extent, or one whose JRC fetch failed, has flood_ha NULL: the next
+    flag in the same cell re-runs the capture so it can pick up the filter."""
+    stubs.capture = lambda *_a: SimpleNamespace(
+        geometry=SQUARE, water_area_m2=100_000.0, polygon_count=1, method={}, total_water_ha=10.0, flood_ha=None)
+    first = await _job(lat=14.930, lng=120.850)
+    second = await _job(lat=14.934, lng=120.846)
+    r1 = await worker.process_claimed_job(await _claim(first["id"]))
+    stubs.capture = _ok  # JRC is back
+    r2 = await worker.process_claimed_job(await _claim(second["id"]))
+    assert r1["cache_hit"] is False and r2["cache_hit"] is False and len(stubs.calls) == 2
+    assert r1["extent_id"] == r2["extent_id"]  # upserted in place
+    assert (await get_flood_repo().find_extent("s1-rtc-pc", "S1A_TEST", stubs.calls[0][1]))["flood_ha"] == 10.0

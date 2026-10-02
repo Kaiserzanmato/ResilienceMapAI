@@ -60,9 +60,17 @@ def extent_summary(extent: dict[str, Any], aoi_bbox: Bbox | None = None) -> dict
     """`aoi_bbox` (west, south, east, north) is the whole capture box, not just the
     water inside it, so a client can tell that a spot was covered by a capture even
     when no water polygon is near it."""
+    # flood_ha is NULL when the permanent-water filter did not run (JRC fetch failed,
+    # or the extent predates migration 0007): then total_water_ha is all we know.
+    total_ha = extent.get("total_water_ha")
+    if total_ha is None:
+        total_ha = (extent["water_area_m2"] or 0) / 10_000
+    flood_ha = extent.get("flood_ha")
     return {
         "id": extent["id"], "source": extent["source"], "scene_id": extent["scene_id"],
         "acquired_at": _iso(extent["acquired_at"]), "water_area_m2": extent["water_area_m2"],
+        "total_water_ha": round(total_ha, 2), "flood_ha": None if flood_ha is None else round(flood_ha, 2),
+        "permanent_water_filtered": flood_ha is not None,
         "aoi_bbox": list(aoi_bbox) if aoi_bbox else None,
     }
 
@@ -113,7 +121,8 @@ class FloodRepo(ABC):
     @abstractmethod
     async def save_extent(self, *, source: str, scene_id: str, acquired_at: datetime, tile_key: str,
                           aoi: dict[str, Any], geom: dict[str, Any] | None, water_area_m2: float,
-                          method: dict[str, Any], source_tier: int = 3) -> int: ...
+                          method: dict[str, Any], source_tier: int = 3,
+                          total_water_ha: float | None = None, flood_ha: float | None = None) -> int: ...
 
     @abstractmethod
     async def list_extents(self, bbox: Bbox | None, since: datetime | None,
@@ -217,13 +226,14 @@ class InMemoryFloodRepo(FloodRepo):
         return None
 
     async def save_extent(self, *, source, scene_id, acquired_at, tile_key, aoi, geom, water_area_m2,
-                          method, source_tier=3):
+                          method, source_tier=3, total_water_ha=None, flood_ha=None):
         existing = await self.find_extent(source, scene_id, tile_key)
         extent_id = existing["id"] if existing else next(self._extent_ids)
         self.extents[extent_id] = {
             "id": extent_id, "source": source, "scene_id": scene_id, "acquired_at": acquired_at,
             "tile_key": tile_key, "aoi": aoi, "geom": geom, "water_area_m2": water_area_m2,
             "method": method, "source_tier": source_tier, "processed_at": _now(),
+            "total_water_ha": total_water_ha, "flood_ha": flood_ha,
         }
         return extent_id
 
@@ -297,7 +307,8 @@ class PostgresFloodRepo(FloodRepo):
         row = await self._one("""
             SELECT j.id, j.flag_id, j.status, j.attempts, j.reason_code, j.extent_id, j.created_at, j.updated_at,
                    e.source AS e_source, e.scene_id AS e_scene_id, e.acquired_at AS e_acquired_at,
-                   e.water_area_m2 AS e_water_area_m2,
+                   e.water_area_m2 AS e_water_area_m2, e.total_water_ha AS e_total_water_ha,
+                   e.flood_ha AS e_flood_ha,
                    ST_XMin(e.aoi) AS e_w, ST_YMin(e.aoi) AS e_s, ST_XMax(e.aoi) AS e_e, ST_YMax(e.aoi) AS e_n
             FROM flood_capture_jobs j LEFT JOIN flood_extents e ON e.id = j.extent_id
             WHERE j.id = :id
@@ -308,10 +319,11 @@ class PostgresFloodRepo(FloodRepo):
         if row["extent_id"] is not None:
             extent = extent_summary(
                 {"id": row["extent_id"], "source": row["e_source"], "scene_id": row["e_scene_id"],
-                 "acquired_at": row["e_acquired_at"], "water_area_m2": row["e_water_area_m2"]},
+                 "acquired_at": row["e_acquired_at"], "water_area_m2": row["e_water_area_m2"],
+                 "total_water_ha": row["e_total_water_ha"], "flood_ha": row["e_flood_ha"]},
                 (row["e_w"], row["e_s"], row["e_e"], row["e_n"]) if row["e_w"] is not None else None,
             )
-        for key in ("e_source", "e_scene_id", "e_acquired_at", "e_water_area_m2", "e_w", "e_s", "e_e", "e_n"):
+        for key in ("e_source", "e_scene_id", "e_acquired_at", "e_water_area_m2", "e_total_water_ha", "e_flood_ha", "e_w", "e_s", "e_e", "e_n"):
             row.pop(key)
         return {**row, "extent": extent}
 
@@ -368,26 +380,29 @@ class PostgresFloodRepo(FloodRepo):
 
     async def find_extent(self, source, scene_id, tile_key):
         return await self._one("""
-            SELECT id, source, scene_id, acquired_at, tile_key, water_area_m2, source_tier
+            SELECT id, source, scene_id, acquired_at, tile_key, water_area_m2, source_tier,
+                   total_water_ha, flood_ha
             FROM flood_extents WHERE source = :source AND scene_id = :scene_id AND tile_key = :tile_key
         """, source=source, scene_id=scene_id, tile_key=tile_key)
 
     async def save_extent(self, *, source, scene_id, acquired_at, tile_key, aoi, geom, water_area_m2,
-                          method, source_tier=3):
+                          method, source_tier=3, total_water_ha=None, flood_ha=None):
         row = await self._one("""
-            INSERT INTO flood_extents (source, scene_id, acquired_at, tile_key, aoi, geom, water_area_m2, method, source_tier)
+            INSERT INTO flood_extents (source, scene_id, acquired_at, tile_key, aoi, geom, water_area_m2, method,
+                                       source_tier, total_water_ha, flood_ha)
             VALUES (:source, :scene_id, :acquired_at, :tile_key,
                     ST_SetSRID(ST_GeomFromGeoJSON(:aoi), 4326),
                     CASE WHEN CAST(:geom AS text) IS NULL THEN NULL
                          ELSE ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(:geom), 4326)) END,
-                    :water_area_m2, CAST(:method AS jsonb), :source_tier)
+                    :water_area_m2, CAST(:method AS jsonb), :source_tier, :total_water_ha, :flood_ha)
             ON CONFLICT (source, scene_id, tile_key) DO UPDATE SET
                 geom = EXCLUDED.geom, water_area_m2 = EXCLUDED.water_area_m2,
+                total_water_ha = EXCLUDED.total_water_ha, flood_ha = EXCLUDED.flood_ha,
                 method = EXCLUDED.method, processed_at = now()
             RETURNING id
         """, source=source, scene_id=scene_id, acquired_at=acquired_at, tile_key=tile_key,
             aoi=json.dumps(aoi), geom=json.dumps(geom) if geom else None, water_area_m2=water_area_m2,
-            method=json.dumps(method), source_tier=source_tier)
+            method=json.dumps(method), source_tier=source_tier, total_water_ha=total_water_ha, flood_ha=flood_ha)
         return int(row["id"])
 
     async def list_extents(self, bbox, since, limit=MAX_FEATURES):
@@ -400,7 +415,8 @@ class PostgresFloodRepo(FloodRepo):
             params["since"] = since
         async with get_sessionmaker()() as session:
             rows = (await session.execute(text(f"""
-                SELECT e.id, e.source, e.scene_id, e.acquired_at, e.water_area_m2, e.source_tier, e.method,
+                SELECT e.id, e.source, e.scene_id, e.acquired_at, e.water_area_m2, e.total_water_ha, e.flood_ha,
+                       e.source_tier, e.method,
                        ST_AsGeoJSON(e.geom, 6) AS geom,
                        ST_XMin(e.aoi) AS aoi_w, ST_YMin(e.aoi) AS aoi_s, ST_XMax(e.aoi) AS aoi_e, ST_YMax(e.aoi) AS aoi_n
                 FROM flood_extents e WHERE {' AND '.join(where)}
@@ -441,6 +457,7 @@ class PostgresFloodRepo(FloodRepo):
                 WITH bounds AS (SELECT ST_TileEnvelope(:z, :x, :y) AS env),
                 mvt AS (
                     SELECT e.id, e.source, e.scene_id, e.acquired_at::text AS acquired_at, e.water_area_m2,
+                           e.total_water_ha, e.flood_ha,
                            ST_AsMVTGeom(ST_Transform(e.geom, 3857), bounds.env, 4096, 64, true) AS geom
                     FROM flood_extents e, bounds
                     WHERE e.geom IS NOT NULL AND e.geom && ST_Transform(bounds.env, 4326)

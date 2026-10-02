@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { FLAGS } from "@/lib/feature-flags";
 import {
-  aoiCollection, FLOOD_SOURCE_LABEL, markerCollection, viewportBboxParam, type FloodFeature,
+  aoiCollection, describeFloodArea, FLOOD_SOURCE_LABEL, markerCollection, viewportBboxParam, type FloodFeature,
 } from "@/lib/flood-evidence";
 import { cn } from "@/lib/utils";
 import { getMapStyle } from "@/lib/mapStyles";
@@ -393,12 +393,18 @@ export default function RiskMap() {
     map.on("mouseleave", "risk-zones-fill", () => (map.getCanvas().style.cursor = ""));
     const showCapturePopup = (props: Record<string, unknown> | null | undefined, lngLat: maplibregl.LngLatLike) => {
       if (!props) return;
-      const hectares = Math.round(Number(props.water_area_m2 ?? 0) / 10_000);
+      const area = describeFloodArea({
+        water_area_m2: Number(props.water_area_m2 ?? 0),
+        total_water_ha: props.total_water_ha == null ? undefined : Number(props.total_water_ha),
+        flood_ha: props.flood_ha == null ? null : Number(props.flood_ha),
+      });
       const scene = String(props.acquired_at ?? "").slice(0, 10) || "unknown date";
       const content = buildPopupContent("Satellite-detected surface water", [
         `${FLOOD_SOURCE_LABEL[String(props.source)] ?? "Satellite"} · scene of ${scene}`,
-        `Water in the captured box: about ${hectares.toLocaleString("en-US")} ha`,
-        "Automated estimate; may include permanent water. Not an official flood map.",
+        `In the captured box: ${area.text}`,
+        area.filtered
+          ? "Automated estimate; permanent water removed (JRC Global Surface Water). Not an official flood map."
+          : `${area.unfilteredNote} Automated estimate; not an official flood map.`,
       ]);
       new maplibregl.Popup({ offset: 10, closeButton: true }).setDOMContent(content).setLngLat(lngLat).addTo(map);
     };

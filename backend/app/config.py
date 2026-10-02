@@ -106,6 +106,9 @@ class Settings(BaseSettings):
     # areas over 100 km2 (a side above 10 km) are refused.
     flood_aoi_km: float = float(os.getenv("FLOOD_AOI_KM", "5"))
     flood_scene_window_days: int = int(os.getenv("FLOOD_SCENE_WINDOW_DAYS", "12"))
+    # JRC Global Surface Water occurrence (%) at or above which a pixel counts as
+    # permanent water and is subtracted from a capture. Outside 1..100: 75.
+    flood_permanent_water_threshold: float = float(os.getenv("FLOOD_PERMANENT_WATER_THRESHOLD", "75"))
     flood_max_attempts: int = int(os.getenv("FLOOD_MAX_ATTEMPTS", "3"))
     flood_lease_seconds: int = int(os.getenv("FLOOD_LEASE_SECONDS", "300"))
     # Start a capture right after the flag is saved (best effort; the cron

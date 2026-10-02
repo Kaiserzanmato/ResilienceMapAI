@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
-  aoiCollection, bboxContains, coverageBbox, distanceToBboxKm, findFloodCapture, geometryBbox, markerCollection,
+  aoiCollection, bboxContains, describeFloodArea, coverageBbox, distanceToBboxKm, findFloodCapture, geometryBbox, markerCollection,
   nearestCapture, pointBboxParam, summarizeCapture, viewportBboxParam,
 } from "../lib/flood-evidence.ts";
 
@@ -45,7 +45,9 @@ test("the evidence line states source, scene date and area, and never a score", 
   assert.equal(summary.sourceLabel, "Sentinel-1 radar");
   assert.equal(summary.sceneDate, "2026-09-19");
   assert.equal(summary.hectares, 1224);
-  assert.equal(summary.text, "Sentinel-1 radar, scene of 2026-09-19: about 1,224 ha of open water in the captured 5 km box.");
+  // the stored production extent predates the permanent-water filter, so it says so
+  assert.equal(summary.text, "Sentinel-1 radar, scene of 2026-09-19: about 1,224 ha of open water in the captured 5 km box. "
+    + "Permanent water (rivers, lakes, fishponds) could not be excluded for this capture.");
   assert.doesNotMatch(summary.text, /\d+\s*\/\s*100|score/i);
   assert.match(summarizeCapture({ ...candaba.properties, water_area_m2: 0 }).text, /no open water/);
 });
@@ -81,4 +83,20 @@ test("the clicked pin is about 4.4 km from the capture, close enough to point th
   assert.equal(distanceToBboxKm(candaba.properties.aoi_bbox, FLAG.lat, FLAG.lng), 0); // inside the box
   assert.equal(nearestCapture([candaba], 14.0, 121.5), null);                         // ~170 km away
   assert.equal(nearestCapture(undefined, FLAG.lat, FLAG.lng), null);
+});
+
+test("a filtered capture headlines flooding and states the permanent water excluded", () => {
+  const props = { ...candaba.properties, total_water_ha: 1224.5, flood_ha: 1187.2, permanent_water_filtered: true };
+  const area = describeFloodArea(props);
+  assert.deepEqual([area.hectares, area.filtered, area.unfilteredNote], [1187, true, null]);
+  assert.equal(area.text, "about 1,187 ha of flooding (37 ha of permanent water excluded)");
+  assert.equal(summarizeCapture(props).text,
+    "Sentinel-1 radar, scene of 2026-09-19: about 1,187 ha of flooding (37 ha of permanent water excluded) in the captured 5 km box.");
+  assert.match(describeFloodArea({ ...props, flood_ha: 0 }).text, /^no flooding detected beyond permanent water \(1,2\d\d ha/);
+});
+
+test("an unfiltered capture falls back to total water with an unfiltered note", () => {
+  const area = describeFloodArea({ water_area_m2: 123_400, total_water_ha: 12.34, flood_ha: null, permanent_water_filtered: false });
+  assert.deepEqual([area.hectares, area.filtered], [12, false]);
+  assert.match(area.unfilteredNote, /could not be excluded/);
 });

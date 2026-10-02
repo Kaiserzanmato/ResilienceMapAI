@@ -85,9 +85,23 @@ lease that expires means the instance died mid-job; `GET /api/cron/flood-capture
 * Results are labelled satellite-derived with the scene date and source, and carry
   the Copernicus Sentinel attribution.
 
+## Permanent water
+
+Each capture subtracts permanent water using the JRC Global Surface Water
+*occurrence* layer (Planetary Computer `jrc-gsw`, 30 m, 1984-2021): pixels at or
+above `FLOOD_PERMANENT_WATER_THRESHOLD` percent (default 75) are removed, clipped
+to the capture box, and water slivers under 0.5 ha left along banks are dropped.
+`flood_extents.total_water_ha` is all water seen, `flood_ha` is the flood after
+subtraction, and `water_area_m2` / the stored polygons are the flood only. If JRC
+cannot be fetched the extent is saved as before with `flood_ha` NULL and
+`method.permanent_water.status = "unfiltered"`; such extents (and any captured
+before migration 0007) are recaptured on the next flag in the same cell. JRC data
+ends in 2021, so water bodies created since (new fishponds, reservoirs) are not excluded.
+
 ## Settings
 
 `ENABLE_FLOOD_CAPTURE`, `FLOOD_FLAGS_PER_HOUR` (3), `FLOOD_AOI_KM` (5),
+`FLOOD_PERMANENT_WATER_THRESHOLD` (75),
 `FLOOD_SCENE_WINDOW_DAYS` (12), `FLOOD_MAX_ATTEMPTS` (3), `FLOOD_LEASE_SECONDS` (300),
 `FLOOD_INLINE_PROCESSING` (true), `FLOOD_CRON_BUDGET_SECONDS` (90), `FLOOD_HASH_SALT`.
 Client attribution (shared with the usage quotas): `CLIENT_IP_HEADER`, `CLIENT_IP_TRUSTED_HOPS`. See `backend/.env.example`.

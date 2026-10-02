@@ -11,6 +11,7 @@ capture, so the API never needs the raster stack to start.
 """
 from __future__ import annotations
 
+import logging
 import math
 import time
 from dataclasses import dataclass, field
@@ -22,6 +23,8 @@ from .processing import (
     Aoi, ndwi_water_mask, pixel_area_m2, polygonize, sar_water_mask, to_db,
 )
 from .stac import S1_SOURCE, S2_SOURCE, SceneRef
+
+logger = logging.getLogger(__name__)
 
 MAX_WINDOW_PIXELS = 4_000_000
 MIN_VALID_FRACTION = 0.2
@@ -52,6 +55,8 @@ class ExtentResult:
     water_area_m2: float
     polygon_count: int
     method: dict[str, Any] = field(default_factory=dict)
+    total_water_ha: float = 0.0  # all open water the satellite saw in the box
+    flood_ha: float | None = None  # total minus permanent water; None = the filter did not run (unfiltered)
 
 
 def _window(ds: Any, bbox: tuple[float, float, float, float]) -> Any:
@@ -111,10 +116,39 @@ def _read_window_once(href: str, bbox: tuple[float, float, float, float],
         return array, transform, ds.crs
 
 
+def _load_occurrence(lat: float, lng: float, shape: tuple[int, int], transform: Any, crs: Any) -> np.ndarray:
+    """JRC occurrence on the capture grid. Tests replace this."""
+    from .permanent_water import find_occurrence_href, read_occurrence
+
+    return read_occurrence(find_occurrence_href(lat, lng), shape, transform, crs)
+
+
+def _filter_permanent(mask: np.ndarray, transform: Any, crs: Any, pixel_area: float,
+                      aoi: Aoi) -> tuple[np.ndarray, dict[str, Any], float | None]:
+    """Subtract JRC permanent water. Any failure fetching the layer keeps the
+    unfiltered mask and says so (flood area None, status "unfiltered")."""
+    from .permanent_water import JRC_SOURCE, apply_permanent_water, resolve_threshold
+
+    threshold = resolve_threshold()
+    try:
+        occurrence = _load_occurrence(aoi.center[0], aoi.center[1], mask.shape, transform, crs)
+        if not np.isfinite(occurrence).any():
+            raise LookupError("JRC occurrence has no data over the capture box")
+        flood, stats = apply_permanent_water(mask, occurrence, pixel_area, threshold)
+    except Exception as exc:
+        logger.warning("[flood] permanent-water filter skipped (%s); extent left unfiltered", type(exc).__name__)
+        return mask, {"status": "unfiltered", "reason": type(exc).__name__, "source": JRC_SOURCE,
+                      "threshold": threshold}, None
+    return flood, {"status": "applied", "source": JRC_SOURCE, "threshold": threshold,
+                   "excluded_ha": round(stats["permanent_excluded_m2"] / 10_000, 2)}, stats["flood_m2"]
+
+
 def _finish(mask: np.ndarray, params: dict[str, Any], transform: Any, crs: Any, pixel_area: float,
             aoi: Aoi, scene: SceneRef) -> ExtentResult:
     if params["valid_fraction"] < MIN_VALID_FRACTION:
         raise NoUsableData(f"only {params['valid_fraction']:.0%} of the AOI has valid pixels")
+    total_m2 = float(mask.sum()) * pixel_area
+    mask, permanent, flood_m2 = _filter_permanent(mask, transform, crs, pixel_area, aoi)
     geometry, area_m2, polygons = polygonize(mask, transform, crs, pixel_area)
     params = {
         **params,
@@ -122,8 +156,12 @@ def _finish(mask: np.ndarray, params: dict[str, Any], transform: Any, crs: Any, 
         "aoi_km": aoi.size_km,
         "window_px": [int(mask.shape[1]), int(mask.shape[0])],
         "pixel_area_m2": round(pixel_area, 2),
+        "permanent_water": permanent,
     }
-    return ExtentResult(geometry=geometry, water_area_m2=area_m2, polygon_count=polygons, method=params)
+    return ExtentResult(
+        geometry=geometry, water_area_m2=area_m2, polygon_count=polygons, method=params,
+        total_water_ha=total_m2 / 10_000, flood_ha=None if flood_m2 is None else flood_m2 / 10_000,
+    )
 
 
 def capture_extent(scene: SceneRef, aoi: Aoi) -> ExtentResult:
