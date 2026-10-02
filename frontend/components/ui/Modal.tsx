@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
 import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { SPRING_EASE } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 const subscribeNever = () => () => {};
@@ -115,12 +116,12 @@ export function Modal({
             initial={fade}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={fade}
-            transition={{ duration: reduceMotion ? 0.1 : 0.22, ease: [0.32, 0.72, 0, 1] }}
+            transition={{ duration: reduceMotion ? 0.1 : 0.22, ease: SPRING_EASE }}
             style={{ zIndex: "var(--z-modal)" }}
             className={cn(
               "glass-strong relative flex w-full flex-col overflow-hidden",
               // phones: full screen; sm and up: centred card that never exceeds the viewport
-              "h-[100dvh] rounded-none sm:h-auto sm:max-h-[min(80dvh,720px)] sm:max-w-2xl sm:rounded-2xl",
+              "h-[100dvh] rounded-none sm:h-auto sm:max-h-[min(80dvh,720px)] sm:max-w-2xl sm:rounded-[var(--radius-lg)]",
               className
             )}
           >
@@ -140,7 +141,7 @@ export function Modal({
                 type="button"
                 onClick={onClose}
                 aria-label={`Close ${title}`}
-                className="focus-ring -mr-2 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[var(--fg)] transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]"
+                className="focus-ring -mr-2 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-[var(--radius-sm)] text-[var(--fg)] transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_10%,transparent)] active:scale-[var(--press-scale)]"
               >
                 <X size={20} aria-hidden="true" />
               </button>

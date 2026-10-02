@@ -1,6 +1,7 @@
 "use client";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef } from "react";
+import { SPRING_EASE } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 interface GlassMenuProps {
@@ -62,10 +63,10 @@ export function GlassMenu({
             initial={hidden}
             animate={shown}
             exit={hidden}
-            transition={{ duration: reduceMotion ? 0.12 : 0.18, ease: [0.32, 0.72, 0, 1] }}
+            transition={{ duration: reduceMotion ? 0.12 : 0.18, ease: SPRING_EASE }}
             style={{ transformOrigin: align === "right" ? "top right" : "top left" }}
             className={cn(
-              "glass-strong absolute top-12 z-[var(--z-dropdown)] rounded-xl p-1.5",
+              "glass-strong absolute top-12 z-[var(--z-dropdown)] rounded-[var(--radius-sm)] p-1.5",
               align === "right" ? "right-0" : "left-0",
               className
             )}
