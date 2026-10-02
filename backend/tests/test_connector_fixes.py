@@ -1,6 +1,8 @@
 """Regressions for the first production sync: GDACS used a dead URL, ReliefWeb
 v1 was decommissioned and v2 needs an approved appname, and FIRMS recorded a
 plain-text error body as a successful empty sync."""
+import json
+
 import httpx
 import pytest
 
@@ -28,14 +30,18 @@ async def test_gdacs_uses_the_search_endpoint():
 
 async def test_reliefweb_uses_v2_with_appname_in_the_query(monkeypatch):
     monkeypatch.setattr(get_settings(), "reliefweb_appname", "approved-app")
-    seen = []
+    seen, bodies = [], []
 
     def handler(request):
         seen.append(request.url)
+        bodies.append(json.loads(request.content))
         return httpx.Response(200, json={"data": [{"id": "1"}]})
 
     async with _client(handler) as client:
         assert await reliefweb_connector.fetch_reliefweb_disasters(client) == [{"id": "1"}]
+    # ReliefWeb v2 answers HTTP 400 to unknown fields; `body` is not a disasters field, `description` is.
+    include = bodies[0]["fields"]["include"]
+    assert "description" in include and "body" not in include
     assert seen[0].path == "/v2/disasters"
     assert seen[0].params["appname"] == "approved-app"
 

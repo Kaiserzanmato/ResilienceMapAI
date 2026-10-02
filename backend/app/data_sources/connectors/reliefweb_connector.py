@@ -25,7 +25,7 @@ async def fetch_reliefweb_disasters(
     try:
         payload = {
             "limit": limit,
-            "fields": {"include": ["name", "date", "status", "country", "type", "body"]},
+            "fields": {"include": ["name", "date", "status", "country", "type", "description"]},
             "filter": {"field": "status", "value": ["alert", "ongoing"]},
         }
         resp = await http_client.post(RELIEFWEB_API, params={"appname": appname}, json=payload, timeout=20)
