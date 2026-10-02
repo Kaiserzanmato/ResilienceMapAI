@@ -11,7 +11,7 @@ Neon Postgres with PostGIS, and a GitHub Actions schedule. Variables are listed 
 |---|---|---|
 | Frontend | Vercel, root `frontend`, auto-deploy from `main` | `NEXT_PUBLIC_*` values are inlined at build time |
 | API | Render web service `resiliencemap-api`, auto-deploy from `main` | Free tier: sleeps when idle |
-| Database | Neon Postgres with PostGIS | Schema managed only by Alembic, currently head `0007` |
+| Database | Neon Postgres with PostGIS | Schema managed only by Alembic, repo head `0008`; production is at `0007` until `0008` is applied |
 | Scheduler | GitHub Actions `.github/workflows/sync-sources.yml`, every 6 hours (`0 */6 * * *`) plus manual runs | Calls the two cron routes with `CRON_SECRET` |
 
 The scheduled workflow calls `GET /api/cron/sync-sources` (refreshes every source that is due) and
@@ -52,8 +52,8 @@ curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://resiliencemap-api.onre
 
 ## Run a production migration safely
 
-Migrations run **out of band from a trusted machine**, never inside the API process. Production is at `0007`;
-this is the procedure for the next one.
+Migrations run **out of band from a trusted machine**, never inside the API process. Production was at `0007` when `0008` (FIRMS
+detections) was added; this is the procedure for any migration.
 
 1. **Read the migration first.** Look at the SQL it will run: `cd backend && alembic upgrade <from>:<to> --sql`
    (offline; connects to nothing). Prefer additive, nullable changes. Know its rollback before you start.
@@ -96,6 +96,21 @@ A deploy rollback does not touch the database. If the new code needs a migration
 * If only a flag misbehaves, switch the feature off instead: set `ENABLE_FLOOD_CAPTURE=false` on Render (the `/api/flood/*`
   routes return 404 and the cron drain does nothing) and `NEXT_PUBLIC_ENABLE_FLOOD_CAPTURE=false` on Vercel plus a redeploy.
 
+## Wildfire and Volcanic scores
+
+* **Migration 0008 first.** The FIRMS sync now stores detections in `fire_detections`; run `alembic upgrade head` (the procedure
+  above) **before** the code deploy that reads it. Until then the FIRMS source reports a failed sync and the Wildfire row stays "no data"
+  (an assessment never fails over it).
+* **History fills over time.** The 6-hourly sync stores each day it downloads, so the 7 and 30 day windows fill by themselves. To fill
+  them at once: `cd backend && NASA_FIRMS_MAP_KEY=... NASA_FIRMS_AREA=... .venv/bin/python scripts/backfill_firms.py --days 30`
+  (dry run), then add `DATABASE_URL=...` and `--apply`. Keep the key and URL out of shell history and logs.
+* **`NASA_FIRMS_AREA` is the wildfire coverage.** A point outside that box (or `world`) is "outside coverage", not "no fire". Use a
+  box that includes the Philippines, e.g. `116,4,127,22`. Rows older than 35 days are pruned at each sync.
+* A Wildfire score of zero is shown only with at least 7 days of history; before that the row says so instead of reassuring.
+* Volcanic scoring is **off by default and ships no data**: GVP's terms allow non-commercial use only and the repo is public, so the list
+  was removed. The row stays "no data" until a list with usable terms is supplied via `VOLCANO_DATA_FILE` and
+  `ENABLE_VOLCANIC_SCORING=true`. Details: [WILDFIRE_VOLCANIC.md](./WILDFIRE_VOLCANIC.md).
+
 ## Flood capture, day to day
 
 * Jobs live in the database. A job stuck in `running` past its lease (`FLOOD_LEASE_SECONDS`, 300 s) is reclaimed by the next
@@ -120,8 +135,9 @@ A deploy rollback does not touch the database. If the new code needs a migration
   reservoirs, are not excluded.
 * **The Render free tier sleeps** when idle: the first request after a quiet period can take 50 seconds or more, and the scheduled
   sync has to wake it. Do not read a slow first request as an outage.
-* **Overall risk is a mean of the hazards that have data**, and the panel states how many ("2 of 13"). Hazards without a verified
-  source stay "unavailable"; they are never counted as zero. Only earthquake and (where a capture covers the spot) flood carry a score.
+* **Overall risk is a mean of the hazards that have data**, and the panel states how many ("3 of 13"). Hazards without a verified
+  source stay "unavailable"; they are never counted as zero. Scored today: earthquake, flood (where a capture covers the spot) and wildfire
+  (where FIRMS data is stored). Volcanic activity is off until a licensed volcano list is supplied.
 * **A flood capture exists only where someone has flagged**, and a spot with none says "No satellite capture yet: flag flooding here".
 * Rate limiting is per instance (in-memory), so it resets on restart and does not span instances.
 * Search and assessment coverage is uneven by region; no-data is expected for unsupported hazard and location pairs.

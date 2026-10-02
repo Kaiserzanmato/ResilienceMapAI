@@ -57,7 +57,7 @@ See dedicated deployment guide: [DEPLOYMENT.md](./DEPLOYMENT.md)
 Covers:
 - Step-by-step Vercel and Render setup
 - `CORS_ORIGINS` and `CLIENT_IP_HEADER`
-- Neon Postgres + PostGIS and Alembic (head `0007`)
+- Neon Postgres + PostGIS and Alembic (head `0008`)
 - The GitHub Actions 6-hour source sync (five sources, including ReliefWeb) and the flood-capture drain
 
 Day-two procedures (manual sync, safe production migrations, rollbacks, known limits) are in

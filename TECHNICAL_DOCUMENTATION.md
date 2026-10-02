@@ -11,8 +11,8 @@
 - Backend: FastAPI 0.128.8, Pydantic 2.13.4, HTTPX 0.28.1. It is deployed by
   Render at `https://resiliencemap-api.onrender.com`.
 - Persistence is repository-backed. Production uses Neon Postgres with PostGIS through `DATABASE_URL`,
-  with the schema managed by Alembic (head `0007`: base tables, `hazard_events`, dataset governance,
-  PostGIS, flood capture, permanent-water columns). Without `DATABASE_URL` the repositories fall back to
+  with the schema managed by Alembic (head `0008`: base tables, `hazard_events`, dataset governance,
+  PostGIS, flood capture, permanent-water columns, FIRMS `fire_detections`). Without `DATABASE_URL` the repositories fall back to
   memory, which is not durable across restarts; production refuses to start that way unless
   `ALLOW_EPHEMERAL_STATE=true`.
 - Source sync: GitHub Actions calls `GET /api/cron/sync-sources` every 6 hours (Bearer `CRON_SECRET`). Five
@@ -22,6 +22,10 @@
   Sentinel-1 radar scene (Sentinel-2 optical as the fallback) over a 5 km box, subtracts permanent water using
   the JRC Global Surface Water occurrence layer (default threshold 75%), and stores the flood polygons and
   `total_water_ha` / `flood_ha`. See [docs/FLOOD_CAPTURE.md](docs/FLOOD_CAPTURE.md).
+- Wildfire and Volcanic scores (`backend/app/services/wildfire_scoring.py`, `volcano_scoring.py`;
+  [docs/WILDFIRE_VOLCANIC.md](docs/WILDFIRE_VOLCANIC.md)): the FIRMS sync stores detections in `fire_detections`
+  and `POST /api/assessments` scores a point from those within 10 km; Volcanic (distance to the nearest Philippine
+  volcano) is off by default and ships no data (GVP's terms forbid redistribution). Both are indicators, not official hazard maps.
 - Risk panel: the registry-driven assessment has no flood connector, so the frontend scores the Flood row from
   the capture covering the clicked spot (`frontend/lib/flood-indicator.ts`) and recomputes Overall and the hazard
   count; with no capture the row says "No satellite capture yet: flag flooding here". It is satellite-observed,

@@ -48,14 +48,14 @@ def test_scheme_and_other_params_are_preserved(raw, expected):
     assert to_asyncpg_url(raw) == expected
 
 
-def test_alembic_chain_is_linear_and_ends_with_flood_permanent_water():
+def test_alembic_chain_is_linear_and_ends_with_fire_detections():
     cfg = Config(str(BACKEND / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND / "alembic"))
     script = ScriptDirectory.from_config(cfg)
-    assert script.get_heads() == ["0007"]
+    assert script.get_heads() == ["0008"]
     chain = [rev.revision for rev in script.walk_revisions()]
-    # 0003 was reserved for flood extents and never used; 0006 took that role; 0007 adds the permanent-water columns.
-    assert chain == ["0007", "0006", "0005", "0004", "0002", "0001"]
+    # 0003 was reserved for flood extents and never used; 0006 took that role; 0007 adds the permanent-water columns; 0008 stores FIRMS detections.
+    assert chain == ["0008", "0007", "0006", "0005", "0004", "0002", "0001"]
 
 
 def test_postgis_migration_is_idempotent_and_its_downgrade_is_a_no_op():

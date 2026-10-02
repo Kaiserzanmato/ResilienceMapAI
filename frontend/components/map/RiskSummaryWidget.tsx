@@ -355,6 +355,24 @@ export function RiskSummaryWidget() {
                       />
                     </div>
                   )}
+                  {key !== "flood" && h.note && (
+                    <p className="mt-1 text-[10.5px] leading-snug text-[var(--fg-muted)]">
+                      {h.note}
+                      {h.link && (
+                        <>
+                          {" "}
+                          <a
+                            href={h.link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="focus-ring font-semibold text-[var(--accent)] underline"
+                          >
+                            {h.link.label}
+                          </a>
+                        </>
+                      )}
+                    </p>
+                  )}
                   {key === "flood" && FLAGS.FLOOD_CAPTURE && (
                     <FloodEvidence
                       note={h.note ?? null}

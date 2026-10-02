@@ -5,7 +5,7 @@
 ResilienceMap AI is a full-stack disaster risk intelligence platform combining:
 - **Frontend**: Next.js 16 with React 19, real-time interactive mapping
 - **Backend**: FastAPI with deterministic risk scoring engine
-- **Database**: Neon PostgreSQL with PostGIS in production (Alembic, head `0007`); in-memory fallback only without `DATABASE_URL`
+- **Database**: Neon PostgreSQL with PostGIS in production (Alembic, head `0008`); in-memory fallback only without `DATABASE_URL`
 - **Flood auto-capture**: user-flagged spots become Sentinel-1/2 water extents with permanent water removed (JRC), see `docs/FLOOD_CAPTURE.md`
 - **Scheduling**: GitHub Actions, every 6 hours
 - **Deployment**: Vercel (frontend) + Render (backend); procedures in `docs/OPERATIONS.md`
@@ -735,7 +735,7 @@ FIRECRAWL_API_KEY=...                                       # Optional — power
 
 ### Database (Neon Postgres with PostGIS)
 - Required in production (`ENVIRONMENT=production` refuses to start without `DATABASE_URL`); in-memory fallback otherwise
-- Alembic migrations (head `0007`) applied out-of-band from a trusted machine against the direct, non-pooled string (never automatic); see `docs/OPERATIONS.md`
+- Alembic migrations (head `0008`) applied out-of-band from a trusted machine against the direct, non-pooled string (never automatic); see `docs/OPERATIONS.md`
 
 ### Scheduling (GitHub Actions)
 - `.github/workflows/sync-sources.yml`, every 6 hours and on demand

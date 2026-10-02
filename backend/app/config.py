@@ -98,6 +98,14 @@ class Settings(BaseSettings):
     nasa_firms_map_key: str = os.getenv("NASA_FIRMS_MAP_KEY", "")
     nasa_firms_area: str = os.getenv("NASA_FIRMS_AREA", "world")
 
+    # Observed/distance-based scores for the risk panel. Wildfire reads FIRMS detections
+    # stored by the sync (needs migration 0008); Volcanic scores distance to Philippine
+    # volcanoes from a data file that is NOT in the repo (see docs/WILDFIRE_VOLCANIC.md): the
+    # Smithsonian GVP terms do not allow redistribution, so it is off until a PHIVOLCS-sourced
+    # file with usable terms is supplied via VOLCANO_DATA_FILE.
+    enable_wildfire_scoring: bool = os.getenv("ENABLE_WILDFIRE_SCORING", "true").lower() == "true"
+    enable_volcanic_scoring: bool = os.getenv("ENABLE_VOLCANIC_SCORING", "false").lower() == "true"
+    volcano_data_file: str = os.getenv("VOLCANO_DATA_FILE", "")
     # Flood auto-capture (user flags + Sentinel-1/2 water extents). Off until the
     # feature is switched on; every /api/flood route 404s while it is off.
     enable_flood_capture: bool = os.getenv("ENABLE_FLOOD_CAPTURE", "false").lower() == "true"

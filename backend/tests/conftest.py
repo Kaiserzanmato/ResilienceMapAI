@@ -55,3 +55,14 @@ def flood_enabled(monkeypatch):
     monkeypatch.setattr(settings, "flood_inline_processing", False)
     monkeypatch.setattr(settings, "flood_flags_per_hour", 3)
     return settings
+
+
+@pytest.fixture(autouse=True)
+def _reset_fire_state():
+    """The fire repo is a process-wide singleton; clear it between tests."""
+    from app.repositories.fire_repo import get_fire_repo
+
+    repo = get_fire_repo()
+    if hasattr(repo, "clear"):
+        repo.clear()
+    yield

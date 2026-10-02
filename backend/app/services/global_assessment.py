@@ -6,10 +6,13 @@ hazards without registered sources remain insufficient-data.
 from datetime import datetime, timezone
 from typing import Any
 
+from ..config import get_settings
 from ..data.sample_hazards import HAZARD_LABELS
 from .country_lookup import country_for_point
 from .coverage_registry import providers_for, registry, supported_hazards
 from .risk_scoring import ENGINE_VERSION, level_for_score, score_location
+from .volcano_scoring import LABEL as VOLCANO_LABEL, PHIVOLCS_URL, score_volcano, volcano_data, volcano_note
+from .wildfire_scoring import FireContext, assess_wildfire, wildfire_note, LABEL as WILDFIRE_LABEL
 
 LEGACY_TO_GLOBAL = {"storm_surge": "coastal_exposure"}
 # The registry only permits a legacy modelled value where the assessment
@@ -77,8 +80,43 @@ def _indicative(legacy_value: dict, legacy_coverage: str) -> dict[str, Any]:
     }
 
 
+def _satellite_fire(fire: FireContext | None, lat: float, lng: float) -> dict[str, Any]:
+    """The wildfire hazard from FIRMS detections, scored or an honest no-data."""
+    settings = get_settings()
+    result = assess_wildfire(fire, lat, lng, settings.nasa_firms_area)
+    source = {"id": "nasa-firms", "name": "NASA FIRMS (VIIRS active-fire detections)"}
+    if result["score"] is None:
+        return {"score": None, "coverage_status": result["coverage_status"], "reason_code": result["reason_code"],
+                "limitations": [f"Wildfire is {WILDFIRE_LABEL}; no score is given without fresh, covered detection data ({result['reason_code']})."],
+                "evidence": [], "confidence": "none"}
+    return {
+        "score": result["score"], "coverage_status": "available", "reason_code": result["reason_code"], "confidence": "medium",
+        "note": wildfire_note(result),
+        "limitations": [f"Scored from {WILDFIRE_LABEL}; it also sees agricultural burning."],
+        "evidence": [{"source": source["name"], "source_type": "observed", "timestamp": result["last_seen"],
+                      "raw_value": result["count_30d"], "normalized_value": result["score"], "cache_policy": "request",
+                      "uncertainty": "A detection is a hot pixel, not an assessed hazard.", "resolution": "375 m",
+                      "details": {k: result[k] for k in ("radius_km", "count_7d", "count_30d", "nearest_km", "last_seen", "history_days")}}],
+    }
+
+
+def _volcanic(volcano: dict[str, Any]) -> dict[str, Any]:
+    source = volcano_data()["source"]  # present: a score exists only when the data loaded
+    return {
+        "score": volcano["score"], "coverage_status": "available", "reason_code": "volcano_distance_band", "confidence": "medium",
+        "note": volcano_note(volcano),
+        "link": {"label": "PHIVOLCS volcano bulletins (alert level not live here)", "url": PHIVOLCS_URL},
+        "limitations": [f"Scored from {VOLCANO_LABEL}. The current PHIVOLCS alert level is not included: no reliable machine-readable source."],
+        "evidence": [{"source": source["name"], "source_type": "static-reference", "timestamp": source.get("retrieved"),
+                      "raw_value": round(volcano["driver"]["distance_km"], 1), "normalized_value": volcano["score"],
+                      "cache_policy": "static", "uncertainty": "Distance to the nearest volcano; not a forecast.",
+                      "details": {"volcano": volcano["driver"]["name"], "status": volcano["driver"]["status"],
+                                  "last_eruption_year": volcano["driver"].get("last_eruption_year")}}],
+    }
+
+
 def assess_location(lat: float, lng: float, name: str | None = None, country_code: str | None = None,
-                    geometry_type: str | None = None) -> dict[str, Any]:
+                    geometry_type: str | None = None, fire: FireContext | None = None) -> dict[str, Any]:
     country_code = (country_code or country_for_point(lat, lng) or None)
     legacy = score_location(lat, lng, name, country_code)
     hazards: dict[str, Any] = {}
@@ -105,6 +143,17 @@ def assess_location(lat: float, lng: float, name: str | None = None, country_cod
         else:
             score, evidence, confidence = None, [], "none"
         coverage_status, reason_code = _coverage_state(score, providers, selected, country_code, legacy["data_coverage"])
+        # Satellite- and distance-based rows that do not go through the legacy zone model.
+        observed: dict[str, Any] = {}
+        if hazard == "wildfire" and get_settings().enable_wildfire_scoring and selected is not None and fire is not None:
+            observed = _satellite_fire(fire, lat, lng)
+        elif hazard == "volcano" and get_settings().enable_volcanic_scoring:
+            volcano = score_volcano(lat, lng, country_code)
+            observed = _volcanic(volcano) if volcano is not None else {}
+        if observed.get("score") is not None or (hazard == "wildfire" and observed):
+            score, evidence, confidence = observed["score"], observed["evidence"], observed["confidence"]
+            coverage_status, reason_code = observed["coverage_status"], observed["reason_code"]
+            limitations = [*limitations, *observed["limitations"]]
         indicative = _indicative(legacy_value, legacy["data_coverage"]) if score is None and legacy_key in HAZARD_LABELS else {"indicative_score": None}
         hazards[hazard] = {
             "hazard": hazard,
@@ -120,6 +169,8 @@ def assess_location(lat: float, lng: float, name: str | None = None, country_cod
             "sources": providers,
             "evidence": evidence,
             "limitations": limitations,
+            **({"note": observed["note"]} if observed.get("note") else {}),
+            **({"link": observed["link"]} if observed.get("link") else {}),
         }
     scored = [(key, value["score"]) for key, value in hazards.items() if value["score"] is not None]
     return {
@@ -132,3 +183,22 @@ def assess_location(lat: float, lng: float, name: str | None = None, country_cod
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "disclaimer": "This is a screening result, not an official certification or a finding that a location is safe or unsuitable.",
     }
+
+
+async def load_fire_context(lat: float, lng: float) -> FireContext | None:
+    """FIRMS detections near the point, or None when scoring is off or the store cannot be
+    read (a missing table, a database error): the wildfire row then stays honest no-data
+    instead of failing the whole assessment."""
+    import logging
+    from datetime import timedelta
+    from ..repositories.fire_repo import get_fire_repo
+    from .wildfire_scoring import RADIUS_KM, WINDOW_DAYS
+
+    if not get_settings().enable_wildfire_scoring:
+        return None
+    try:
+        since = datetime.now(timezone.utc) - timedelta(days=WINDOW_DAYS)
+        return await get_fire_repo().context(lat, lng, RADIUS_KM, since)
+    except Exception as exc:  # noqa: BLE001 - never let the fire store break the assessment
+        logging.getLogger(__name__).warning("[wildfire] detections unavailable: %s", type(exc).__name__)
+        return None
