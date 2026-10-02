@@ -35,6 +35,7 @@ export function EvacuationCard({
       }}
       className={cn("w-72 space-y-3 p-4 text-[13px]", className)}
       role="dialog"
+      data-testid="evac-card"
       aria-label={`Evacuation center: ${center.name}`}
     >
       <div className="flex items-start justify-between gap-2">

@@ -310,7 +310,7 @@ export default function DatasetsPage() {
                     )}
                   </button>
                   {showSyncKeyInput && (
-                    <div className="glass-strong absolute right-0 top-full z-20 mt-2 w-72 rounded-xl p-3">
+                    <div className="glass-strong absolute right-0 top-full z-[var(--z-dropdown)] mt-2 w-72 rounded-xl p-3">
                       <p className="mb-2 text-[11.5px] text-[var(--fg-muted)]">
                         Triggers a live sync for wired sources (USGS, GDACS, NASA EONET, ReliefWeb). Requires the server admin key.
                       </p>

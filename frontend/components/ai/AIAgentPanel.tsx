@@ -163,7 +163,7 @@ export function AIAgentPanel({ hidden = false }: { hidden?: boolean } = {}) {
             onClick={() => setAiOpen(true)}
             aria-label="Open AI assistant"
             className={cn(
-              "focus-ring fixed z-40 cursor-pointer",
+              "focus-ring fixed z-[var(--z-top-bar)] cursor-pointer",
               // mobile: floating round button; desktop: right-edge vertical tab
               "bottom-5 right-4 flex h-14 w-14 items-center justify-center rounded-full",
               "md:bottom-auto md:right-0 md:top-1/2 md:h-auto md:w-auto md:-translate-y-1/2 md:rounded-l-2xl md:rounded-r-none md:px-2.5 md:py-5",
@@ -193,7 +193,7 @@ export function AIAgentPanel({ hidden = false }: { hidden?: boolean } = {}) {
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
             style={{ "--ai-w": `${aiPanelWidth}px` } as React.CSSProperties}
             className={cn(
-              "glass-strong fixed z-40 flex flex-col overflow-hidden",
+              "glass-strong fixed z-[var(--z-top-bar)] flex flex-col overflow-hidden",
               // mobile: bottom sheet; desktop: right panel (resizable)
               "inset-x-0 bottom-0 top-auto h-[72dvh] rounded-t-3xl",
               "md:inset-x-auto md:right-3 md:h-auto md:w-[var(--ai-w)] md:rounded-2xl",

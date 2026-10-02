@@ -84,7 +84,7 @@ export default function LandingPage() {
   return (
     <div className="relative overflow-x-clip">
       {/* Minimal landing nav */}
-      <header className="fixed inset-x-0 top-0 z-40 px-4 pt-3">
+      <header className="fixed inset-x-0 top-0 z-[var(--z-top-bar)] px-4 pt-3">
         <nav className="glass-strong mx-auto flex h-[var(--nav-h)] max-w-6xl items-center justify-between rounded-2xl px-4">
           <Link href="/" className="focus-ring flex items-center gap-2 rounded-lg">
             <Logo className="h-8 w-8" />

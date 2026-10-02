@@ -77,7 +77,7 @@ export function SearchBar() {
           id="location-search-results"
           role="listbox"
           aria-label="Search results"
-          className="glass-strong absolute inset-x-0 top-13 z-50 max-h-72 overflow-y-auto rounded-2xl p-1.5"
+          className="glass-strong absolute inset-x-0 top-13 z-[var(--z-dropdown)] max-h-72 overflow-y-auto rounded-2xl p-1.5"
         >
           {results.map((r) => (
             <li key={`${r.name}-${r.lat}`}>

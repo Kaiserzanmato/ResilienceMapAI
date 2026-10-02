@@ -117,14 +117,15 @@ export function MapCommandBar() {
 
   return (
     <motion.div
-      className="pointer-events-none fixed top-[calc(var(--banner-h,0px)+var(--nav-h,0px)+24px)] left-1/2 z-40 -translate-x-1/2"
+      data-map-obstruction="top"
+      className="pointer-events-none fixed top-[calc(var(--banner-h,0px)+var(--nav-h,0px)+24px)] left-1/2 z-[var(--z-top-bar)] -translate-x-1/2"
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
     >
-      <div className="pointer-events-auto flex flex-col items-center gap-3 sm:flex-row">
+      <div className="pointer-events-auto flex w-[calc(100vw-1.5rem)] items-center gap-2 sm:w-auto sm:gap-3">
         {/* Unified location search / current-selection combobox */}
-        <div ref={ref} className="relative w-64">
+        <div ref={ref} className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
           <button
             onClick={() => setOpen((v) => !v)}
             className={cn(
@@ -155,7 +156,7 @@ export function MapCommandBar() {
 
           {open && (
             <motion.div
-              className="glass-strong absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl p-2"
+              className="glass-strong absolute left-0 right-0 top-full z-[var(--z-dropdown)] mt-2 overflow-hidden rounded-2xl p-2"
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.15 }}
@@ -209,8 +210,9 @@ export function MapCommandBar() {
         <motion.button
           onClick={handleRunAssessment}
           disabled={!selected || assessmentLoading}
+          aria-label="Run AI Risk Assessment"
           className={cn(
-            "glass-strong relative overflow-hidden whitespace-nowrap rounded-2xl px-5 py-3 text-sm font-medium transition-all duration-200",
+            "glass-strong relative h-12 shrink-0 overflow-hidden whitespace-nowrap rounded-2xl px-5 py-3 text-sm font-medium transition-all duration-200 max-sm:w-12 max-sm:px-0 sm:h-auto",
             "focus-ring disabled:cursor-not-allowed disabled:opacity-50"
           )}
           whileHover={!assessmentLoading && selected ? { scale: 1.02 } : {}}
@@ -259,17 +261,17 @@ export function MapCommandBar() {
               {assessmentSuccess ? (
                 <>
                   <CheckCircle2 size={16} className="text-green-500" />
-                  <span>Assessment complete</span>
+                  <span className="max-sm:sr-only">Assessment complete</span>
                 </>
               ) : assessmentError ? (
                 <>
                   <AlertTriangle size={16} className="text-red-500" />
-                  <span>Assessment failed — try again</span>
+                  <span className="max-sm:sr-only">Assessment failed — try again</span>
                 </>
               ) : (
                 <>
                   <Zap size={16} />
-                  <span>Run AI Risk Assessment</span>
+                  <span className="max-sm:sr-only">Run AI Risk Assessment</span>
                 </>
               )}
             </motion.div>

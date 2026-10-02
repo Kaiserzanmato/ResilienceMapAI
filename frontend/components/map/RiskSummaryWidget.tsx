@@ -1,9 +1,6 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  Download, FileDown, FileSpreadsheet, FileText, FileCode2,
-  Link2, Loader2, Maximize2, Sparkles, Zap, X,
-} from "lucide-react";
+import { Download, FileDown, FileSpreadsheet, FileText, FileCode2, Link2, Loader2, Maximize2, Sparkles, Zap, X, ChevronUp, ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, downloadExport, type UsageStatus } from "@/lib/api";
@@ -16,7 +13,7 @@ import { orderHazards } from "@/lib/hazard-panel";
 import { assessmentQueryKey, fetchAssessment } from "@/lib/queries/assessment";
 import { useAppStore } from "@/lib/store";
 import { formatResetClock } from "@/lib/usage-reset";
-import { captureMapSnapshot, formatNumber, riskColor } from "@/lib/utils";
+import { captureMapSnapshot, cn, formatNumber, riskColor } from "@/lib/utils";
 import { buildReportSnapshot, downloadTextFile } from "@/lib/report-snapshot";
 import { snapshotToText, snapshotToMarkdown, snapshotToCsv } from "@/lib/report-formats";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -83,6 +80,8 @@ export function RiskSummaryWidget() {
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const [insightsData, setInsightsData] = useState<InsightResponse | null>(null);
   const [insightsUsage, setInsightsUsage] = useState<UsageStatus | null>(null);
+  // Phones: the panel is a bottom sheet that starts as a peek (header + actions) so the map stays usable.
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     api.usageStatus().then((s) => setInsightsUsage(s.insights)).catch(() => {});
@@ -271,8 +270,7 @@ export function RiskSummaryWidget() {
       >
         <GlassCard
           strong
-          className="flex w-full flex-col p-4 md:w-[340px]"
-          style={{ maxHeight: "min(640px, calc(100vh - var(--nav-h) - var(--banner-h) - var(--footer-h) - 32px))" }}
+          className="flex w-full flex-col p-4 max-md:max-h-[62dvh] max-md:rounded-b-none md:w-[340px] md:max-h-[min(640px,calc(100dvh-var(--nav-h)-var(--banner-h)-var(--footer-h)-32px))]"
         >
           <div className="flex shrink-0 items-start gap-2">
             <div className="min-w-0 flex-1">
@@ -294,6 +292,15 @@ export function RiskSummaryWidget() {
               <span className="text-[9.5px] uppercase tracking-wide text-[var(--fg-muted)]">Overall</span>
             </div>
             <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+              aria-label={expanded ? "Hide hazard details" : "Show hazard details"}
+              className="focus-ring -my-1 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--fg-muted)] hover:text-[var(--fg)] md:hidden"
+            >
+              {expanded ? <ChevronDown size={18} aria-hidden="true" /> : <ChevronUp size={18} aria-hidden="true" />}
+            </button>
+            <button
               aria-label="Close risk summary"
               onClick={() => {
                 setSelected(null);
@@ -306,7 +313,7 @@ export function RiskSummaryWidget() {
           </div>
 
           {/* Scrollable hazard data — header and actions stay pinned outside this region */}
-          <div className="scroll-visible mt-3 min-h-0 flex-1 overflow-y-auto pr-2 -mr-2">
+          <div className={cn("scroll-visible mt-3 min-h-0 flex-1 overflow-y-auto pr-2 -mr-2", !expanded && "max-md:hidden")}>
             {activeLayer !== "overall" && ordered[0]?.active && (
               <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--accent)]">
                 Selected layer: {ordered[0].hazard.label}
@@ -405,7 +412,9 @@ export function RiskSummaryWidget() {
           </div>
 
           {FLAGS.FLOOD_CAPTURE && (
-            <FloodFlagButton key={`${selected.lat},${selected.lng}`} lat={selected.lat} lng={selected.lng} capture={spotCapture?.properties} />
+            <div className={cn(!expanded && "max-md:hidden")}>
+              <FloodFlagButton key={`${selected.lat},${selected.lng}`} lat={selected.lat} lng={selected.lng} capture={spotCapture?.properties} />
+            </div>
           )}
 
           <div ref={exportMenuRef} className="relative mt-3.5 shrink-0">
@@ -414,7 +423,7 @@ export function RiskSummaryWidget() {
               <div
                 role="menu"
                 aria-label="Export report formats"
-                className="glass-strong absolute bottom-full left-0 right-0 z-20 mb-2 overflow-hidden rounded-xl p-1.5"
+                className="glass-strong absolute bottom-full left-0 right-0 z-[var(--z-dropdown)] mb-2 overflow-hidden rounded-xl p-1.5"
               >
                 {exportOptions.map((o) => (
                   <button
@@ -466,10 +475,10 @@ export function RiskSummaryWidget() {
             unitLabel="insights"
             status={insightsUsage}
             onExpire={() => api.usageStatus().then((s) => setInsightsUsage(s.insights)).catch(() => {})}
-            className="mt-3 shrink-0"
+            className={cn("mt-3 shrink-0", !expanded && "max-md:hidden")}
           />
 
-          <p className="mt-3 shrink-0 text-[10px] leading-snug text-[var(--fg-muted)]">
+          <p className={cn("mt-3 shrink-0 text-[10px] leading-snug text-[var(--fg-muted)]", !expanded && "max-md:hidden")}>
             Indicative scores from official datasets — not an official advisory.
             Updated {new Date(risk.generated_at).toLocaleDateString()}.
           </p>

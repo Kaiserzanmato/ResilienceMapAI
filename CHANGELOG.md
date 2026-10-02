@@ -9,6 +9,22 @@ the Aug 6–7 geocoding-gateway and dashboard/globe/weather work in detail.
 Format: `[commit] type: summary`, followed by what changed and why when it
 isn't obvious from the summary alone.
 
+## 2026-10-03 (map layering and responsive layout)
+
+- **fix: dialogs and map popups no longer open under the search bar and "Run AI Risk Assessment".** Root cause: the Insights dialog was
+  rendered inside the risk-summary wrapper, whose own z-index (20/30) trapped its `z-50` below the command bar (`z-40`, at the page root);
+  the evacuation card cleared only the nav plus 12 px, but the command bar sits lower and is taller than that. Fixes:
+  one z-index scale as tokens (`--z-map` ... `--z-toast` in `globals.css`, used everywhere instead of bare numbers);
+  `components/ui/Modal.tsx` renders through a portal at `<body>` with a backdrop above all controls, a focus trap (including Safari, whose Tab
+  skips buttons), Esc to close, scroll lock, a sticky header and a body that scrolls inside; `lib/map-layout.ts` measures the free area from
+  `data-map-obstruction` markers so the evacuation card and every MapLibre popup (which has no autoPan) open fully visible.
+- **fix: phone layout.** The command bar is one compact row (icon-only Run AI button); the risk panel is a bottom sheet that starts as a peek
+  (header and actions) with a toggle for the hazard details; the Map Layers card scrolls inside its own bounded area; dvh and safe-area insets.
+- **test: Playwright e2e** (`npm run test:e2e`; chromium, webkit, firefox, iPhone 14, Pixel 7, iPad) with the backend mocked: no floating
+  control may cover the Insights dialog header/close button or overlap the evacuation card at 360, 390, 768, 1024, 1280, 1440 and 1920 px;
+  Esc, focus trap, scroll lock, 44 px tap target and reduced motion. A CI workflow runs it on frontend changes. Before/after screenshots:
+  `docs/screenshots/responsive-fix/`.
+
 ## 2026-10-02 (stale-score leak on the legacy route)
 
 - **fix: `GET /api/location-risk` no longer shows scores `POST /api/assessments` withholds.** Live check after #32: Mayon returned
