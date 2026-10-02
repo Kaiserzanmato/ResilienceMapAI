@@ -22,6 +22,20 @@
   --banner-h: 44px;
   --footer-h: 44px;
 
+  /* One layering scale for the whole app. Use these (z-[var(--z-...)]) and never a bare
+     number: floating controls sit below dialogs by construction. A dialog must render through
+     a portal at <body> (components/ui/Modal.tsx), because an ancestor with its own z-index,
+     transform or filter traps everything inside it at that ancestor's level. */
+  --z-map: 0;
+  --z-map-controls: 10;
+  --z-panels: 20;
+  --z-popups: 30;
+  --z-top-bar: 40;
+  --z-dropdown: 50;
+  --z-modal-backdrop: 60;
+  --z-modal: 70;
+  --z-toast: 80;
+
   /* Radius scale (spec: 12–20px) */
   --radius-sm: 12px;
   --radius-md: 16px;

@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getMapStyle } from "@/lib/mapStyles";
 import { useAppStore, type MapProjection } from "@/lib/store";
+import { revealPopup, safeArea } from "@/lib/map-layout";
 import { attachHoverTelemetry, type TelemetryPayload } from "@/lib/mapHoverTelemetry";
 import { getNearestEvacuationCenters } from "@/lib/evacuation-centers";
 import { EvacuationCard } from "./EvacuationCard";
@@ -76,7 +77,7 @@ export default function RiskMap() {
     showEvacuationCenters, selectedEvacuationCenter, setSelectedEvacuationCenter, showFloodExtents, floodFocus,
   } = useAppStore();
 
-  const [evacCardPos, setEvacCardPos] = useState<{ x: number; top: number } | null>(null);
+  const [evacCardPos, setEvacCardPos] = useState<{ x: number; top: number; maxHeight: number } | null>(null);
 
   const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(null);
   // Mirrors telemetry into a ref so the hover handler (registered once, on
@@ -406,7 +407,7 @@ export default function RiskMap() {
           ? "Automated estimate; permanent water removed (JRC Global Surface Water). Not an official flood map."
           : `${area.unfilteredNote} Automated estimate; not an official flood map.`,
       ]);
-      new maplibregl.Popup({ offset: 10, closeButton: true }).setDOMContent(content).setLngLat(lngLat).addTo(map);
+      revealPopup(map, new maplibregl.Popup({ offset: 10, closeButton: true }).setDOMContent(content).setLngLat(lngLat).addTo(map));
     };
     for (const layer of ["flood-extents-fill", "flood-capture-marker"]) {
       map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
@@ -418,10 +419,10 @@ export default function RiskMap() {
       if (!feature || feature.geometry.type !== "Point") return;
       const reported = String(feature.properties?.created_at ?? "").slice(0, 10) || "recently";
       const content = buildPopupContent("Flooding reported here", [`Flagged by a user on ${reported}`, "Unverified report"]);
-      new maplibregl.Popup({ offset: 10, closeButton: true })
+      revealPopup(map, new maplibregl.Popup({ offset: 10, closeButton: true })
         .setDOMContent(content)
         .setLngLat(feature.geometry.coordinates as [number, number])
-        .addTo(map);
+        .addTo(map));
     });
     map.on("click", "realtime-event-clusters", (event) => {
       const feature = event.features?.[0];
@@ -447,7 +448,7 @@ export default function RiskMap() {
       timing.style.cssText = "font-size:10.5px;opacity:.6;margin-top:3px";
       timing.textContent = `Event: ${properties.eventTime} | Retrieved: ${properties.retrievedAt}`;
       content.append(heading, details, timing);
-      new maplibregl.Popup({ offset: 10, closeButton: true }).setDOMContent(content).setLngLat((feature.geometry.coordinates as [number, number])).addTo(map);
+      revealPopup(map, new maplibregl.Popup({ offset: 10, closeButton: true }).setDOMContent(content).setLngLat((feature.geometry.coordinates as [number, number])).addTo(map));
     });
 
     const detachTelemetry = attachHoverTelemetry(map, (data) => {
@@ -564,6 +565,7 @@ export default function RiskMap() {
         const popup = new maplibregl.Popup({ offset: 14, closeButton: false }).setDOMContent(
           buildPopupContent(alert.title, [`${alert.area} · ${alert.severity} severity`, `Source: ${alert.source}`])
         );
+        popup.on("open", () => revealPopup(map, popup));
         markersRef.current.push(
           new maplibregl.Marker({ element: el }).setLngLat([alert.lng, alert.lat]).setPopup(popup).addTo(map)
         );
@@ -577,6 +579,7 @@ export default function RiskMap() {
         const popup = new maplibregl.Popup({ offset: 10, closeButton: false }).setDOMContent(
           buildPopupContent(ev.name, [`${ev.year} · ${ev.location}`, `${ev.severity} · Source: ${ev.source}`])
         );
+        popup.on("open", () => revealPopup(map, popup));
         markersRef.current.push(
           new maplibregl.Marker({ element: el }).setLngLat([ev.lng, ev.lat]).setPopup(popup).addTo(map)
         );
@@ -642,48 +645,42 @@ export default function RiskMap() {
   }, [showEvacuationCenters, selected]);
 
   // ---- keep the evacuation card anchored over its marker as the map moves.
-  // Picks whichever side (above/below the marker) actually has room, then
-  // clamps the final top within [header, footer] regardless of that choice —
-  // so the card can never render under the fixed header (--banner-h +
-  // --nav-h) *or* the fixed footer (--footer-h), and never spills off the
-  // container's horizontal edges either.
+  // The free area comes from the floating controls themselves (data-map-obstruction, see
+  // lib/map-layout.ts): the card picks the side of the marker with room and is clamped inside
+  // that area, so it can never open under the search bar, the Run AI Risk Assessment button,
+  // the risk summary or the footer. Its height is capped to the free area and scrolls inside.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !selectedEvacuationCenter) {
       setEvacCardPos(null);
       return;
     }
-    const CARD_WIDTH = 288; // matches EvacuationCard's w-72
     const CARD_HEIGHT_ESTIMATE = 340;
-    const EDGE_MARGIN = 12;
     const MARKER_GAP = 18;
     const update = () => {
       const point = map.project([selectedEvacuationCenter.lng, selectedEvacuationCenter.lat]);
-      const container = map.getContainer();
-      const width = container.clientWidth;
-      const height = container.clientHeight;
-      const rootStyles = getComputedStyle(document.documentElement);
-      const headerClearance =
-        (parseFloat(rootStyles.getPropertyValue("--banner-h")) || 0) +
-        (parseFloat(rootStyles.getPropertyValue("--nav-h")) || 0) +
-        EDGE_MARGIN;
-      const footerClearance = (parseFloat(rootStyles.getPropertyValue("--footer-h")) || 0) + EDGE_MARGIN;
+      const area = safeArea(map.getContainer());
+      const cardWidth = Math.min(288, area.right - area.left);
+      const available = area.bottom - area.top;
+      const cardHeight = Math.min(CARD_HEIGHT_ESTIMATE, available);
 
-      const spaceAbove = point.y - MARKER_GAP - headerClearance;
-      const spaceBelow = height - footerClearance - (point.y + MARKER_GAP) - CARD_HEIGHT_ESTIMATE;
-      const anchorAbove = spaceAbove >= CARD_HEIGHT_ESTIMATE || spaceAbove >= spaceBelow;
+      const spaceAbove = point.y - MARKER_GAP - area.top;
+      const spaceBelow = area.bottom - (point.y + MARKER_GAP);
+      const anchorAbove = spaceAbove >= cardHeight || spaceAbove >= spaceBelow;
 
-      let top = anchorAbove ? point.y - MARKER_GAP - CARD_HEIGHT_ESTIMATE : point.y + MARKER_GAP;
-      top = Math.min(Math.max(top, headerClearance), height - footerClearance - CARD_HEIGHT_ESTIMATE);
+      let top = anchorAbove ? point.y - MARKER_GAP - cardHeight : point.y + MARKER_GAP;
+      top = Math.min(Math.max(top, area.top), area.bottom - cardHeight);
 
-      const halfWidth = CARD_WIDTH / 2;
-      const x = Math.min(Math.max(point.x, halfWidth + EDGE_MARGIN), width - halfWidth - EDGE_MARGIN);
-      setEvacCardPos({ x, top });
+      const half = cardWidth / 2;
+      const x = Math.min(Math.max(point.x, area.left + half), area.right - half);
+      setEvacCardPos({ x, top, maxHeight: available });
     };
     update();
     map.on("move", update);
+    window.addEventListener("resize", update);
     return () => {
       map.off("move", update);
+      window.removeEventListener("resize", update);
     };
   }, [selectedEvacuationCenter]);
 
@@ -716,7 +713,10 @@ export default function RiskMap() {
             left: evacCardPos.x,
             top: evacCardPos.top,
             transform: "translateX(-50%)",
-            zIndex: 30,
+            maxWidth: "calc(100% - 24px)",
+            maxHeight: evacCardPos.maxHeight,
+            overflowY: "auto",
+            zIndex: "var(--z-popups)",
           }}
         />
       )}
@@ -769,7 +769,7 @@ export default function RiskMap() {
           left: 50%;
           top: calc(var(--banner-h, 0px) + var(--nav-h, 0px) + 92px);
           transform: translateX(-50%);
-          z-index: 25;
+          z-index: var(--z-popups);
           max-width: 260px;
           max-height: calc(100vh - var(--banner-h, 0px) - var(--nav-h, 0px) - 140px);
           overflow-y: auto;

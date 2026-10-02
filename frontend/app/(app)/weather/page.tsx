@@ -42,7 +42,7 @@ export default function WeatherPage() {
 
       {keyStatus === "missing" && (
         <div
-          className="pointer-events-none absolute inset-x-0 z-20 flex justify-center px-3"
+          className="pointer-events-none absolute inset-x-0 z-[var(--z-panels)] flex justify-center px-3"
           style={{ bottom: "calc(var(--footer-h) + 76px)" }}
         >
           <GlassCard
@@ -61,7 +61,7 @@ export default function WeatherPage() {
 
       {keyStatus === "pending" && (
         <div
-          className="pointer-events-none absolute inset-x-0 z-20 flex justify-center px-3"
+          className="pointer-events-none absolute inset-x-0 z-[var(--z-panels)] flex justify-center px-3"
           style={{ bottom: "calc(var(--footer-h) + 76px)" }}
         >
           <GlassCard
@@ -77,7 +77,7 @@ export default function WeatherPage() {
 
       {keyStatus === "error" && (
         <div
-          className="pointer-events-none absolute inset-x-0 z-20 flex justify-center px-3"
+          className="pointer-events-none absolute inset-x-0 z-[var(--z-panels)] flex justify-center px-3"
           style={{ bottom: "calc(var(--footer-h) + 76px)" }}
         >
           <GlassCard
@@ -94,7 +94,7 @@ export default function WeatherPage() {
 
       {/* Layer switcher — top-left, below nav */}
       <div
-        className="pointer-events-none absolute left-3 z-20 hidden md:block"
+        className="pointer-events-none absolute left-3 z-[var(--z-panels)] hidden md:block"
         style={{ top: "calc(var(--banner-h) + var(--nav-h) + 36px)" }}
       >
         <div className="pointer-events-auto">
@@ -104,7 +104,7 @@ export default function WeatherPage() {
 
       {/* Mobile layer switcher */}
       <div
-        className="pointer-events-none absolute inset-x-3 z-20 md:hidden"
+        className="pointer-events-none absolute inset-x-3 z-[var(--z-panels)] md:hidden"
         style={{ top: "calc(var(--banner-h) + var(--nav-h) + 12px)" }}
       >
         <div className="pointer-events-auto">
@@ -114,7 +114,7 @@ export default function WeatherPage() {
 
       {/* Color-scale legend — bottom-left, above footer */}
       <div
-        className="pointer-events-none absolute left-3 z-20 hidden sm:block"
+        className="pointer-events-none absolute left-3 z-[var(--z-panels)] hidden sm:block"
         style={{ bottom: "calc(var(--footer-h) + 12px)" }}
       >
         <div className="pointer-events-auto">
@@ -125,7 +125,7 @@ export default function WeatherPage() {
       {/* Zoom.Earth link-out — raised above MapLibre's bottom-right controls. */}
       {!aiOpen && (
         <div
-          className="pointer-events-none absolute right-3 z-20"
+          className="pointer-events-none absolute right-3 z-[var(--z-panels)]"
           style={{ bottom: "calc(var(--footer-h) + 120px)" }}
         >
           <GlassCard strong className="pointer-events-auto flex max-w-xs items-center gap-3 px-4 py-3">

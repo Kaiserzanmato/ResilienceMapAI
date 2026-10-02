@@ -889,3 +889,17 @@ cd backend
    `request.scope["path"]` instead), but the dependency itself remains
    outdated; a coordinated upgrade to a compatible fastapi+starlette pair
    was judged too broad for a targeted audit fix.
+
+## Frontend layering and responsive rules
+
+* **One z-index scale**, tokens in `frontend/app/globals.css`: `--z-map` (0), `--z-map-controls` (10), `--z-panels` (20), `--z-popups` (30),
+  `--z-top-bar` (40), `--z-dropdown` (50), `--z-modal-backdrop` (60), `--z-modal` (70), `--z-toast` (80). Use `z-[var(--z-...)]`; never a bare
+  number. An ancestor with its own z-index, transform or filter traps everything inside it at that level, so **a dialog must render through a
+  portal**: use `components/ui/Modal.tsx` (focus trap, Esc, scroll lock, full screen with a sticky header below 640 px).
+* **Anything that opens over the map** (popups, the evacuation card) must stay inside the free area. Floating controls mark themselves with
+  `data-map-obstruction="top|left|right|bottom"`; `lib/map-layout.ts` (`safeArea`, `revealPopup`) turns those into a rectangle. MapLibre popups
+  have no autoPan, so `revealPopup` pans the map after a popup opens.
+* **Phones (below 768 px):** one-row command bar, the risk panel is a bottom sheet (peek by default), dvh units and `env(safe-area-inset-*)`.
+* **Tests:** `cd frontend && npm run test:e2e` (Playwright, backend mocked). It fails if any floating control covers a dialog header or overlaps
+  a popup at 360 to 1920 px.
+

@@ -1,0 +1,39 @@
+name: Frontend e2e
+
+# Layering and responsive checks (dialogs and map popups must never sit under floating controls)
+# in Chromium, WebKit and Firefox. The backend is mocked in the tests, so no secrets are needed.
+on:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/e2e.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit firefox
+      - run: npx playwright test --project=chromium --project=webkit --project=firefox
+        env:
+          CI: "true"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: frontend/test-results
+          retention-days: 7

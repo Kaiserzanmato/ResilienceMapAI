@@ -47,7 +47,7 @@ export function ThemeToggle() {
         <ActiveIcon size={17} aria-hidden="true" />
       </button>
       {open && (
-        <div className="glass-strong absolute right-0 top-12 z-50 w-44 rounded-xl p-1.5">
+        <div className="glass-strong absolute right-0 top-12 z-[var(--z-dropdown)] w-44 rounded-xl p-1.5">
           {OPTIONS.map((o) => (
             <button
               key={o.key}

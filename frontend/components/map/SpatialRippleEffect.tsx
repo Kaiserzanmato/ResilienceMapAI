@@ -48,7 +48,7 @@ export function SpatialRippleEffect({ map, lat, lng, severity }: SpatialRippleEf
         border: 2px solid;
         border-radius: 50%;
         pointer-events: none;
-        z-index: 35;
+        z-index: var(--z-popups);
         transform: translate(-50%, -50%);
       `;
 

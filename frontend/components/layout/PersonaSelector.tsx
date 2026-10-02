@@ -48,7 +48,7 @@ export function PersonaSelector({ compact = false }: { compact?: boolean }) {
         // and glass-strong's ~12% transparency let the CTA's glow bleed
         // through visibly while the menu was open.
         <div
-          className="glass-strong absolute right-0 top-12 z-50 w-64 rounded-xl p-1.5"
+          className="glass-strong absolute right-0 top-12 z-[var(--z-dropdown)] w-64 rounded-xl p-1.5"
           style={{ background: "var(--surface-solid)" }}
         >
           <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--fg-muted)]">

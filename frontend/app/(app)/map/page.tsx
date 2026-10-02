@@ -68,7 +68,8 @@ export default function MapPage() {
       {/* Desktop risk summary, top right. Mobile/tablet summary renders
           separately near the footer below. */}
       <div
-        className="pointer-events-none absolute top-[calc(var(--banner-h)+var(--nav-h)+36px)] z-30 hidden xl:block"
+        data-map-obstruction="right"
+        className="pointer-events-none absolute top-[calc(var(--banner-h)+var(--nav-h)+36px)] z-[var(--z-panels)] hidden xl:block"
         style={{ right: aiOpen ? "calc(var(--ai-panel-w) + 1.5rem)" : "4rem" }}
       >
         <div className="pointer-events-auto">
@@ -80,7 +81,8 @@ export default function MapPage() {
           legend, share one bounded scroll region so short viewports cannot
           make cards overlap or leave a card unusable behind the legend. */}
       <div
-        className="pointer-events-none absolute left-3 z-20 hidden flex-col gap-3 overflow-y-auto overscroll-contain pr-2 md:flex"
+        data-map-obstruction="left"
+        className="pointer-events-none absolute left-3 z-[var(--z-panels)] hidden flex-col gap-3 overflow-y-auto overscroll-contain pr-2 md:flex"
         style={{
           // Keep controls below the search/summary row so the grid can shrink
           // safely when the desktop AI panel is widened.
@@ -105,9 +107,10 @@ export default function MapPage() {
 
       {/* Risk summary — desktop: top right; mobile: above footer */}
       <div
-        className="pointer-events-none absolute inset-x-0 z-20 px-3 md:inset-x-auto md:right-3 md:px-0"
+        data-map-obstruction="bottom"
+        className="pointer-events-none absolute inset-x-0 z-[var(--z-panels)] px-3 md:inset-x-auto md:right-3 md:px-0"
         style={{
-          bottom: "calc(var(--footer-h) + 8px)",
+          bottom: "calc(var(--footer-h) + env(safe-area-inset-bottom, 0px))",
           top: "auto",
         }}
       >
@@ -121,7 +124,7 @@ export default function MapPage() {
       {/* Tablet: AI and full summary are mutually exclusive. Desktop summary
           is rendered by the header grid above. */}
       <div
-        className={`pointer-events-none absolute z-20 hidden xl:hidden ${aiOpen ? "md:hidden" : "md:block"}`}
+        className={`pointer-events-none absolute z-[var(--z-panels)] hidden xl:hidden ${aiOpen ? "md:hidden" : "md:block"}`}
         style={{
           top: "calc(var(--banner-h) + var(--nav-h) + 36px)",
           right: "4rem",
@@ -134,8 +137,12 @@ export default function MapPage() {
 
       {/* Mobile: compact layer controls */}
       <div
-        className="pointer-events-none absolute left-3 z-20 md:hidden"
-        style={{ top: "calc(var(--banner-h) + var(--nav-h) + 96px)" }}
+        className="pointer-events-none absolute left-3 z-[var(--z-panels)] overflow-y-auto overscroll-contain md:hidden"
+        style={{
+          top: "calc(var(--banner-h) + var(--nav-h) + 96px)",
+          // Bounded so an expanded card scrolls inside itself instead of running under the footer.
+          maxHeight: "calc(100dvh - var(--banner-h) - var(--nav-h) - 96px - var(--footer-h) - 16px)",
+        }}
       >
         <div className="pointer-events-auto">
           <LayerControlWidget />
