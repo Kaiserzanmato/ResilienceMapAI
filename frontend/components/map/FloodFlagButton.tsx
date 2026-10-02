@@ -2,8 +2,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Waves } from "lucide-react";
 import { useEffect, useState } from "react";
-import { api, APIError, type FloodJob } from "@/lib/api";
-import { describeFloodArea } from "@/lib/flood-evidence";
+import { api, type FloodJob } from "@/lib/api";
+import { describeFlagFailure, describeFloodArea, recaptureHint, type FloodExtentProps } from "@/lib/flood-evidence";
 import { useAppStore } from "@/lib/store";
 
 const FAST_POLL_MS = 3_000;
@@ -28,7 +28,7 @@ type Phase =
 
 /** One flag per click: saves the report, then follows the capture job until it
  * ends. The parent keys this by location so a new selection starts fresh. */
-export function FloodFlagButton({ lat, lng }: { lat: number; lng: number }) {
+export function FloodFlagButton({ lat, lng, capture }: { lat: number; lng: number; capture?: FloodExtentProps | null }) {
   const queryClient = useQueryClient();
   const focusFloodCapture = useAppStore((s) => s.focusFloodCapture);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
@@ -88,13 +88,8 @@ export function FloodFlagButton({ lat, lng }: { lat: number; lng: number }) {
       queryClient.invalidateQueries({ queryKey: ["flood-flags"] });
       setPhase({ kind: "working", jobId: res.job_id, status: "queued" });
     } catch (err) {
-      if (err instanceof APIError && err.status === 429) {
-        setPhase({ kind: "error", message: "Flag limit reached (3 per hour). Please try again later." });
-      } else if (err instanceof APIError && err.status === 404) {
-        setPhase({ kind: "error", message: "Flood capture isn't available right now." });
-      } else {
-        setPhase({ kind: "error", message: "Couldn't save the flag. Please try again." });
-      }
+      console.error("[flood] flag request failed", err);
+      setPhase({ kind: "error", message: describeFlagFailure(err) });
     }
   }
 
@@ -113,7 +108,11 @@ export function FloodFlagButton({ lat, lng }: { lat: number; lng: number }) {
       </button>
 
       <div role="status" aria-live="polite" className="text-[10.5px] leading-snug text-[var(--fg-muted)]">
-        {phase.kind === "idle" && <span className="block pb-0.5 text-center">Maps the water from the newest Sentinel scene.</span>}
+        {phase.kind === "idle" && (
+          <span className="block pb-0.5 text-center">
+            {recaptureHint(capture) ?? "Maps the water from the newest Sentinel scene."}
+          </span>
+        )}
         {phase.kind === "submitting" && "Saving your report…"}
         {phase.kind === "working" &&
           (phase.status === "running"

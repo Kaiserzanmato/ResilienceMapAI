@@ -120,6 +120,29 @@ export function describeFloodArea(props: Pick<FloodExtentProps, "water_area_m2" 
   return { hectares, filtered: false, text, unfilteredNote: UNFILTERED_NOTE };
 }
 
+/** What to tell the user when "Flag flooding here" fails. A status of 0/none means the
+ * request never got an answer (offline, blocked by the browser, CORS), so nothing was sent. */
+export function describeFlagFailure(err: unknown): string {
+  const raw = typeof err === "object" && err !== null && "status" in err ? Number((err as { status: unknown }).status) : NaN;
+  const status = Number.isFinite(raw) ? raw : 0;
+  if (status === 429) return "Flag limit reached (3 per hour). Nothing was sent; you can flag again within an hour.";
+  if (status === 404) return "Flood capture isn't available right now. Nothing was sent.";
+  if (status >= 500) return `The server had a problem (HTTP ${status}), so the flag wasn't saved. Try again in a minute.`;
+  if (status >= 400) return `The flag was rejected (HTTP ${status}). Nothing was saved.`;
+  return "Couldn't reach the server, so nothing was sent (offline, or blocked by the browser). Check your connection and try again.";
+}
+
+/** One line under the flag button when this spot already has a capture, so a click is
+ * never a mystery: what the existing capture is and what flagging again does. */
+export function recaptureHint(props: Pick<FloodExtentProps, "acquired_at" | "total_water_ha" | "flood_ha"> | null | undefined): string | null {
+  if (!props) return null;
+  const date = props.acquired_at.slice(0, 10);
+  if (props.flood_ha == null) {
+    return `This spot has a capture from the scene of ${date} without the permanent-water filter. Flagging again recaptures it with the filter.`;
+  }
+  return `This spot was captured from the scene of ${date}. Flagging again checks the newest scene; the same scene is reused, not redone.`;
+}
+
 export interface CaptureSummary {
   sourceLabel: string;
   sceneDate: string; // YYYY-MM-DD
