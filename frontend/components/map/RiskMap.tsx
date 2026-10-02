@@ -5,7 +5,7 @@ import "@/lib/maplibre-worker";
 import * as maplibregl from "maplibre-gl";
 import { Map as MLMap, Marker, type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { api } from "@/lib/api";
 import { FLAGS } from "@/lib/feature-flags";
 import {
@@ -63,6 +63,21 @@ const FLOOD_LAYER_IDS = ["flood-extents-fill", "flood-extents-line", "flood-aoi-
 
 const EMPTY_COLLECTION: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
+let webgl2Supported: boolean | undefined;
+/** MapLibre needs WebGL2 and throws on construction without it, which used to take the whole page down
+ * to Next's error screen (Firefox with hardware acceleration off, locked-down kiosks, headless CI). */
+function supportsWebGL2() {
+  if (webgl2Supported === undefined) {
+    try {
+      webgl2Supported = !!document.createElement("canvas").getContext("webgl2");
+    } catch {
+      webgl2Supported = false;
+    }
+  }
+  return webgl2Supported;
+}
+const subscribeNever = () => () => {};
+
 export default function RiskMap() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
@@ -77,6 +92,7 @@ export default function RiskMap() {
     showEvacuationCenters, selectedEvacuationCenter, setSelectedEvacuationCenter, showFloodExtents, floodFocus,
   } = useAppStore();
 
+  const webgl2 = useSyncExternalStore(subscribeNever, supportsWebGL2, () => true);
   const [evacCardPos, setEvacCardPos] = useState<{ x: number; top: number; maxHeight: number } | null>(null);
 
   const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(null);
@@ -353,7 +369,7 @@ export default function RiskMap() {
 
   // ---- init map once
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    if (!webgl2 || !containerRef.current || mapRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: styleWithProjection(useAppStore.getState().mapView, useAppStore.getState().mapProjection),
@@ -478,7 +494,7 @@ export default function RiskMap() {
       styleReadyRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [webgl2]);
 
   // ---- switch base style (smooth: overlays re-added on style.load)
   useEffect(() => {
@@ -693,6 +709,17 @@ export default function RiskMap() {
         role="application"
         aria-label="Risk intelligence map"
       />
+      {!webgl2 && (
+        <div
+          role="alert"
+          className="glass-strong absolute inset-x-4 top-1/2 mx-auto max-w-md -translate-y-1/2 rounded-2xl p-5 text-center text-sm"
+        >
+          <p className="font-semibold">The interactive map is not available in this browser.</p>
+          <p className="mt-1 text-[var(--fg-muted)]">
+            It needs WebGL2. Turn on hardware acceleration or try another browser. Search, the risk summary and reports still work.
+          </p>
+        </div>
+      )}
 
       {/* Spatial ripple effect when assessment completes */}
       {lastAssessmentCoords && (

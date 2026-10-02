@@ -107,3 +107,19 @@ test.describe("Insights dialog behaviour", () => {
     await expect(app.getByTestId("modal")).toHaveCount(0);
   });
 });
+
+test.describe("without WebGL2", () => {
+  test("the page degrades to a notice instead of crashing; search and controls still render", async ({ app }) => {
+    await app.addInitScript(() => {
+      const original = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
+        if (type === "webgl2" || type === "webgl" || type === "experimental-webgl") return null;
+        return (original as (...args: unknown[]) => unknown).call(this, type, ...rest) as RenderingContext | null;
+      } as typeof original;
+    });
+    await app.goto("/map");
+    await expect(app.getByRole("alert").filter({ hasText: "interactive map is not available" })).toBeVisible();
+    await expect(app.getByRole("button", { name: "Search or select a location" })).toBeVisible();
+    await expect(app.getByText("This page couldn’t load")).toHaveCount(0);
+  });
+});
