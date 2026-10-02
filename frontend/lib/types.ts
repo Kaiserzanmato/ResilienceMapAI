@@ -22,6 +22,10 @@ export interface HazardScore extends RiskLevel {
   /** Curated/baseline value shown only as an unverified indicator, never as `score`. */
   indicative_score?: number | null;
   indicative_source_type?: string;
+  /** One line under the row (e.g. the satellite flood evidence or "No satellite capture yet"). */
+  note?: string;
+  /** True when the score comes from a satellite capture rather than the registry/model. */
+  satellite?: boolean;
 }
 
 export interface RiskAssessment {
