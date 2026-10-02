@@ -27,6 +27,8 @@ const longInsight = {
 };
 
 export async function mockBackend(page: Page) {
+  // Uncaught page errors are printed so a browser-specific crash is diagnosable from the CI log.
+  page.on("pageerror", (error) => console.log(`[pageerror] ${error.message}`));
   // Map tiles and fonts: never leave the machine.
   const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
   await page.route(/^https?:\/\/(?!localhost)/, (route) =>
