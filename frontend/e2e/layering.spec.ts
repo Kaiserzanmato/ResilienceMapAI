@@ -20,6 +20,10 @@ async function openInsights(app: import("@playwright/test").Page) {
 
 async function openEvacCard(app: import("@playwright/test").Page) {
   await selectTacloban(app);
+  // The evacuation card is anchored to a map marker. Some browser builds (e.g. Playwright's headless Firefox on a
+  // GPU-less CI runner) have no WebGL2; the app then shows a notice instead of a map (tested below).
+  const hasWebGL2 = await app.evaluate(() => !!document.createElement("canvas").getContext("webgl2"));
+  test.skip(!hasWebGL2, "WebGL2 is not available in this browser build, so the map cannot start");
   const toggle = app.getByText(/Show Nearest Evacuation Centers/i).first();
   // On phones the Map Layers card starts collapsed.
   if (!(await toggle.isVisible())) await app.getByRole("button", { name: /Map Layers/ }).click();
