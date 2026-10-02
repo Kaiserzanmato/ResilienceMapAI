@@ -6,7 +6,7 @@
  */
 export function DocypherFooter() {
   return (
-    <footer className="fixed bottom-0 left-0 right-0 z-[var(--z-top-bar)] border-t border-[var(--surface-border)] bg-gradient-to-r from-[#0a0e27] via-[#0f1535] to-[#0a0e27] backdrop-blur-md shadow-lg">
+    <footer className="glass-strong fixed inset-x-0 bottom-0 z-[var(--z-top-bar)] shadow-[var(--elevation-1)]">
       <div className="mx-auto flex items-center justify-center px-4 py-3 text-center">
         <span className="text-[11px] tracking-widest text-[var(--fg-muted)]">
           •&nbsp;&nbsp;<span className="font-medium text-[var(--fg)]">

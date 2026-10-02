@@ -7,7 +7,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { SearchBar } from "@/components/map/SearchBar";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { Icon } from "@/components/ui/Icon";
 import { RiskBadge } from "@/components/ui/RiskBadge";
+import { getPersonaIcon } from "@/components/persona-icons";
 import { api, downloadExport } from "@/lib/api";
 import { getPersona, PERSONAS } from "@/lib/personas";
 import { useAppStore } from "@/lib/store";
@@ -110,13 +112,14 @@ export default function ReportsPage() {
                   aria-checked={persona === p.key}
                   onClick={() => setPersona(p.key)}
                   className={cn(
-                    "focus-ring cursor-pointer rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium transition-all",
+                    "focus-ring flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium transition-all",
                     persona === p.key
                       ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-[var(--accent)]"
                       : "border-[var(--surface-border)] text-[var(--fg-muted)] hover:text-[var(--fg)]"
                   )}
                 >
-                  {p.emoji} {p.label}
+                  <Icon icon={getPersonaIcon(p.key)} size="inline" />
+                  {p.label}
                 </button>
               ))}
             </div>

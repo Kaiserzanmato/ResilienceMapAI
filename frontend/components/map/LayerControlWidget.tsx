@@ -1,13 +1,15 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, Globe, Layers, Map as MapIcon } from "lucide-react";
-import { useState, useSyncExternalStore } from "react";
+import { ChevronDown, Globe, Layers, LifeBuoy, Map as MapIcon } from "lucide-react";
+import { useState } from "react";
 import { api } from "@/lib/api";
 import { FLAGS } from "@/lib/feature-flags";
 import { MAP_VIEWS } from "@/lib/mapStyles";
 import { useAppStore, type MapProjection } from "@/lib/store";
+import { useIsDesktop } from "@/lib/useMediaQuery";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { Icon } from "@/components/ui/Icon";
 
 const PROJECTIONS: { key: MapProjection; label: string; icon: typeof Globe }[] = [
   { key: "mercator", label: "2D Map", icon: MapIcon },
@@ -15,11 +17,14 @@ const PROJECTIONS: { key: MapProjection; label: string; icon: typeof Globe }[] =
 ];
 
 function Toggle({
-  label, checked, onChange,
-}: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  label, checked, onChange, icon,
+}: { label: string; checked: boolean; onChange: (v: boolean) => void; icon?: typeof Globe }) {
   return (
     <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-1 py-1.5 text-[13px]">
-      {label}
+      <span className="flex items-center gap-1.5">
+        {icon && <Icon icon={icon} size="inline" className="text-[var(--fg-muted)]" />}
+        {label}
+      </span>
       <button
         role="switch"
         aria-checked={checked}
@@ -63,22 +68,9 @@ function RadioPill({
   );
 }
 
-// Subscribe to the desktop media query so the widget defaults open on
-// desktop but collapsed on mobile (no overlapping panels on small screens)
-const desktopQuery = "(min-width: 768px)";
-const subscribeDesktop = (cb: () => void) => {
-  const mq = window.matchMedia(desktopQuery);
-  mq.addEventListener("change", cb);
-  return () => mq.removeEventListener("change", cb);
-};
-const useIsDesktop = () =>
-  useSyncExternalStore(
-    subscribeDesktop,
-    () => window.matchMedia(desktopQuery).matches,
-    () => true
-  );
-
 export function LayerControlWidget() {
+  // Defaults open on desktop but collapsed on mobile (no overlapping panels
+  // on small screens).
   const isDesktop = useIsDesktop();
   const [userToggled, setUserToggled] = useState<boolean | null>(null);
   const open = userToggled ?? isDesktop;
@@ -173,7 +165,8 @@ export function LayerControlWidget() {
               Critical infrastructure
             </p>
             <Toggle
-              label="🏫 Show Nearest Evacuation Centers"
+              label="Show nearest evacuation centers"
+              icon={LifeBuoy}
               checked={showEvacuationCenters}
               onChange={setShowEvacuationCenters}
             />

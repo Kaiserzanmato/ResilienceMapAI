@@ -402,6 +402,48 @@ specifically, which stopped making sense once Qwen/Together became primary.
   chat uses) — it used to be hardcoded to always report "DeepSeek" regardless
   of configuration.
 
+## Apple-style glass design pass, unified line icons, single persona picker (Oct 2026)
+
+Reworked the UI onto a consistent "Apple glass" design system (frontend only,
+no backend changes):
+
+- **Design tokens** (`frontend/app/globals.css`): glass surfaces at
+  `--glass-blur: 22px` / `--glass-saturate: 1.8` via the shared `.glass` /
+  `.glass-strong` classes, a 12/16/22px radius scale, an iOS-style spring
+  motion curve (`--motion-spring`) for menus/sheets/dialogs, a `--press-scale`
+  button-press token, and accessibility fallbacks for
+  `prefers-reduced-transparency` and browsers without `backdrop-filter` (both
+  drop straight to an opaque `--surface-solid`, never leaving text on an
+  unreadable background).
+- **Shared components** (`frontend/components/ui/`): `GlassMenu` (header
+  dropdowns, replacing duplicated menu markup in `PersonaSelector` and
+  `ThemeToggle` — outside-click + Escape to close, `role="menu"`) and
+  `GlassSheet` (mobile bottom sheet for panels under 768px — `dvh`-capped,
+  `env(safe-area-inset-bottom)` padding; wired into `InsightsPanel`).
+  `GlassPanel` now builds on the same `.glass-strong` class as everything
+  else instead of its own one-off Tailwind blur stack.
+- **Icons**: every emoji and mixed icon set in the UI was replaced with
+  `lucide-react` (no SF Symbols — their licence excludes web use). A shared
+  `Icon` wrapper (`components/ui/Icon.tsx`) standardizes 1.5px stroke,
+  `currentColor`, and 20px/18px sizing; `IconTile` wraps a menu row's icon in
+  the 32px rounded-square glass tile (accent-tinted when selected) used by
+  the persona menu. Persona icons: Citizen=House, Real Estate=Building2,
+  Insurance/Fintech=ShieldCheck, Government=Landmark, NGO=HandHeart,
+  Business=Briefcase, School=GraduationCap
+  (`components/persona-icons.tsx`). Hazard rows in the risk panel now show a
+  colour-blind-safe icon per hazard (`components/hazard-icons.tsx`) —
+  colour alone no longer carries the risk level. The map's evacuation-center
+  markers are raw MapLibre DOM nodes, not React, so they inline a literal
+  `<svg>` matching lucide's `life-buoy` icon rather than rendering a
+  component.
+- **Settings**: removed the duplicate "Default persona" card — it read and
+  wrote the same persisted store as the header's Insight Persona dropdown,
+  which is now the only place to change persona. Settings shows the current
+  persona as read-only text with a pointer to the header menu.
+
+See `ARCHITECTURE.md`'s Styling section for the full token/component
+reference.
+
 ## Evacuation Center Locator & security hardening (Sep 2026)
 
 Added the nearest-evacuation-center locator (see Current Capabilities above).

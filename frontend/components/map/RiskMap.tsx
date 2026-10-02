@@ -26,6 +26,19 @@ const RISK_FILL_COLORS: [string, string][] = [
   ["red", "#ef4444"],
 ];
 
+// lucide-react's "life-buoy" icon, 1.5px stroke — matches the Icon wrapper's
+// spec, inlined as a literal SVG since evacuation markers are plain DOM
+// elements MapLibre owns, not React nodes.
+const EVAC_MARKER_ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<circle cx="12" cy="12" r="10"></circle>' +
+  '<path d="m4.93 4.93 4.24 4.24"></path>' +
+  '<path d="m14.83 9.17 4.24-4.24"></path>' +
+  '<path d="m14.83 14.83 4.24 4.24"></path>' +
+  '<path d="m9.17 14.83-4.24 4.24"></path>' +
+  '<circle cx="12" cy="12" r="4"></circle>' +
+  "</svg>";
+
 function styleWithProjection(view: string, projection: MapProjection): StyleSpecification {
   return { ...getMapStyle(view), projection: { type: projection } };
 }
@@ -647,7 +660,9 @@ export default function RiskMap() {
       const el = document.createElement("button");
       el.className = "rm-evac-marker";
       el.setAttribute("aria-label", `Evacuation center: ${site.name}`);
-      el.innerHTML = `<span>🛡️</span>`;
+      // lucide-react "life-buoy" path, inlined — this marker is injected into
+      // the MapLibre DOM directly (not React), so it can't render <LifeBuoy />.
+      el.innerHTML = EVAC_MARKER_ICON_SVG;
       el.onclick = () => setSelectedEvacuationCenter(site);
       evacMarkersRef.current.push(
         new maplibregl.Marker({ element: el }).setLngLat([site.lng, site.lat]).addTo(map)

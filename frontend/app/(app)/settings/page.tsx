@@ -1,10 +1,10 @@
 "use client";
-import { Contrast, Laptop, Moon, Palette, ShieldCheck, Sun, User } from "lucide-react";
+import { Contrast, Laptop, Moon, Palette, ShieldCheck, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSyncExternalStore } from "react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { MAP_VIEWS } from "@/lib/mapStyles";
-import { getPersona, PERSONAS } from "@/lib/personas";
+import { getPersona } from "@/lib/personas";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +19,7 @@ const emptySubscribe = () => () => {};
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
-  const { persona, setPersona, mapView, setMapView } = useAppStore();
+  const { persona, mapView, setMapView } = useAppStore();
   // Hydration-safe mounted flag without setState-in-effect
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
@@ -28,7 +28,11 @@ export default function SettingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Settings</h1>
         <p className="mt-1 text-[13.5px] text-[var(--fg-muted)]">
-          Appearance, default persona, and platform preferences. Stored locally on this device.
+          Appearance and platform preferences. Stored locally on this device.
+        </p>
+        <p className="mt-1 text-[12px] text-[var(--fg-muted)]">
+          Current persona: <strong className="text-[var(--fg)]">{getPersona(persona).label}</strong>.
+          Change your persona from the header menu.
         </p>
       </div>
 
@@ -54,34 +58,6 @@ export default function SettingsPage() {
                 <t.icon size={18} aria-hidden="true" />
                 <span className="text-[13px] font-medium">{t.label}</span>
                 <span className="text-[10.5px] text-[var(--fg-muted)]">{t.desc}</span>
-              </button>
-            ))}
-          </div>
-        </GlassCard>
-
-        <GlassCard className="p-5">
-          <h2 className="mb-3 flex items-center gap-2 text-[14px] font-semibold">
-            <User size={15} className="text-[var(--accent)]" aria-hidden="true" /> Default persona
-          </h2>
-          <p className="mb-3 text-[12px] text-[var(--fg-muted)]">
-            AI insights, suggested queries, and report templates adapt to this persona.
-            Current: <strong className="text-[var(--fg)]">{getPersona(persona).label}</strong>
-          </p>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Default persona">
-            {PERSONAS.map((p) => (
-              <button
-                key={p.key}
-                role="radio"
-                aria-checked={persona === p.key}
-                onClick={() => setPersona(p.key)}
-                className={cn(
-                  "focus-ring cursor-pointer rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium transition-all",
-                  persona === p.key
-                    ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-[var(--accent)]"
-                    : "border-[var(--surface-border)] text-[var(--fg-muted)] hover:text-[var(--fg)]"
-                )}
-              >
-                {p.emoji} {p.label}
               </button>
             ))}
           </div>

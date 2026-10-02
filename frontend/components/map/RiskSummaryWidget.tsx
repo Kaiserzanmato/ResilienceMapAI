@@ -17,8 +17,10 @@ import { captureMapSnapshot, cn, formatNumber, riskColor } from "@/lib/utils";
 import { buildReportSnapshot, downloadTextFile } from "@/lib/report-snapshot";
 import { snapshotToText, snapshotToMarkdown, snapshotToCsv } from "@/lib/report-formats";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { Icon } from "@/components/ui/Icon";
 import { RiskBadge } from "@/components/ui/RiskBadge";
 import { UsageMeter } from "@/components/ui/UsageMeter";
+import { getHazardIcon } from "@/components/hazard-icons";
 import { FloodFlagButton } from "./FloodFlagButton";
 import { InsightsPanel } from "./InsightsPanel";
 import type { InsightResponse } from "@/lib/types";
@@ -327,7 +329,15 @@ export function RiskSummaryWidget() {
                   aria-current={active ? "true" : undefined}
                 >
                   <div className="mb-0.5 flex items-center justify-between text-[12px]">
-                    <span className={active ? "font-semibold" : "font-medium"}>{h.label}</span>
+                    <span className={cn("flex items-center gap-1.5", active ? "font-semibold" : "font-medium")}>
+                      {(() => {
+                        const HazardIcon = getHazardIcon(key);
+                        return HazardIcon ? (
+                          <Icon icon={HazardIcon} size="inline" className="text-[var(--fg-muted)]" />
+                        ) : null;
+                      })()}
+                      {h.label}
+                    </span>
                     {h.score === null ? (
                       <span className="text-[11px] text-[var(--fg-muted)]">
                         {h.reason_code === "no_satellite_capture" ? "No capture yet" : statusLabel(h.coverage_status)}

@@ -6,7 +6,10 @@ import { SourceGroundingCard } from "@/components/ai/SourceGroundingCard";
 import { SearchBar } from "@/components/map/SearchBar";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { GlassmorphismCta } from "@/components/ui/GlassmorphismCta";
+import { Icon } from "@/components/ui/Icon";
+import { IconTile } from "@/components/ui/IconTile";
 import { UsageMeter } from "@/components/ui/UsageMeter";
+import { getPersonaIcon } from "@/components/persona-icons";
 import { api, API_BASE, type UsageStatus } from "@/lib/api";
 import { getPersona, PERSONAS } from "@/lib/personas";
 import { useAppStore } from "@/lib/store";
@@ -295,24 +298,27 @@ export default function AgentsPage() {
         <GlassPanel className="flex-1 p-4">
           <h2 className="mb-2 text-[13px] font-semibold">Persona</h2>
           <div className="space-y-1.5">
-            {PERSONAS.map((p) => (
-              <button
-                key={p.key}
-                onClick={() => setPersona(p.key)}
-                className={cn(
-                  "focus-ring flex w-full cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all",
-                  persona === p.key
-                    ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]"
-                    : "border-[var(--surface-border)] hover:border-[color-mix(in_srgb,var(--accent)_50%,transparent)]"
-                )}
-              >
-                <span aria-hidden="true">{p.emoji}</span>
-                <span>
-                  <span className="block text-[13px] font-medium">{p.label}</span>
-                  <span className="block text-[11px] text-[var(--fg-muted)]">{p.description}</span>
-                </span>
-              </button>
-            ))}
+            {PERSONAS.map((p) => {
+              const selected = persona === p.key;
+              return (
+                <button
+                  key={p.key}
+                  onClick={() => setPersona(p.key)}
+                  className={cn(
+                    "focus-ring flex w-full cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all",
+                    selected
+                      ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]"
+                      : "border-[var(--surface-border)] hover:border-[color-mix(in_srgb,var(--accent)_50%,transparent)]"
+                  )}
+                >
+                  <IconTile icon={getPersonaIcon(p.key)} active={selected} />
+                  <span>
+                    <span className="block text-[13px] font-medium">{p.label}</span>
+                    <span className="block text-[11px] text-[var(--fg-muted)]">{p.description}</span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </GlassPanel>
       </div>
@@ -335,7 +341,7 @@ export default function AgentsPage() {
               )}
               <p className="flex items-center gap-1.5 text-[11px] text-[var(--fg-muted)]">
                 <ShieldCheck size={11} className="text-[var(--risk-low)]" aria-hidden="true" />
-                Source-grounded · {active.emoji} {active.label}
+                Source-grounded · <Icon icon={getPersonaIcon(active.key)} size={12} /> {active.label}
               </p>
             </div>
           </div>

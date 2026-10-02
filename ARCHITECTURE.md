@@ -197,6 +197,22 @@ Key Files (New/Enhanced):
 - **CSS Variables** for theme colors (light/dark mode)
 - **No build-time theme extraction** — runtime theme switch via `data-theme` attribute
 
+#### Apple-style glass design system (Oct 2026)
+All tokens live in `frontend/app/globals.css`:
+- **Surfaces**: `--surface` (translucent) / `--surface-solid` (opaque), `--glass-blur` (22px), `--glass-saturate` (1.8), applied via the `.glass` / `.glass-strong` utility classes — not ad hoc per-component Tailwind blur stacks.
+- **Radii**: `--radius-sm` 12px, `--radius-md` 16px, `--radius-lg` 22px.
+- **Motion**: `--motion-spring` (`cubic-bezier(0.32,0.72,0,1)`, iOS-style) for menus/sheets/dialogs, `--motion-ease` for simpler transitions, `--press-scale` (0.97) for button presses. Framer Motion's `useReducedMotion()` drives a fades-only fallback wherever a component animates via JS (GlassMenu, GlassSheet, InsightsPanel); the global `prefers-reduced-motion` CSS rule covers plain CSS transitions.
+- **Accessibility fallbacks**: `@media (prefers-reduced-transparency: reduce)` and `@supports not (backdrop-filter: blur(1px))` both drop `.glass`/`.glass-strong` to `--surface-solid` with no blur, so text never floats on an unreadable backdrop.
+- **Shared components** (`frontend/components/ui/`): `GlassPanel`, `GlassCard`, `Button` (variants: primary/secondary/ghost/outline/danger; `size="icon"` is a 44px minimum tap target), `GlassMenu` (header dropdowns — persona menu, theme menu; outside-click + Escape to close, `role="menu"`), `GlassSheet` (mobile bottom sheet for panels under 768px — dvh-capped height, `env(safe-area-inset-bottom)` padding, spring-in from the bottom). `useIsDesktop()` / `useMediaQuery()` (`frontend/lib/useMediaQuery.ts`) is the shared `(min-width: 768px)` breakpoint check behind GlassSheet and the map's layer-control panel.
+
+#### Icons (Oct 2026)
+The app is lucide-react only — no emoji, no SF Symbols (their licence excludes web use), no mixed icon sets. `frontend/components/ui/Icon.tsx` is the single rendering path: 1.5px stroke, `currentColor`, `size="menu"` (20px) in dropdowns or `size="inline"` (18px) next to text. `frontend/components/ui/IconTile.tsx` wraps a menu-row icon in the 32px rounded-square glass tile spec (accent-tinted when that row is selected), used by the persona menu and the persona picker on `/agents`. Persona → icon and hazard → icon mappings live in `frontend/components/persona-icons.tsx` and `frontend/components/hazard-icons.tsx` respectively (Citizen=House, Real Estate=Building2, Insurance/Fintech=ShieldCheck, Government=Landmark, NGO=HandHeart, Business=Briefcase, School=GraduationCap; hazard icons are colour-blind-safe shapes — colour alone never carries the risk level). The map's evacuation-center markers are plain MapLibre DOM nodes, not React, so they inline a literal `<svg>` string copied from lucide's `life-buoy` path (`RiskMap.tsx`) rather than rendering `<LifeBuoy />`.
+
+Out of scope for the icon pass: `lib/deepseek/grounded-context.ts`'s `⚠`/`✗` markers are plain-text structure fed to the LLM prompt, not rendered UI, so they were left as-is.
+
+#### Single persona picker (Oct 2026)
+The header's Insight Persona dropdown (`PersonaSelector.tsx`) is now the only place to change persona. Settings previously had a second, duplicate persona-picker card; it read and wrote the same `useAppStore().persona` (zustand, persisted to localStorage under `resiliencemap-state`) as the header menu, so it was removed as pure duplication — no state migration needed. Settings now shows the current persona as read-only text with a pointer to the header menu.
+
 ### New Features Implementation
 
 #### Search Functionality

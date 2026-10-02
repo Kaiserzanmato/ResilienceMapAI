@@ -247,7 +247,7 @@ export default function ResourcesPage() {
       <div className="rounded-lg border border-[var(--surface-border)] bg-[color-mix(in_srgb,var(--surface)_50%,transparent)] p-6 md:p-10 w-full overflow-hidden mb-32 mt-20">
         <div className="space-y-5 text-sm md:text-base text-[var(--fg-muted)] leading-relaxed">
           <div className="flex gap-3">
-            <span className="shrink-0 text-xl">⚠️</span>
+            <AlertTriangle size={22} className="shrink-0 text-[var(--risk-medium)]" aria-hidden="true" />
             <div>
               <strong className="text-[var(--fg)] block text-base md:text-lg mb-2">Data Accuracy Notice</strong>
               <p className="mb-3">
