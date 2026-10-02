@@ -5,12 +5,13 @@ import {
   Link2, Loader2, Maximize2, Sparkles, Zap, X,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, downloadExport, type UsageStatus } from "@/lib/api";
 import { FLAGS } from "@/lib/feature-flags";
 import {
   findFloodCapture, nearestCapture, pointBboxParam, summarizeCapture, coverageBbox, type FloodFeature,
 } from "@/lib/flood-evidence";
+import { applyFloodCapture, NO_CAPTURE_TEXT } from "@/lib/flood-indicator";
 import { orderHazards } from "@/lib/hazard-panel";
 import { assessmentQueryKey, fetchAssessment } from "@/lib/queries/assessment";
 import { useAppStore } from "@/lib/store";
@@ -46,20 +47,32 @@ export function RiskSummaryWidget() {
   // entry the map page fills). The store's `risk` is only updated after a fetch resolves, so
   // until then it still held the previous click: the panel then showed a stale name and
   // coordinates, and Flag / Export / Share acted on the wrong place.
-  const { data: risk, isError: assessmentFailed, refetch: refetchAssessment } = useQuery({
+  const { data: baseRisk, isError: assessmentFailed, refetch: refetchAssessment } = useQuery({
     queryKey: assessmentQueryKey(selected),
     queryFn: () => fetchAssessment(selected!),
     enabled: !!selected,
   });
   // Satellite evidence for the Flood layer: a capture whose box covers the clicked spot.
-  const floodLayerActive = FLAGS.FLOOD_CAPTURE && activeLayer === "flood";
-  const { data: evidence } = useQuery({
+  const { data: evidence, isSuccess: evidenceLoaded } = useQuery({
     queryKey: ["flood-evidence", selected?.lat.toFixed(3), selected?.lng.toFixed(3)],
     queryFn: () => api.floodExtents(pointBboxParam(selected!.lat, selected!.lng, 0.15)),
     enabled: FLAGS.FLOOD_CAPTURE && !!selected, // also feeds the flag button's recapture hint
     staleTime: 60_000,
     retry: 1,
   });
+  // The capture covering the clicked spot feeds the Flood row, Overall and the flag button. The
+  // registry has no flood connector, so without this the panel contradicted the map. Until the
+  // capture lookup has answered the registry's own row is left alone (never claim "no capture"
+  // on a lookup that has not finished or failed).
+  const evidenceFeatures = evidence?.features as unknown as FloodFeature[] | undefined;
+  const spotCapture = useMemo(
+    () => (FLAGS.FLOOD_CAPTURE && selected ? findFloodCapture(evidenceFeatures, selected.lat, selected.lng) : null),
+    [evidenceFeatures, selected],
+  );
+  const risk = useMemo(
+    () => (baseRisk && FLAGS.FLOOD_CAPTURE && evidenceLoaded ? applyFloodCapture(baseRisk, spotCapture?.properties ?? null) : baseRisk),
+    [baseRisk, evidenceLoaded, spotCapture],
+  );
   const [busy, setBusy] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
@@ -230,10 +243,8 @@ export function RiskSummaryWidget() {
   }
 
   const ordered = orderHazards(risk.hazards, activeLayer);
-  const evidenceFeatures = evidence?.features as unknown as FloodFeature[] | undefined;
-  const spotCapture = FLAGS.FLOOD_CAPTURE ? findFloodCapture(evidenceFeatures, selected.lat, selected.lng) : null;
-  const capture = floodLayerActive ? spotCapture : null;
-  const nearby = floodLayerActive && !capture ? nearestCapture(evidenceFeatures, selected.lat, selected.lng) : null;
+  const capture = spotCapture;
+  const nearby = !capture ? nearestCapture(evidenceFeatures, selected.lat, selected.lng) : null;
 
   const actions = [
     { key: "insights", label: "Insights", icon: Zap, onClick: generateInsights },
@@ -312,7 +323,7 @@ export function RiskSummaryWidget() {
                     <span className={active ? "font-semibold" : "font-medium"}>{h.label}</span>
                     {h.score === null ? (
                       <span className="text-[11px] text-[var(--fg-muted)]">
-                        {active && key === "flood" && capture ? "Satellite evidence" : statusLabel(h.coverage_status)}
+                        {h.reason_code === "no_satellite_capture" ? "No capture yet" : statusLabel(h.coverage_status)}
                       </span>
                     ) : (
                       <span className="font-semibold" style={{ color: riskColor(h.color) }}>
@@ -344,8 +355,9 @@ export function RiskSummaryWidget() {
                       />
                     </div>
                   )}
-                  {active && key === "flood" && floodLayerActive && (
+                  {key === "flood" && FLAGS.FLOOD_CAPTURE && (
                     <FloodEvidence
+                      note={h.note ?? null}
                       capture={capture}
                       nearby={nearby}
                       onZoom={(feature) => {
@@ -464,10 +476,11 @@ export function RiskSummaryWidget() {
 
 /** The Flood row's satellite evidence: a capture covering the spot, else the nearest one,
  * else how to request one. It states what was measured (scene date, source, water area)
- * and never produces a risk score. */
+ * and a satellite indicator (see lib/flood-indicator.ts), not an official flood map. */
 function FloodEvidence({
-  capture, nearby, onZoom,
+  note, capture, nearby, onZoom,
 }: {
+  note: string | null;
   capture: FloodFeature | null;
   nearby: { feature: FloodFeature; distanceKm: number } | null;
   onZoom: (feature: FloodFeature) => void;
@@ -477,8 +490,8 @@ function FloodEvidence({
     <div className="mt-1.5 text-[10.5px] leading-snug text-[var(--fg-muted)]">
       {capture ? (
         <p>
-          <span className="font-semibold text-[var(--fg)]">Satellite evidence.</span> {summarizeCapture(capture.properties).text}{" "}
-          Not a verified flood score; open water may include permanent water.
+          <span className="font-semibold text-[var(--fg)]">Satellite evidence.</span>{" "}
+          {note ?? summarizeCapture(capture.properties).text}
         </p>
       ) : nearby ? (
         <p>
@@ -486,7 +499,7 @@ function FloodEvidence({
           away: {summarizeCapture(nearby.feature.properties).text}
         </p>
       ) : (
-        <p>No satellite capture covers this spot yet. Use Flag flooding here to request one.</p>
+        <p>{NO_CAPTURE_TEXT}.</p>
       )}
       {shown && (
         <button
