@@ -17,7 +17,7 @@
 - Persona-aware guidance for citizens, real-estate analysts, insurance/fintech underwriters, government planners, NGOs, business-continuity managers, and school administrators.
 
 ## API (server-side; grounded in official public datasets)
-- `GET /api/location-risk` — deterministic hazard scoring for a coordinate.
+- `GET /api/location-risk` — deprecated; use `POST /api/assessments`. Same Wildfire and Volcanic logic, legacy response shape.
 - `POST /api/assessments` — multi-hazard screening across the coverage registry.
 - `GET /api/geocode` — server-side place search.
 - `POST /api/ai/summary`, `POST /api/ai/report`, `POST /api/agent/query`, `POST /api/ask-ai` — grounded, source-cited AI responses.

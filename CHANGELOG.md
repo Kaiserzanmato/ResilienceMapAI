@@ -9,6 +9,16 @@ the Aug 6–7 geocoding-gateway and dashboard/globe/weather work in detail.
 Format: `[commit] type: summary`, followed by what changed and why when it
 isn't obvious from the summary alone.
 
+## 2026-10-02 (stale-score leak on the legacy route)
+
+- **fix: `GET /api/location-risk` no longer shows scores `POST /api/assessments` withholds.** Live check after #32: Mayon returned
+  Volcanic 86 (and Tokyo 32) on the legacy route while the assessment said no-data. The route is now deprecated and takes
+  Wildfire (FIRMS) and Volcanic (null unless `ENABLE_VOLCANIC_SCORING` has licensed data) from the assessment engine, and the
+  overall score and main drivers are derived after that, so they cannot include a withheld number. `score_location` returns
+  Volcanic unscored by default, which also covers `/api/compare-locations` and the AI context. The assessment no longer carries a
+  Volcanic `indicative_score`, and the frontend adapter drops one if an older backend sends it. Removed the unused
+  `api.locationRisk` client call; `llms.txt` marks the route deprecated. Other legacy callers still get zone-model Wildfire.
+
 ## 2026-10-02 (wildfire and volcanic scores)
 
 - **feat: Wildfire and Volcanic Activity get real scores in the risk panel.** Audit: the FIRMS sync downloaded detections and

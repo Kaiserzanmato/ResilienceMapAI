@@ -154,6 +154,8 @@ def assess_location(lat: float, lng: float, name: str | None = None, country_cod
             score, evidence, confidence = observed["score"], observed["evidence"], observed["confidence"]
             coverage_status, reason_code = observed["coverage_status"], observed["reason_code"]
             limitations = [*limitations, *observed["limitations"]]
+        # Volcanic has no zone-model indicator (score_location returns it unscored), so a
+        # disabled or data-less Volcanic row carries no number at all.
         indicative = _indicative(legacy_value, legacy["data_coverage"]) if score is None and legacy_key in HAZARD_LABELS else {"indicative_score": None}
         hazards[hazard] = {
             "hazard": hazard,

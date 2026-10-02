@@ -230,8 +230,20 @@ COUNTRY_RISK_BASELINE = {
     "XX": {"flood": 35, "earthquake": 28, "tropical_cyclone": 0, "volcano": 0, "landslide": 22, "storm_surge": 18},
 }
 
-def score_location(lat: float, lng: float, name: Optional[str] = None, country_code: Optional[str] = None) -> Dict:
-    """Compute hazard scores for a coordinate from the curated zone dataset."""
+# Hazards whose curated zone numbers are never published as scores. Volcanic is scored only
+# from a licensed volcano list (ENABLE_VOLCANIC_SCORING), so the zone-model value would be a
+# stale number beside a "no data" row. Callers that have a real score pass it as an override.
+UNSCORED_ZONE_HAZARDS = ("volcano",)
+
+
+def score_location(lat: float, lng: float, name: Optional[str] = None, country_code: Optional[str] = None,
+                   overrides: Optional[Dict[str, Optional[int]]] = None) -> Dict:
+    """Compute hazard scores for a coordinate from the curated zone dataset.
+
+    `overrides` replaces a hazard's score (None = no data) before the overall score and main
+    drivers are derived, so they never include a number the caller does not stand behind.
+    """
+    overrides = {**dict.fromkeys(UNSCORED_ZONE_HAZARDS), **(overrides or {})}
     contributions: List[Dict] = []
     for zone in HAZARD_ZONES:
         d = haversine_km(lat, lng, zone["lat"], zone["lng"])
@@ -277,6 +289,8 @@ def score_location(lat: float, lng: float, name: Optional[str] = None, country_c
             # otherwise there is genuinely no data for this hazard.
             score = country_baseline.get(key) if country_baseline else None
 
+        if key in overrides:
+            score = overrides[key]
         hazards[key] = {"score": score, "label": HAZARD_LABELS[key],
                         **level_for_score(score)}
 
