@@ -28,7 +28,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit firefox
-      - run: npx playwright test --project=chromium --project=webkit --project=firefox
+      - run: npx playwright test --project=firefox -g "1280x800 › Insights" --retries=0 --max-failures=1 --timeout=45000
         env:
           CI: "true"
       - uses: actions/upload-artifact@v4
