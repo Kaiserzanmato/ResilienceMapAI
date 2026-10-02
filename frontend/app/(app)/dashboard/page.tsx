@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import {
-  Activity, AlertTriangle, Building2, GraduationCap, Hospital, MapPin,
+  Activity, AlertTriangle, ArrowRight, Building2, GraduationCap, Hospital, MapPin,
   ShieldAlert, Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -86,7 +86,7 @@ export default function DashboardPage() {
           href="/reports"
           className="focus-ring glass flex h-10 items-center gap-2 rounded-xl px-4 text-[13px] font-medium transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
         >
-          Generate report →
+          Generate report <ArrowRight size={14} aria-hidden="true" />
         </Link>
       </div>
 

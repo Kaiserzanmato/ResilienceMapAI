@@ -15,6 +15,8 @@ import { APIError, api, type UsageStatus } from "@/lib/api";
 import type { AIResponse } from "@/lib/types";
 import { formatMapTargetForPrompt } from "@/lib/map-target-builder";
 import { getPersona } from "@/lib/personas";
+import { getPersonaIcon } from "@/components/persona-icons";
+import { Icon } from "@/components/ui/Icon";
 import { useAppStore } from "@/lib/store";
 import { formatResetClock } from "@/lib/usage-reset";
 import { cn } from "@/lib/utils";
@@ -216,8 +218,9 @@ export function AIAgentPanel({ hidden = false }: { hidden?: boolean } = {}) {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold leading-tight">AI Research Agent</p>
-                  <p className="truncate text-[11px] text-[var(--fg-muted)]">
-                    {activePersona.emoji} {activePersona.label} · {contextLabel}
+                  <p className="flex items-center gap-1 truncate text-[11px] text-[var(--fg-muted)]">
+                    <Icon icon={getPersonaIcon(activePersona.key)} size={12} />
+                    {activePersona.label} · {contextLabel}
                   </p>
                 </div>
                 <button

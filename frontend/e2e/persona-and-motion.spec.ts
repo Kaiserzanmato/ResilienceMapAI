@@ -1,0 +1,76 @@
+import { expect, test } from "./fixtures";
+
+// TopNav's desktop nav links are shrink-0 and switch on at Tailwind's xl breakpoint
+// (1280px) — exactly Playwright's default desktop viewport. The full link set plus
+// logo, persona selector and theme toggle are wide enough that small font-metric
+// differences across environments (CI's Linux fallback fonts vs. a local machine's)
+// can tip the row from "fits" to "overflows", pushing trailing controls like the
+// theme toggle off the right edge entirely. These tests click those trailing header
+// controls, so they use a wider viewport to test their own behaviour rather than
+// trip on that unrelated, pre-existing layout edge case.
+test.use({ viewport: { width: 1440, height: 900 } });
+
+test.describe("Persona switch", () => {
+  test("header menu switches persona and it persists across reload", async ({ app }) => {
+    await app.goto("/dashboard");
+
+    // Default persona is Citizen.
+    await expect(app.getByRole("button", { name: "Persona: Citizen" })).toBeVisible();
+
+    await app.getByRole("button", { name: "Persona: Citizen" }).click();
+    const menu = app.getByRole("menu", { name: "Insight persona" });
+    await expect(menu).toBeVisible();
+    await menu.getByRole("menuitem", { name: /Real Estate/ }).click();
+
+    // Menu closes and the trigger now reflects the new persona.
+    await expect(menu).toHaveCount(0);
+    const trigger = app.getByRole("button", { name: "Persona: Real Estate" });
+    await expect(trigger).toBeVisible();
+
+    // Same store everywhere: Settings reflects it too, without its own picker.
+    await app.goto("/settings");
+    await expect(app.getByText("Current persona:")).toContainText("Real Estate");
+    await expect(app.getByRole("heading", { name: "Default persona" })).toHaveCount(0);
+
+    // Persisted to localStorage, survives a reload.
+    await app.reload();
+    await expect(app.getByRole("button", { name: "Persona: Real Estate" })).toBeVisible();
+  });
+
+  test("Escape closes the persona menu without changing the selection", async ({ app }) => {
+    await app.goto("/dashboard");
+    await app.getByRole("button", { name: "Persona: Citizen" }).click();
+    const menu = app.getByRole("menu", { name: "Insight persona" });
+    await expect(menu).toBeVisible();
+    await app.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await expect(app.getByRole("button", { name: "Persona: Citizen" })).toBeVisible();
+  });
+});
+
+test.describe("Reduced motion", () => {
+  test("persona menu (GlassMenu) still opens and closes", async ({ app }) => {
+    await app.emulateMedia({ reducedMotion: "reduce" });
+    await app.goto("/dashboard");
+
+    const trigger = app.getByRole("button", { name: "Persona: Citizen" });
+    await trigger.click();
+    const menu = app.getByRole("menu", { name: "Insight persona" });
+    await expect(menu).toBeVisible();
+
+    await menu.getByRole("menuitem", { name: /Government/ }).click();
+    await expect(menu).toHaveCount(0);
+    await expect(app.getByRole("button", { name: "Persona: Government" })).toBeVisible();
+  });
+
+  test("theme menu (GlassMenu) still opens and closes", async ({ app }) => {
+    await app.emulateMedia({ reducedMotion: "reduce" });
+    await app.goto("/dashboard");
+
+    await app.getByRole("button", { name: "Change theme" }).click();
+    const menu = app.getByRole("menu", { name: "Change theme" });
+    await expect(menu).toBeVisible();
+    await app.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+  });
+});

@@ -425,9 +425,10 @@ export default function DatasetsPage() {
             <h3 className="text-[14px] font-semibold">What&apos;s New</h3>
             <button
               onClick={() => setShowUpdates(false)}
+              aria-label="Dismiss"
               className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
             >
-              ✕
+              <X size={16} aria-hidden="true" />
             </button>
           </div>
           <div className="space-y-3 text-[13px]">

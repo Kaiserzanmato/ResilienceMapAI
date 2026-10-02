@@ -1,7 +1,6 @@
 export interface Persona {
   key: string;
   label: string;
-  emoji: string;
   description: string;
   suggestedQueries: string[];
 }
@@ -10,7 +9,6 @@ export const PERSONAS: Persona[] = [
   {
     key: "citizen",
     label: "Citizen",
-    emoji: "🏠",
     description: "Family safety and preparedness",
     suggestedQueries: [
       "Is this area safe to live in?",
@@ -21,7 +19,6 @@ export const PERSONAS: Persona[] = [
   {
     key: "real_estate",
     label: "Real Estate",
-    emoji: "🏢",
     description: "Property due diligence",
     suggestedQueries: [
       "What are the property risk concerns here?",
@@ -32,7 +29,6 @@ export const PERSONAS: Persona[] = [
   {
     key: "insurance",
     label: "Insurance / Fintech",
-    emoji: "📊",
     description: "Underwriting and collateral risk",
     suggestedQueries: [
       "What underwriting flags apply here?",
@@ -43,7 +39,6 @@ export const PERSONAS: Persona[] = [
   {
     key: "government",
     label: "Government",
-    emoji: "🏛️",
     description: "Community and infrastructure planning",
     suggestedQueries: [
       "Which communities should be prioritized?",
@@ -54,7 +49,6 @@ export const PERSONAS: Persona[] = [
   {
     key: "ngo",
     label: "NGO",
-    emoji: "🤝",
     description: "Humanitarian preparedness programs",
     suggestedQueries: [
       "Which areas need preparedness support?",
@@ -65,7 +59,6 @@ export const PERSONAS: Persona[] = [
   {
     key: "business",
     label: "Business",
-    emoji: "💼",
     description: "Continuity and supply chain",
     suggestedQueries: [
       "What continuity risks affect operations here?",
@@ -76,7 +69,6 @@ export const PERSONAS: Persona[] = [
   {
     key: "school",
     label: "School",
-    emoji: "🎓",
     description: "Campus and student safety",
     suggestedQueries: [
       "What hazards affect school safety here?",

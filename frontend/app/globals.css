@@ -17,7 +17,8 @@
   --accent-2: #7c3aed;
   --accent-glow: rgba(37, 99, 235, 0.25);
   --ring: rgba(37, 99, 235, 0.5);
-  --glass-blur: 18px;
+  --glass-blur: 22px;
+  --glass-saturate: 1.8;
   --nav-h: 60px;
   --banner-h: 44px;
   --footer-h: 44px;
@@ -36,10 +37,10 @@
   --z-modal: 70;
   --z-toast: 80;
 
-  /* Radius scale (spec: 12–20px) */
+  /* Radius scale (spec: 12 / 16 / 22px) */
   --radius-sm: 12px;
   --radius-md: 16px;
-  --radius-lg: 20px;
+  --radius-lg: 22px;
 
   /* Elevation scale */
   --elevation-1: 0 4px 16px rgba(2, 8, 23, 0.08);
@@ -51,6 +52,9 @@
   --motion-base: 200ms;
   --motion-slow: 320ms;
   --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  /* iOS-style spring curve for menus, sheets and dialogs */
+  --motion-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --press-scale: 0.97;
 
   /* Risk colors are fixed across themes (icon + text always accompany color) */
   --risk-low: #16a34a;
@@ -133,7 +137,8 @@
   --color-risk-medium: var(--risk-medium);
   --color-risk-high: var(--risk-high);
   --color-risk-nodata: var(--risk-nodata);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* SF-like system stack; Inter is a web fallback only, never the primary face */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --breakpoint-3xl: 1920px;
 }
@@ -162,8 +167,8 @@ body {
 /* ---------- Glassmorphism ---------- */
 .glass {
   background: var(--surface);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border: 1px solid var(--surface-border);
   box-shadow: 0 8px 32px rgba(2, 8, 23, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
@@ -172,10 +177,27 @@ body {
 
 .glass-strong {
   background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
-  backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(1.4);
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(1.4);
+  backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(var(--glass-saturate));
   border: 1px solid var(--surface-border);
   box-shadow: 0 16px 48px rgba(2, 8, 23, 0.18);
+}
+.high-contrast .glass-strong { box-shadow: none; }
+
+/* Accessibility fallbacks: never leave text floating on nothing.
+ * Reduced-transparency and no-backdrop-filter browsers both get a solid,
+ * still-AA-contrast surface instead of a blur. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .glass-strong {
+    background: var(--surface-solid);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass, .glass-strong {
+    background: var(--surface-solid);
+  }
 }
 
 /* ---------- Utility classes ---------- */

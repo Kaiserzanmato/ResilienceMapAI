@@ -1,5 +1,5 @@
 "use client";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import type { InsightResponse } from "@/lib/types";
 
@@ -90,7 +90,9 @@ export function InsightsPanel({
                     <div className="font-medium text-sm">{source.source_name}</div>
                     <div className="text-xs text-[var(--fg-muted)]">{source.agency}</div>
                     {source.verified && (
-                      <div className="text-xs text-green-500 mt-1">✓ Official Source</div>
+                      <div className="mt-1 flex items-center gap-1 text-xs text-green-500">
+                        <CheckCircle2 size={12} aria-hidden="true" /> Official Source
+                      </div>
                     )}
                   </a>
                 ))}
