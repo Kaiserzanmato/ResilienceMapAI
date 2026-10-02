@@ -26,6 +26,8 @@ export interface HazardScore extends RiskLevel {
   note?: string;
   /** True when the score comes from a satellite capture rather than the registry/model. */
   satellite?: boolean;
+  /** A pointer for what the score cannot say (e.g. the PHIVOLCS bulletins, since the alert level is not live). */
+  link?: { label: string; url: string };
 }
 
 export interface RiskAssessment {
@@ -65,6 +67,9 @@ export interface AssessmentHazard {
   indicative_score?: number | null;
   indicative_source_type?: string;
   indicative_confidence?: string;
+  /** Evidence line for observed/distance-based rows (Wildfire, Volcanic Activity). */
+  note?: string;
+  link?: { label: string; url: string };
   sources: Array<{ name: string; publication_date?: string; reliability?: string }>;
   evidence: Array<{
     source: string;

@@ -79,7 +79,7 @@ has elapsed) are fetched.
   Pro; `/_/backend/*` currently 404s on the production domain, so it does nothing today). Running more than one is
   harmless, since only due sources fetch.
 - **Durable state: Neon Postgres with PostGIS.** Set `DATABASE_URL` and apply the schema with Alembic
-  (`alembic upgrade head`, currently revision `0007`). With `ENVIRONMENT=production` the API refuses to
+  (`alembic upgrade head`, repo head `0008`: run it before deploying the code that reads `fire_detections`). With `ENVIRONMENT=production` the API refuses to
   start without `DATABASE_URL` unless `ALLOW_EPHEMERAL_STATE=true`. Migrations run from a trusted machine
   against the direct (non-pooled) string in `ALEMBIC_DATABASE_URL`, never inside the API; the safe procedure
   is in [docs/OPERATIONS.md](docs/OPERATIONS.md).

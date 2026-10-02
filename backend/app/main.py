@@ -32,7 +32,7 @@ from .services.ai_router import DISCLAIMER, generate_insight
 from .services.exporters import (build_pdf_report, get_report, list_reports,
                                  risks_to_csv, store_report)
 from .services.risk_scoring import compare_locations, score_location
-from .services.global_assessment import assess_location
+from .services.global_assessment import assess_location, load_fire_context
 from .services.providers import build_providers, pick_provider
 from .services import usage_quota
 
@@ -110,9 +110,10 @@ async def geocode(q: str = Query(..., min_length=1, max_length=80)):
 
 
 @app.post("/api/assessments")
-def global_assessment(req: GlobalAssessmentRequest):
+async def global_assessment(req: GlobalAssessmentRequest):
     """Registry-routed, evidence-aware multi-hazard screening contract."""
-    return assess_location(req.lat, req.lng, req.name, req.country_code, req.geometry_type)
+    fire = await load_fire_context(req.lat, req.lng)
+    return assess_location(req.lat, req.lng, req.name, req.country_code, req.geometry_type, fire=fire)
 
 
 # ---------------------------------------------------------------- hazards

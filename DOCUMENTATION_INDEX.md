@@ -12,6 +12,7 @@ These describe production as of 2026-10-02 and are kept in step with `main`:
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Vercel + Render setup, `CORS_ORIGINS`, Neon + Alembic, the GitHub Actions sync |
 | [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md) | Every Render, Vercel and GitHub variable: purpose, secret vs config, default |
 | [`docs/OPERATIONS.md`](docs/OPERATIONS.md) | Safe production migrations, manual sync, rollback, known limits |
+| [`docs/WILDFIRE_VOLCANIC.md`](docs/WILDFIRE_VOLCANIC.md) | Wildfire (FIRMS) score and the (off-by-default, no-data-shipped) Volcanic score; no-data rules, licence decision |
 | [`docs/FLOOD_CAPTURE.md`](docs/FLOOD_CAPTURE.md) | Flood auto-capture: Sentinel-1/2, JRC permanent-water filter, `/api/flood/*`, the risk panel's Flood row |
 | [`TECHNICAL_DOCUMENTATION.md`](TECHNICAL_DOCUMENTATION.md) | API, geocoder and assessment contracts, configuration, limits |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | System diagram and data flows |

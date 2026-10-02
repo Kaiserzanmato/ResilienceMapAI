@@ -20,6 +20,8 @@ export function toRiskAssessment(assessment: GlobalAssessment): RiskAssessment {
         reason_code: hazard.reason_code,
         indicative_score: hazard.indicative_score ?? null,
         indicative_source_type: hazard.indicative_source_type,
+        ...(hazard.note ? { note: hazard.note } : {}),
+        ...(hazard.link ? { link: hazard.link } : {}),
       },
     ]),
   );

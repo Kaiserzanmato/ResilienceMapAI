@@ -9,6 +9,17 @@ the Aug 6–7 geocoding-gateway and dashboard/globe/weather work in detail.
 Format: `[commit] type: summary`, followed by what changed and why when it
 isn't obvious from the summary alone.
 
+## 2026-10-02 (wildfire and volcanic scores)
+
+- **feat: Wildfire and Volcanic Activity get real scores in the risk panel.** Audit: the FIRMS sync downloaded detections and
+  dropped them (no normalizer, nothing stored), and Volcano had no data. Now the sync stores detections in `fire_detections`
+  (Alembic `0008`, geography point + GiST index) and Wildfire is scored from detections within 10 km over 7 and 30 days
+  (confidence and FRP weighted; evidence: counts, nearest distance, last seen); Volcanic scoring (distance bands to the nearest Philippine
+  volcano) is implemented but **off by default and ships no data**: the Smithsonian GVP list's terms allow non-commercial use only and
+  the repo is public, so it was removed; a loader expects a PHIVOLCS-sourced file (`VOLCANO_DATA_FILE`) later. Wildfire feeds Overall and
+  "N of 13", stays no-data outside coverage, and is labelled an indicator, not an official hazard map. The PHIVOLCS alert level is not
+  live. `ENABLE_WILDFIRE_SCORING`, `ENABLE_VOLCANIC_SCORING`, `VOLCANO_DATA_FILE`, `scripts/backfill_firms.py`, `docs/WILDFIRE_VOLCANIC.md`.
+
 ## 2026-10-02
 
 - **[#30] fix: risk panel scores Flood from the satellite capture.** The Flood row existed but was

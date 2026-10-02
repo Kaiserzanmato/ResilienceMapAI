@@ -29,6 +29,12 @@ assessments, grounded AI explanations, and report/export workflows.
   Flood row shows it as satellite evidence with a score that joins the overall score; with no
   capture it says "No satellite capture yet: flag flooding here". It is satellite-observed, not an
   official flood map. See [docs/FLOOD_CAPTURE.md](docs/FLOOD_CAPTURE.md).
+- **Wildfire and Volcanic scores:** the risk panel scores Wildfire from stored NASA FIRMS (VIIRS)
+  active-fire detections within 10 km over the last 7 and 30 days (confidence and FRP weighted;
+  satellite-observed active fire, not an official hazard map, and it includes agricultural burning), and
+  Volcanic Activity from the distance to the nearest Philippine volcano (danger-zone-style bands; **off by
+  default and no volcano list is shipped**, because the Smithsonian GVP terms do not allow redistribution). Both
+  feed the overall score when on; coverage gaps stay "No data". The PHIVOLCS alert level is not live (a link is shown). See [docs/WILDFIRE_VOLCANIC.md](docs/WILDFIRE_VOLCANIC.md).
 - **Geocoding gateway:** Geoapify is the primary production provider,
   LocationIQ is the fallback, Photon is optional, and the local gazetteer is a
   degraded final fallback. Search candidates show their normalized addresses
@@ -65,7 +71,7 @@ FastAPI backend on Render
   +--> Geocoder gateway: Geoapify -> LocationIQ -> Photon (configured) -> local gazetteer
   +--> Hazard providers: global, national, and local source adapters
   +--> AI providers: Qwen -> Together -> DeepSeek -> OpenAI -> Gemini -> local fallback
-  +--> Neon PostgreSQL/PostGIS via DATABASE_URL (Alembic, head 0007); in-memory repositories otherwise
+  +--> Neon PostgreSQL/PostGIS via DATABASE_URL (Alembic, head 0008); in-memory repositories otherwise
   +--> Flood capture: Sentinel-1/2 scenes (Planetary Computer, Earth Search) + JRC permanent water
   GitHub Actions (every 6 h) --> /api/cron/sync-sources and /api/cron/flood-captures
 ```
@@ -273,12 +279,12 @@ without a connector yet, registered for discoverability, not sync
   automatically by whether `DATABASE_URL` is set. Production uses **Neon Postgres
   with PostGIS**; with `ENVIRONMENT=production` the API refuses to start without
   `DATABASE_URL` unless `ALLOW_EPHEMERAL_STATE=true`.
-- **Migrations**: Alembic (`backend/alembic/`, head `0007`), applied out-of-band from a
+- **Migrations**: Alembic (`backend/alembic/`, head `0008`), applied out-of-band from a
   trusted machine against the direct, non-pooled connection string in
   `ALEMBIC_DATABASE_URL` — never inside the API. The safe procedure and rollback are in
   [docs/OPERATIONS.md](docs/OPERATIONS.md). Revisions: `0001` base tables, `0002`
   `hazard_events`, `0004` dataset governance, `0005` PostGIS, `0006` flood capture, `0007`
-  total/flood hectares (permanent water excluded).
+  total/flood hectares (permanent water excluded), `0008` FIRMS fire detections (the wildfire score).
 
 **Firecrawl advisory scraper** (`backend/app/data_sources/scrapers/firecrawl_worker.py`):
 scrapes unstructured hazard advisories (PAGASA/PHIVOLCS/JMA bulletins, etc.)

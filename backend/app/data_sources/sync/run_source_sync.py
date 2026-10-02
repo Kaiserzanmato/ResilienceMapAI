@@ -31,8 +31,15 @@ WIRED_SOURCE_IDS = {"gdacs", "nasa-eonet", "usgs-earthquake", "reliefweb", "nasa
 
 
 async def _persist_events(source_id: str, records: list[dict]) -> None:
-    """Write normalized events to hazard_events (Postgres when configured).
-    Only providers with a normalizer produce events; others are a no-op."""
+    """Write normalized events to hazard_events (Postgres when configured); FIRMS
+    detections go to fire_detections. Providers with neither are a no-op."""
+    if source_id == "nasa-firms":
+        # FIRMS rows are detections, not events: they go to fire_detections (wildfire score).
+        from ...repositories.fire_repo import get_fire_repo
+        from ...services.wildfire_scoring import parse_firms_record
+        detections = [d for d in (parse_firms_record(r) for r in records) if d is not None]
+        await get_fire_repo().upsert_many(detections)
+        return
     from ...repositories.hazard_event_repo import get_hazard_event_repo
     from ..event_intelligence import NORMALIZERS, normalize_records
     if source_id not in NORMALIZERS:
