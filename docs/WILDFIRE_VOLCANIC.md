@@ -59,3 +59,11 @@ So the extract that an earlier draft of this work contained was removed, and the
 
 `HazardScore.note` carries the evidence line and `link` the PHIVOLCS pointer; `RiskSummaryWidget.tsx` shows them under the row, and
 `lib/assessment-adapter.ts` includes both scores in Overall and the hazard count.
+
+## External dependencies
+
+* **Volcanic scoring is blocked on PHIVOLCS permission** (requested 2026-10-02; PHIVOLCS then asks for a request form and a Data User
+  Agreement). Nothing is built beyond the loader and tests, and `ENABLE_VOLCANIC_SCORING` stays `false`. Status and the checklist for
+  switching it on: [issue #34](https://github.com/Kaiserzanmato/ResilienceMapAI/issues/34).
+* Wildfire depends on NASA FIRMS (live, Philippines box). Flood capture depends on Copernicus Sentinel scenes and the JRC Global Surface
+  Water layer. Their status is in the issue's table.

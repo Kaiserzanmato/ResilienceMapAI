@@ -305,6 +305,12 @@ generated file — regenerate it with
 `backend/.venv/bin/python backend/scripts/export_ts_registry.py` after
 editing the Python registry. Never hand-edit the `.ts` file.
 
+## External dependencies
+
+Volcanic Activity shows "No data" until PHIVOLCS grants permission to use its volcano data; `ENABLE_VOLCANIC_SCORING` stays `false`.
+Tracked in [issue #34](https://github.com/Kaiserzanmato/ResilienceMapAI/issues/34) with the status of the other external sources (ReliefWeb, NASA FIRMS, Sentinel, JRC). Details:
+[docs/WILDFIRE_VOLCANIC.md](./docs/WILDFIRE_VOLCANIC.md).
+
 ## Deployment
 
 - **Frontend**: Vercel, `https://resiliencemapai.online` (with the Vercel
