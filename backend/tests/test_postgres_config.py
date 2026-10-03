@@ -8,7 +8,7 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 from fastapi.testclient import TestClient
 
-from app.config import get_settings
+from app.config import PRODUCTION_NEON_ENDPOINT_ID, Settings, get_settings, prevent_local_use_of_production_database
 from app.data_sources.sync.source_sync_health import get_sync_health_report
 from app.db import asyncpg_connect_args, to_asyncpg_url
 from app.main import app
@@ -46,6 +46,21 @@ def test_pooler_hosts_disable_the_prepared_statement_cache():
 ])
 def test_scheme_and_other_params_are_preserved(raw, expected):
     assert to_asyncpg_url(raw) == expected
+
+
+def test_non_production_run_refuses_to_start_against_the_production_database():
+    production_url = f"postgresql://u:p@{PRODUCTION_NEON_ENDPOINT_ID}-pooler.ap-southeast-1.aws.neon.tech/neondb"
+    with pytest.raises(RuntimeError, match="production Neon endpoint"):
+        prevent_local_use_of_production_database(Settings(environment="development", database_url=production_url))
+    with pytest.raises(RuntimeError, match="production Neon endpoint"):
+        # Direct (non-pooled) host still contains the endpoint id.
+        prevent_local_use_of_production_database(
+            Settings(environment="development", database_url=production_url.replace("-pooler", ""))
+        )
+    # Production itself, a different host, and no DATABASE_URL at all are all fine.
+    prevent_local_use_of_production_database(Settings(environment="production", database_url=production_url))
+    prevent_local_use_of_production_database(Settings(environment="development", database_url=NEON))
+    prevent_local_use_of_production_database(Settings(environment="development", database_url=""))
 
 
 def test_alembic_chain_is_linear_and_ends_with_fire_detections():

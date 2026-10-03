@@ -174,6 +174,26 @@ class Settings(BaseSettings):
     events_max_response_bytes: int = int(os.getenv("EVENTS_MAX_RESPONSE_BYTES", str(2 * 1024 * 1024)))
 
 
+# The production Neon endpoint. A local or dev run must never point at it — a
+# stale copy-pasted .env value would otherwise read or write production data
+# from someone's laptop. This is an endpoint id, not a secret.
+PRODUCTION_NEON_ENDPOINT_ID = "ep-orange-glitter-b3r4smzw"
+
+
+def prevent_local_use_of_production_database(settings: Settings) -> None:
+    """Fail fast if a non-production run's DATABASE_URL is the production Neon
+    branch, instead of letting someone's local script quietly touch production
+    data. Pooled and direct hosts both contain the endpoint id, so a plain
+    substring check covers either."""
+    if settings.environment != "production" and PRODUCTION_NEON_ENDPOINT_ID in settings.database_url:
+        raise RuntimeError(
+            f"DATABASE_URL points at the production Neon endpoint ({PRODUCTION_NEON_ENDPOINT_ID}) "
+            f"but ENVIRONMENT={settings.environment!r}. Local and dev runs must use a separate "
+            "Neon branch so they can never read or write production data — see "
+            "backend/README.md (Local development). Refusing to start."
+        )
+
+
 def require_durable_state(settings: Settings) -> None:
     """Sync health, the audit log, uploaded-dataset metadata and synced events
     fall back to in-memory stores without DATABASE_URL, so they vanish on every
@@ -219,6 +239,7 @@ def get_settings() -> Settings:
             "requests (including Vercel's own scheduler) until it's configured."
         )
 
+    prevent_local_use_of_production_database(settings)
     require_durable_state(settings)
 
     return settings
