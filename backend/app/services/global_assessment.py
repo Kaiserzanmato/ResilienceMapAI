@@ -55,13 +55,19 @@ def _modelled_evidence(score: float, data_coverage: str, timestamp: str) -> dict
 
 def _coverage_state(score: float | None, providers: list, selected: dict | None,
                     country_code: str | None, legacy_coverage: str) -> tuple[str, str]:
-    """Closed-vocabulary coverage_status + reason_code (public display decision, section 4)."""
+    """Closed-vocabulary coverage_status + reason_code (public display decision, section 4).
+    Honest, specific no-data reasons — never a generic "temporarily unavailable" catch-all:
+    `not_covered` (no source is even registered), `no_connected_source` (a source is
+    registered — e.g. GloFAS, IBTrACS — but nothing is wired up to it yet) and
+    `no_verified_evidence` (a connector IS configured but produced nothing for this spot).
+    Volcano's own `licence_pending` case is applied by the caller, which alone knows about
+    ENABLE_VOLCANIC_SCORING."""
     if score is not None:
         return "available", "modelled_indicator"
     if not providers:
-        return "out_of_coverage", "no_registered_source"
+        return "out_of_coverage", "not_covered"
     if selected is None:
-        return "unavailable", "connector_not_configured"
+        return "unavailable", "no_connected_source"
     if legacy_coverage == "limited":
         return ("out_of_coverage", "outside_modelled_coverage") if country_code else ("unknown", "country_unresolved")
     return "unavailable", "no_verified_evidence"
@@ -143,6 +149,11 @@ def assess_location(lat: float, lng: float, name: str | None = None, country_cod
         else:
             score, evidence, confidence = None, [], "none"
         coverage_status, reason_code = _coverage_state(score, providers, selected, country_code, legacy["data_coverage"])
+        if hazard == "volcano" and score is None and not get_settings().enable_volcanic_scoring:
+            # PHIVOLCS data permission is pending, not "no connected source" — GVP alone
+            # (volcano_scoring.py) already locates volcanoes; the live alert feed is what's
+            # blocked. See memory: keep this off until written PHIVOLCS permission.
+            coverage_status, reason_code = "unavailable", "licence_pending"
         # Satellite- and distance-based rows that do not go through the legacy zone model.
         observed: dict[str, Any] = {}
         if hazard == "wildfire" and get_settings().enable_wildfire_scoring and selected is not None and fire is not None:
@@ -187,20 +198,36 @@ def assess_location(lat: float, lng: float, name: str | None = None, country_cod
     }
 
 
+def _parse_health_timestamp(value: Any) -> datetime | None:
+    if not value:
+        return None
+    dt = datetime.fromisoformat(value) if isinstance(value, str) else value
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
 async def load_fire_context(lat: float, lng: float) -> FireContext | None:
-    """FIRMS detections near the point, or None when scoring is off or the store cannot be
-    read (a missing table, a database error): the wildfire row then stays honest no-data
-    instead of failing the whole assessment."""
+    """FIRMS detections near the point plus FIRMS sync health, or None when scoring is off
+    or either store cannot be read (a missing table, a database error): the wildfire row
+    then stays honest no-data instead of failing the whole assessment. Freshness and
+    history length come from sync health, never from the detections themselves — see
+    FireContext and wildfire_scoring's module docstring."""
     import logging
     from datetime import timedelta
     from ..repositories.fire_repo import get_fire_repo
+    from ..repositories.sync_health_repo import get_sync_health_repo
     from .wildfire_scoring import RADIUS_KM, WINDOW_DAYS
 
     if not get_settings().enable_wildfire_scoring:
         return None
     try:
         since = datetime.now(timezone.utc) - timedelta(days=WINDOW_DAYS)
-        return await get_fire_repo().context(lat, lng, RADIUS_KM, since)
+        nearby = await get_fire_repo().context(lat, lng, RADIUS_KM, since)
+        health = await get_sync_health_repo().get("nasa-firms")
+        return FireContext(
+            nearby,
+            last_successful_sync_at=_parse_health_timestamp(health.get("last_successful_sync_at")),
+            first_successful_sync_at=_parse_health_timestamp(health.get("first_successful_sync_at")),
+        )
     except Exception as exc:  # noqa: BLE001 - never let the fire store break the assessment
         logging.getLogger(__name__).warning("[wildfire] detections unavailable: %s", type(exc).__name__)
         return None

@@ -28,6 +28,10 @@ class SyncHealthRow(Base):
     source_id: Mapped[str] = mapped_column(String, primary_key=True)
     last_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     last_successful_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    # Set once, on the first-ever success, and never moved afterward — history length
+    # (e.g. wildfire's MIN_HISTORY_DAYS) is measured from here, not from stored data,
+    # so data that is later pruned or deleted does not reset "how long we've been looking".
+    first_successful_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     last_sync_status: Mapped[Optional[str]] = mapped_column(String)
     records_synced: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[Optional[str]] = mapped_column(Text)

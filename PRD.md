@@ -422,7 +422,7 @@ Stakeholders open link, see:
 - Support 1,000 concurrent users on Vercel (auto-scales)
 - Backend: Render free tier (can upgrade to Pro)
 - Database: Neon Postgres with PostGIS (required in production; in-memory fallback only for local development)
-- Scheduled data sync every 6 hours (GitHub Actions): <5 min total (parallel fetches)
+- Scheduled data sync every 2 hours (GitHub Actions): <5 min total (parallel fetches)
 
 ### Reliability
 - 99.5% uptime target (Vercel SLA)

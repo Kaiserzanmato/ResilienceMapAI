@@ -1,6 +1,6 @@
 # Environment variables
 
-**Current as of:** 2026-10-02. Names, purposes and defaults come from
+**Current as of:** 2026-10-03. Names, purposes and defaults come from
 `backend/app/config.py`, `backend/app/client_ip.py`, `backend/alembic/env.py`,
 `frontend/lib/feature-flags.ts`, the frontend `process.env` reads and
 `.github/workflows/sync-sources.yml`. The `.env.example` files list the same names.
@@ -69,7 +69,7 @@ GDACS, NASA EONET and USGS need no key.
 
 | Name | Purpose | Kind | Default |
 |---|---|---|---|
-| `ENABLE_WILDFIRE_SCORING` | Score Wildfire from stored FIRMS detections (needs migration 0008; without data the row stays no-data) | config | `true` |
+| `ENABLE_WILDFIRE_SCORING` | Score Wildfire from stored FIRMS detections (needs migrations 0008 and 0009 — 0009 must be applied before this code deploys, see `docs/OPERATIONS.md`; without data the row stays no-data) | config | `true` |
 | `ENABLE_VOLCANIC_SCORING` | Score Volcanic Activity from distance to Philippine volcanoes. Off by default: no volcano list ships in the repo (GVP terms do not allow redistribution) | config | `false` |
 | `VOLCANO_DATA_FILE` | Path to a volcano list JSON outside the repo (format in [WILDFIRE_VOLCANIC.md](./WILDFIRE_VOLCANIC.md)). Unset, missing or invalid: Volcanic stays no-data | config (a path) | unset |
 

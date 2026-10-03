@@ -1,6 +1,6 @@
 # Technical Documentation
 
-**Current as of:** 2026-10-02
+**Current as of:** 2026-10-03
 
 **Scope:** deployed application contracts and implementation boundaries.
 
@@ -11,11 +11,12 @@
 - Backend: FastAPI 0.128.8, Pydantic 2.13.4, HTTPX 0.28.1. It is deployed by
   Render at `https://resiliencemap-api.onrender.com`.
 - Persistence is repository-backed. Production uses Neon Postgres with PostGIS through `DATABASE_URL`,
-  with the schema managed by Alembic (head `0008`: base tables, `hazard_events`, dataset governance,
-  PostGIS, flood capture, permanent-water columns, FIRMS `fire_detections`). Without `DATABASE_URL` the repositories fall back to
+  with the schema managed by Alembic (head `0009`: base tables, `hazard_events`, dataset governance,
+  PostGIS, flood capture, permanent-water columns, FIRMS `fire_detections`, `sync_health.first_successful_sync_at`).
+  Without `DATABASE_URL` the repositories fall back to
   memory, which is not durable across restarts; production refuses to start that way unless
   `ALLOW_EPHEMERAL_STATE=true`.
-- Source sync: GitHub Actions calls `GET /api/cron/sync-sources` every 6 hours (Bearer `CRON_SECRET`). Five
+- Source sync: GitHub Actions calls `GET /api/cron/sync-sources` every 2 hours (Bearer `CRON_SECRET`). Five
   sources are wired: GDACS, NASA EONET, NASA FIRMS, USGS Earthquake and ReliefWeb (v2 API, approved
   `RELIEFWEB_APPNAME`). The same workflow drains flood-capture jobs via `GET /api/cron/flood-captures`.
 - Flood auto-capture (`backend/app/flood/`, `/api/flood/*`): a user flag queues a job that reads the newest
@@ -24,8 +25,12 @@
   `total_water_ha` / `flood_ha`. See [docs/FLOOD_CAPTURE.md](docs/FLOOD_CAPTURE.md).
 - Wildfire and Volcanic scores (`backend/app/services/wildfire_scoring.py`, `volcano_scoring.py`;
   [docs/WILDFIRE_VOLCANIC.md](docs/WILDFIRE_VOLCANIC.md)): the FIRMS sync stores detections in `fire_detections`
-  and `POST /api/assessments` scores a point from those within 10 km; Volcanic (distance to the nearest Philippine
-  volcano) is off by default and ships no data (GVP's terms forbid redistribution). Both are indicators, not official hazard maps.
+  (2-day fetch window, self-healing backfill while history is short) and `POST /api/assessments` scores a point
+  from those within 10 km, excluding any within 5 km of a known PH volcano summit (Smithsonian GVP coordinates);
+  freshness and history length come from `sync_health`, never from the stored detections. Volcanic (distance to
+  the nearest Philippine volcano) is off by default and ships no data (GVP's terms forbid redistribution). Both
+  are indicators, not official hazard maps. No-data reasons are specific, not a generic catch-all — see the
+  reason-code table in `ARCHITECTURE.md`.
 - Risk panel: the registry-driven assessment has no flood connector, so the frontend scores the Flood row from
   the capture covering the clicked spot (`frontend/lib/flood-indicator.ts`) and recomputes Overall and the hazard
   count; with no capture the row says "No satellite capture yet: flag flooding here". It is satellite-observed,

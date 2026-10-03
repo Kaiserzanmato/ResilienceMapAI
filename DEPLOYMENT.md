@@ -65,8 +65,8 @@ Live sources only refresh when something calls `GET /api/cron/sync-sources` with
 `Authorization: Bearer $CRON_SECRET`. Only sources that are *due* (their own `sync_frequency_minutes`
 has elapsed) are fetched.
 
-- **GitHub Actions is the production scheduler.** `.github/workflows/sync-sources.yml` runs every 6 hours
-  (`0 */6 * * *`) and on demand (`gh workflow run sync-sources.yml`). It calls the source sync and
+- **GitHub Actions is the production scheduler.** `.github/workflows/sync-sources.yml` runs every 2 hours
+  (`0 */2 * * *`) and on demand (`gh workflow run sync-sources.yml`). It calls the source sync and
   `GET /api/cron/flood-captures` (finishes flood jobs left unfinished when the free instance slept), retries
   once after 60 s, and keeps the instance from idling for long. Set the **`CRON_SECRET` repository secret**
   (Settings, Secrets and variables, Actions) to the same value as the Render `CRON_SECRET`.
@@ -75,11 +75,13 @@ has elapsed) are fetched.
   `appname` query parameter on the v2 API) enable the last two; without them a source reports `not_configured`
   instead of pretending it synced.
 - **Other schedulers (optional, not needed):** `render.yaml` declares a Render cron job (`*/15 * * * *`) for the same
-  endpoint, and `vercel.json` a daily Vercel cron at `/_/backend/api/cron/sync-sources` (sub-daily needs Vercel
+  endpoint — **whether that Blueprint is actually applied/deployed on Render is unconfirmed**, checkable only from
+  the Render dashboard — and `vercel.json` a daily Vercel cron at `/_/backend/api/cron/sync-sources` (sub-daily needs Vercel
   Pro; `/_/backend/*` currently 404s on the production domain, so it does nothing today). Running more than one is
   harmless, since only due sources fetch.
 - **Durable state: Neon Postgres with PostGIS.** Set `DATABASE_URL` and apply the schema with Alembic
-  (`alembic upgrade head`, repo head `0008`: run it before deploying the code that reads `fire_detections`). With `ENVIRONMENT=production` the API refuses to
+  (`alembic upgrade head`, repo head `0009`: `0009` must run before deploying the code that reads/writes
+  `sync_health.first_successful_sync_at`, same as `0008` before `fire_detections`). With `ENVIRONMENT=production` the API refuses to
   start without `DATABASE_URL` unless `ALLOW_EPHEMERAL_STATE=true`. Migrations run from a trusted machine
   against the direct (non-pooled) string in `ALEMBIC_DATABASE_URL`, never inside the API; the safe procedure
   is in [docs/OPERATIONS.md](docs/OPERATIONS.md).

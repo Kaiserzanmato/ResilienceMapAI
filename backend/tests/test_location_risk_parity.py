@@ -61,12 +61,22 @@ def test_legacy_wildfire_comes_from_the_same_engine_as_the_assessment():
 
 def test_legacy_wildfire_shows_a_stored_detection(monkeypatch):
     from datetime import timedelta
+    from app.repositories.sync_health_repo import get_sync_health_repo
     from app.services import wildfire_scoring as ws
     monkeypatch.setattr(get_settings(), "nasa_firms_area", "116,4,127,22")
     now = datetime.now(timezone.utc)
-    rows = [ws.FireDetection(MAYON["lat"] + 0.01, MAYON["lng"], now - timedelta(hours=h), "N", "h", 30.0, "D") for h in (5, 30, 60)]
+    # MAYON itself is within VOLCANO_EXCLUSION_RADIUS_KM (5) of the real Mayon summit (see
+    # PH_ACTIVE_VOLCANO_SUMMITS), so the detection must sit clear of that — but still inside
+    # RADIUS_KM (10) of MAYON, the query point. This test is about the legacy/assessment
+    # routes agreeing, not about the volcano exclusion itself (covered separately in
+    # test_wildfire_scoring.py). 0.06 degrees north is about 6.7 km.
+    rows = [ws.FireDetection(MAYON["lat"] + 0.06, MAYON["lng"], now - timedelta(hours=h), "N", "h", 30.0, "D") for h in (5, 30, 60)]
     rows.append(ws.FireDetection(14.0, 121.0, now - timedelta(days=15), "N", "h", 5.0, "N"))  # history anchor, far away
     asyncio.run(get_fire_repo().upsert_many(rows))
+    # Freshness/history now come from sync health (see load_fire_context), not the rows above.
+    health_repo = get_sync_health_repo()
+    asyncio.run(health_repo.record_success("nasa-firms", len(rows)))
+    health_repo._health["nasa-firms"]["first_successful_sync_at"] = (now - timedelta(days=15)).isoformat()
     old = legacy(MAYON).json()["hazards"]["wildfire"]["score"]
     assert old and old == assessment(MAYON)["hazards"]["wildfire"]["score"]
 
