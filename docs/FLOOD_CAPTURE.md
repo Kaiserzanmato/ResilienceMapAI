@@ -134,3 +134,22 @@ examples in `backend/.env.example`. Production runbook (migrations, sync, rollba
 Alembic `0006` creates `flood_flags`, `flood_extents` and `flood_capture_jobs`; `0007` adds nullable
 `flood_extents.total_water_ha` and `flood_ha` (metadata-only, no backfill; its downgrade drops just those two
 columns). Downgrading `0006` drops all three tables and their data.
+
+## Verified Oct 3, 2026 (production)
+
+Flagged a real spot in Candaba, Pampanga (15.092, 120.827) on `resiliencemapai.online` end to end:
+request, capture job, polygons on the map, and the risk panel's Flood/Overall update. One flag, no
+retries.
+
+| | Before | After |
+|---|---|---|
+| Flood | 60 · Medium (capped — unfiltered capture, scene 2026-09-19) | 72 · High |
+| Overall | 50 · Medium | 56 · Medium |
+| Scene | Sentinel-1, 2026-09-19, permanent water unfiltered | Sentinel-1 (S1C RTC), 2026-10-01, filter applied |
+| Flood area | 1,224 ha open water (permanent water included) | 902.37 ha flooded (37 ha permanent water excluded), 36% of the 5 km box |
+
+The prior capture's JRC fetch had failed, leaving it unfiltered and capped per the rule above; the
+new flag picked up the newest Sentinel-1 scene and the JRC fetch succeeded, so the cap no longer
+applies and the score reflects the filtered flooded share directly. Checked responsive at 390px with
+no additional flag (`scrollWidth` stayed within the viewport; the flag button correctly offered to
+reuse the just-created capture rather than recapture it). Screenshots: `docs/screenshots/candaba-flag/`.
