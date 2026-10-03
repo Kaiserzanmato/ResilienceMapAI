@@ -65,6 +65,48 @@ async def test_unwired_enabled_source_is_never_included_in_a_batch_sync():
     assert unwired["last_sync_status"] != "success"
 
 
+def _firms_row(lat, lng, acq_at):
+    return {"latitude": str(lat), "longitude": str(lng), "acq_date": acq_at.strftime("%Y-%m-%d"),
+            "acq_time": acq_at.strftime("%H%M"), "satellite": "N", "instrument": "VIIRS",
+            "confidence": "h", "frp": "12.5", "daynight": "D"}
+
+
+async def test_self_healing_backfill_triggers_only_when_history_is_short_and_is_idempotent(monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    from app.repositories.fire_repo import get_fire_repo
+
+    now = datetime.now(timezone.utc)
+    calls = []
+
+    async def fake_firms(http_client, map_key, area_url, days):
+        calls.append(days)
+        return [_firms_row(13.15, 123.75, now - timedelta(hours=5))]
+
+    monkeypatch.setattr(nasa_firms_connector, "fetch_firms_fire_data", fake_firms)
+
+    # First-ever sync: no sync_health row yet, so history is 0 days — short. A
+    # normal days=2 fetch, then one extra days=10 self-healing backfill fetch.
+    result = await sync_module.run_source_sync("nasa-firms", None)
+    assert result["status"] == "success"
+    assert calls == [2, 10]
+    assert len(get_fire_repo().rows) == 1  # the one real detection; duplicates from both fetches collapse
+
+    # Running again right away is idempotent: the stored count does not grow, and the
+    # fetch days are the same (history is still short, seconds after the first sync).
+    calls.clear()
+    await sync_module.run_source_sync("nasa-firms", None)
+    assert calls == [2, 10]
+    assert len(get_fire_repo().rows) == 1
+
+    # Once history is long enough, no extra backfill fetch happens.
+    health_repo = get_sync_health_repo()
+    health_repo._health["nasa-firms"]["first_successful_sync_at"] = (now - timedelta(days=10)).isoformat()
+    calls.clear()
+    await sync_module.run_source_sync("nasa-firms", None)
+    assert calls == [2]
+
+
 def test_cron_sync_requires_matching_secret(monkeypatch):
     monkeypatch.setattr(get_settings(), "cron_secret", "test-cron-secret")
     client = TestClient(app)

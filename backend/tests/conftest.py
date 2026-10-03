@@ -66,3 +66,15 @@ def _reset_fire_state():
     if hasattr(repo, "clear"):
         repo.clear()
     yield
+
+
+@pytest.fixture(autouse=True)
+def _reset_sync_health_state():
+    """Wildfire scoring now reads nasa-firms sync health (first/last successful sync);
+    the repo is a process-wide singleton, so clear it between tests the same as fire/flood."""
+    from app.repositories.sync_health_repo import get_sync_health_repo
+
+    repo = get_sync_health_repo()
+    if hasattr(repo, "clear"):
+        repo.clear()
+    yield

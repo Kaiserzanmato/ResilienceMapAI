@@ -2,13 +2,17 @@ import {
   Activity,
   CloudRainWind,
   Flame,
+  Funnel,
   Leaf,
+  MoveDown,
   Mountain,
   MountainSnow,
   ShieldAlert,
   Sun,
   Thermometer,
   Waves,
+  WavesArrowUp,
+  Waypoints,
   Wind,
   type LucideIcon,
 } from "lucide-react";
@@ -29,6 +33,10 @@ export const HAZARD_ICONS: Record<string, LucideIcon> = {
   extreme_heat: Thermometer,
   conflict: ShieldAlert,
   environmental: Leaf,
+  active_fault: Waypoints,
+  tsunami: WavesArrowUp,
+  land_subsidence: MoveDown,
+  sinkhole: Funnel,
 };
 
 export function getHazardIcon(key: string): LucideIcon | undefined {

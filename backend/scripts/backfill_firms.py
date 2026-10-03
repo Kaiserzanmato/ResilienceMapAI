@@ -24,12 +24,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import httpx  # noqa: E402
 
 from app.config import get_settings  # noqa: E402
+from app.data_sources.connectors.nasa_firms_connector import MAX_RANGE  # noqa: E402
 from app.repositories.fire_repo import get_fire_repo  # noqa: E402
 from app.services.wildfire_scoring import parse_firms_record  # noqa: E402
 
 FIRMS_API = "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
 SOURCE = "VIIRS_SNPP_NRT"
-MAX_RANGE = 10  # FIRMS allows 1 to 10 days per request
 
 
 def chunks(days: int, today: date) -> list[tuple[date, int]]:

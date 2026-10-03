@@ -10,6 +10,7 @@ import {
 } from "@/lib/flood-evidence";
 import { applyFloodCapture, NO_CAPTURE_TEXT } from "@/lib/flood-indicator";
 import { orderHazards } from "@/lib/hazard-panel";
+import { statusLabel } from "@/lib/hazard-status";
 import { assessmentQueryKey, fetchAssessment } from "@/lib/queries/assessment";
 import { useAppStore } from "@/lib/store";
 import { formatResetClock } from "@/lib/usage-reset";
@@ -24,19 +25,6 @@ import { getHazardIcon } from "@/components/hazard-icons";
 import { FloodFlagButton } from "./FloodFlagButton";
 import { InsightsPanel } from "./InsightsPanel";
 import type { InsightResponse } from "@/lib/types";
-
-/** Policy wording for no-data states (SPRINT_1 coverage decision, section 4). Never styled as low risk. */
-function statusLabel(status: string | undefined): string {
-  switch (status) {
-    case "out_of_coverage": return "Not covered by this source";
-    case "unavailable": return "Temporarily unavailable";
-    case "not_applicable": return "Not applicable";
-    case "stale": return "Stale";
-    case "expired": return "Expired; not used";
-    case "suppressed": return "Unavailable for this view";
-    default: return "Data status unknown";
-  }
-}
 
 export function RiskSummaryWidget() {
   const {
@@ -340,7 +328,7 @@ export function RiskSummaryWidget() {
                     </span>
                     {h.score === null ? (
                       <span className="text-[11px] text-[var(--fg-muted)]">
-                        {h.reason_code === "no_satellite_capture" ? "No capture yet" : statusLabel(h.coverage_status)}
+                        {statusLabel(h.reason_code, h.coverage_status)}
                       </span>
                     ) : (
                       <span className="font-semibold" style={{ color: riskColor(h.color) }}>

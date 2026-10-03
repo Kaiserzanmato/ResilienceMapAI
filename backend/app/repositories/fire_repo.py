@@ -3,7 +3,7 @@ geography point with a GiST index, queried with ST_DWithin) when DATABASE_URL is
 otherwise an in-memory store with the same behaviour, so tests and local dev need no
 database. Same pattern as flood_repo / hazard_event_repo.
 
-Upserts on (source, acq_at, latitude, longitude), so the 6-hourly sync, which downloads
+Upserts on (source, acq_at, latitude, longitude), so the scheduled sync, which downloads
 overlapping days, never duplicates a detection. Rows older than RETENTION_DAYS are pruned.
 """
 from __future__ import annotations
@@ -17,7 +17,7 @@ from sqlalchemy import text
 
 from ..db import database_configured, get_sessionmaker
 from ..services.volcano_scoring import haversine_km
-from ..services.wildfire_scoring import RETENTION_DAYS, FireContext, FireDetection, NearbyFire
+from ..services.wildfire_scoring import RETENTION_DAYS, FireDetection, NearbyFire
 
 MAX_NEARBY = 2000  # a cap on rows pulled for one point; a 10 km circle never needs more
 
@@ -32,13 +32,16 @@ class FireRepo(ABC):
         """Store detections; returns how many were given. Also prunes old rows."""
 
     @abstractmethod
-    async def context(self, lat: float, lng: float, radius_km: float, since: datetime) -> FireContext:
-        """Detections within radius_km and at or after `since`, plus the table's span."""
+    async def context(self, lat: float, lng: float, radius_km: float, since: datetime) -> list[NearbyFire]:
+        """Detections within radius_km and at or after `since`. Freshness/history come
+        from sync health (app/repositories/sync_health_repo.py), not from this table —
+        see global_assessment.load_fire_context, which combines the two into a
+        wildfire_scoring.FireContext."""
 
 
 class InMemoryFireRepo(FireRepo):
     def __init__(self) -> None:
-        self.rows: dict[tuple, tuple[FireDetection, datetime]] = {}
+        self.rows: dict[tuple, FireDetection] = {}
 
     def clear(self) -> None:
         self.rows.clear()
@@ -47,7 +50,7 @@ class InMemoryFireRepo(FireRepo):
         now = _now()
         count = 0
         for d in detections:
-            self.rows[(d.source, d.acq_at, d.latitude, d.longitude)] = (d, now)
+            self.rows[(d.source, d.acq_at, d.latitude, d.longitude)] = d
             count += 1
         cutoff = now - timedelta(days=RETENTION_DAYS)
         for key in [k for k in self.rows if k[1] < cutoff]:
@@ -56,13 +59,11 @@ class InMemoryFireRepo(FireRepo):
 
     async def context(self, lat, lng, radius_km, since):
         nearby = [
-            NearbyFire(dist, d.acq_at, d.confidence, d.frp)
-            for d, _ in self.rows.values()
+            NearbyFire(dist, d.acq_at, d.confidence, d.frp, d.latitude, d.longitude)
+            for d in self.rows.values()
             if d.acq_at >= since and (dist := haversine_km(lat, lng, d.latitude, d.longitude)) <= radius_km
         ]
-        latest = max((ingested for _, ingested in self.rows.values()), default=None)
-        earliest = min((d.acq_at for d, _ in self.rows.values()), default=None)
-        return FireContext(sorted(nearby, key=lambda f: f.distance_km)[:MAX_NEARBY], latest, earliest)
+        return sorted(nearby, key=lambda f: f.distance_km)[:MAX_NEARBY]
 
 
 UPSERT = text("""
@@ -75,7 +76,7 @@ UPSERT = text("""
 
 NEARBY = text("""
     SELECT ST_Distance(geog, ST_SetSRID(ST_MakePoint(CAST(:lng AS float8), CAST(:lat AS float8)), 4326)::geography) / 1000.0 AS distance_km,
-           acq_at, confidence, frp
+           acq_at, confidence, frp, latitude, longitude
     FROM fire_detections
     WHERE ST_DWithin(geog, ST_SetSRID(ST_MakePoint(CAST(:lng AS float8), CAST(:lat AS float8)), 4326)::geography, :radius_m)
       AND acq_at >= :since
@@ -83,7 +84,6 @@ NEARBY = text("""
     LIMIT :limit
 """)
 
-SPAN = text("SELECT max(ingested_at) AS latest, min(acq_at) AS earliest FROM fire_detections")
 PRUNE = text("DELETE FROM fire_detections WHERE acq_at < :cutoff")
 
 
@@ -103,9 +103,11 @@ class PostgresFireRepo(FireRepo):
         async with get_sessionmaker()() as session:
             rows = (await session.execute(NEARBY, {"lat": lat, "lng": lng, "radius_m": radius_km * 1000.0,
                                                    "since": since, "limit": MAX_NEARBY})).mappings().all()
-            span = (await session.execute(SPAN)).mappings().one()
-        nearby = [NearbyFire(float(r["distance_km"]), r["acq_at"], r["confidence"], r["frp"]) for r in rows]
-        return FireContext(nearby, span["latest"], span["earliest"])
+        return [
+            NearbyFire(float(r["distance_km"]), r["acq_at"], r["confidence"], r["frp"],
+                      float(r["latitude"]), float(r["longitude"]))
+            for r in rows
+        ]
 
 
 @lru_cache()

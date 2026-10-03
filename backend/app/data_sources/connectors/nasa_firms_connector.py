@@ -8,6 +8,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 FIRMS_API = "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
+MAX_RANGE = 10  # FIRMS allows 1 to 10 days per request
 
 
 async def fetch_firms_fire_data(

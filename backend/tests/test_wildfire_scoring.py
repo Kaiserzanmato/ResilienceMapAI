@@ -106,6 +106,42 @@ def test_no_detections_is_zero_only_with_enough_history():
     assert assess(ctx(fire(1, 0.5), history_days=1))["score"] > 0
 
 
+def test_history_length_comes_from_first_sync_not_from_stored_detections():
+    # No detections stored at all (as if fire_detections had just been recreated, or
+    # every row had been pruned) — history still reads as long, because it comes from
+    # sync_health's first_successful_sync_at, not from the table.
+    long_history = assess(ws.FireContext([], NOW, NOW - timedelta(days=20)))
+    assert long_history["score"] == 0 and long_history["history_days"] == 20.0
+    short_history = assess(ws.FireContext([], NOW, NOW - timedelta(days=2)))
+    assert short_history["score"] is None and short_history["reason_code"] == "fire_history_too_short"
+
+
+def test_volcano_heat_is_excluded_from_wildfire_scoring():
+    mayon_lat, mayon_lng = ws.PH_ACTIVE_VOLCANO_SUMMITS[0][1:]
+    from app.services.volcano_scoring import haversine_km
+
+    # 0.2 km from the summit (bearing barely matters at this distance; a tiny lat offset).
+    on_summit = ws.NearbyFire(0.0, NOW - timedelta(days=1), "h", 50.0, mayon_lat + 0.0018, mayon_lng)
+    assert haversine_km(on_summit.latitude, on_summit.longitude, mayon_lat, mayon_lng) < 0.3
+    far_away = ws.NearbyFire(0.0, NOW - timedelta(days=1), "h", 50.0, mayon_lat + 0.18, mayon_lng)
+    assert 15 < haversine_km(far_away.latitude, far_away.longitude, mayon_lat, mayon_lng) < 25
+
+    only_volcanic = assess(ctx(on_summit))
+    assert only_volcanic["score"] == 0 and only_volcanic["count_30d"] == 0  # excluded, not scored as fire
+
+    both = assess(ctx(on_summit, far_away))
+    assert both["count_30d"] == 1 and both["nearest_km"] == far_away.distance_km  # only the far one counts
+
+
+def test_volcano_exclusion_is_a_pure_filter():
+    mayon_lat, mayon_lng = ws.PH_ACTIVE_VOLCANO_SUMMITS[0][1:]
+    near = ws.NearbyFire(1.0, NOW, "h", 10.0, mayon_lat, mayon_lng)
+    far = ws.NearbyFire(1.0, NOW, "h", 10.0, mayon_lat + 1.0, mayon_lng)
+    assert ws.exclude_volcano_heat([near, far]) == [far]
+    # A detection with the dataclass default (0, 0) position is never near a volcano.
+    assert ws.exclude_volcano_heat([ws.NearbyFire(1.0, NOW, "h", 10.0)]) != []
+
+
 def test_area_parsing():
     assert ws.firms_covers(0, 0, "world") and ws.firms_covers(0, 0, "")
     assert ws.firms_covers(13, 123, BBOX) and not ws.firms_covers(35, 139, BBOX)
@@ -132,10 +168,12 @@ def test_in_memory_repo_dedupes_prunes_and_filters():
     old = ws.FireDetection(13.14, 123.75, NOW - timedelta(days=60), "N", "h", 20.0, "D")
     run(repo.upsert_many([d, d, far, old]))  # the duplicate collapses, the 60 day row is pruned
     assert len(repo.rows) == 2
-    context = run(repo.context(13.14, 123.74, 10.0, NOW - timedelta(days=30)))
-    assert [round(f.distance_km, 1) for f in context.nearby] == [0.0]
-    assert context.earliest_acq == d.acq_at and context.latest_ingest is not None
-    assert run(InMemoryFireRepo().context(0, 0, 10.0, NOW)).latest_ingest is None
+    # context() returns the nearby detections only — freshness/history come from sync
+    # health (see load_fire_context), never from this table.
+    nearby = run(repo.context(13.14, 123.74, 10.0, NOW - timedelta(days=30)))
+    assert [round(f.distance_km, 1) for f in nearby] == [0.0]
+    assert nearby[0].latitude == d.latitude and nearby[0].longitude == d.longitude
+    assert run(InMemoryFireRepo().context(0, 0, 10.0, NOW)) == []
 
 
 def test_assessment_scores_wildfire_from_stored_detections(monkeypatch):
@@ -146,6 +184,11 @@ def test_assessment_scores_wildfire_from_stored_detections(monkeypatch):
     rows.append(ws.FireDetection(13.0, 123.0, now - timedelta(days=12), "N", "n", 5.0, "N"))  # too far
     rows.append(ws.FireDetection(14.0, 121.0, now - timedelta(days=15), "N", "h", 5.0, "N"))  # history anchor, far away
     run(repo.upsert_many(rows))
+    # Freshness/history now come from sync health, not from the stored rows above.
+    from app.repositories.sync_health_repo import get_sync_health_repo
+    health_repo = get_sync_health_repo()
+    run(health_repo.record_success("nasa-firms", 1))
+    health_repo._health["nasa-firms"]["first_successful_sync_at"] = (now - timedelta(days=15)).isoformat()
     fire_ctx = run(load_fire_context(*PH))
     hazard = assess_location(*PH, "Legazpi", "PH", fire=fire_ctx)["hazards"]["wildfire"]
     assert hazard["score"] and hazard["coverage_status"] == "available" and hazard["reason_code"] == "satellite_active_fire"

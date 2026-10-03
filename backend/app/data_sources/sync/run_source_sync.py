@@ -79,6 +79,8 @@ async def run_source_sync(source_id: str, http_client: Any) -> dict:
         duration_ms = int((time.monotonic() - start) * 1000)
         await record_sync_success(source_id, len(records))
         await log_sync_attempt(source_id, "success", len(records), duration_ms=duration_ms)
+        if source_id == "nasa-firms":
+            await _maybe_backfill_firms(http_client)
         return {
             "source_id": source_id,
             "status": "success",
@@ -93,6 +95,47 @@ async def run_source_sync(source_id: str, http_client: Any) -> dict:
         await log_sync_attempt(source_id, "failed", error=reason, duration_ms=duration_ms)
         logger.error("[sync] %s failed (%s): %s", source_id, reason, redact_secrets(exc))
         return {"source_id": source_id, "status": "failed", "reason_code": reason}
+
+
+async def _maybe_backfill_firms(http_client: Any) -> None:
+    """Self-healing: a single day's sync takes MIN_HISTORY_DAYS to build up enough
+    history to score a zero honestly. When the recorded history (sync_health's
+    first_successful_sync_at — see record_sync_success) is still shorter than that,
+    reach back using FIRMS's own maximum per-request range (10 days, same range
+    scripts/backfill_firms.py uses for a manual backfill) so a fresh deploy or a
+    long gap in syncing does not take a week to recover. Upserts are idempotent
+    (fire_repo.upsert_many), so running this on every sync while history is short
+    is safe — it just re-confirms rows already stored."""
+    from ...services.wildfire_scoring import MIN_HISTORY_DAYS
+
+    health = await get_sync_health_repo().get("nasa-firms")
+    first_ok = health.get("first_successful_sync_at")
+    if not first_ok:
+        return
+    first_ok_dt = datetime.fromisoformat(first_ok) if isinstance(first_ok, str) else first_ok
+    if first_ok_dt.tzinfo is None:
+        first_ok_dt = first_ok_dt.replace(tzinfo=timezone.utc)
+    history_days = (datetime.now(timezone.utc) - first_ok_dt).total_seconds() / 86_400
+    if history_days >= MIN_HISTORY_DAYS:
+        return
+
+    settings = get_settings()
+    if not settings.nasa_firms_map_key:
+        return
+    from ..connectors.nasa_firms_connector import MAX_RANGE, fetch_firms_fire_data
+    from ...repositories.fire_repo import get_fire_repo
+    from ...services.wildfire_scoring import parse_firms_record
+    try:
+        records = await fetch_firms_fire_data(
+            http_client, map_key=settings.nasa_firms_map_key, area_url=settings.nasa_firms_area, days=MAX_RANGE,
+        )
+    except Exception as exc:
+        logger.warning("[sync] nasa-firms self-healing backfill failed (%s)", type(exc).__name__)
+        return
+    detections = [d for d in (parse_firms_record(r) for r in records) if d is not None]
+    stored = await get_fire_repo().upsert_many(detections)
+    logger.info("[sync] nasa-firms self-healing backfill: history %.1fd < %dd, fetched %d days, stored %d",
+                history_days, MIN_HISTORY_DAYS, MAX_RANGE, stored)
 
 
 async def _dispatch_connector(source_id: str, http_client: Any) -> list[dict]:
@@ -112,8 +155,11 @@ async def _dispatch_connector(source_id: str, http_client: Any) -> list[dict]:
     if source_id == "nasa-firms":
         from ..connectors.nasa_firms_connector import fetch_firms_fire_data
         settings = get_settings()
+        # 2 days, not 1: a run near UTC midnight must not miss detections from just
+        # before the rollover. Upserts are idempotent, so the one-day overlap just
+        # re-confirms rows already stored.
         return await fetch_firms_fire_data(
-            http_client, map_key=settings.nasa_firms_map_key, area_url=settings.nasa_firms_area, days=1,
+            http_client, map_key=settings.nasa_firms_map_key, area_url=settings.nasa_firms_area, days=2,
         )
 
     logger.warning("[sync] No connector found for %s — skipping", source_id)

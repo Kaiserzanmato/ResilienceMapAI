@@ -14,7 +14,12 @@ agricultural and prescribed burning, and a detection is a hot pixel, not an
 assessed risk. Honest no-data: the row is scored only when the point is inside the
 area FIRMS is ingested for, the data is fresh, and, for a zero, when there is at
 least MIN_HISTORY_DAYS of history (otherwise "no detections" would just mean "we
-have not been looking long enough").
+have not been looking long enough"). Freshness and history length both come from
+FIRMS sync health (see FireContext), never from the stored detections themselves,
+so pruning old rows (or recreating the table) can never masquerade as staleness or
+reset how long the history is. Detections within VOLCANO_EXCLUSION_RADIUS_KM of a
+known PH volcano summit are excluded before scoring — that heat is volcanic, not a
+wildfire (see exclude_volcano_heat).
 """
 from __future__ import annotations
 
@@ -104,19 +109,59 @@ def score_from_weight(raw: float) -> int:
 
 @dataclass(frozen=True)
 class NearbyFire:
-    """A detection already filtered to the search radius, with its distance."""
+    """A detection already filtered to the search radius, with its distance.
+    latitude/longitude are the detection's own position (not the query point),
+    needed to test it against a fixed location such as a volcano summit;
+    default to Null Island so existing short test constructions stay valid
+    without claiming a real position."""
     distance_km: float
     acq_at: datetime
     confidence: str | None
     frp: float | None
+    latitude: float = 0.0
+    longitude: float = 0.0
 
 
 @dataclass(frozen=True)
 class FireContext:
-    """What the repository knows: detections near the point and the data's own span."""
+    """What the repository/sync health knows: detections near the point, and when FIRMS
+    syncing itself last succeeded and first ever succeeded. Deliberately NOT derived from
+    the stored detections (pruning or a table recreation must never reset these)."""
     nearby: list[NearbyFire]
-    latest_ingest: datetime | None  # when the newest row was stored
-    earliest_acq: datetime | None   # oldest detection in the table (history start)
+    last_successful_sync_at: datetime | None  # staleness
+    first_successful_sync_at: datetime | None  # history length
+
+
+# Summit coordinates of PH active volcanoes, Smithsonian Global Volcanism Program
+# (https://volcano.si.edu) — deliberately GVP, not PHIVOLCS: the licence for
+# PHIVOLCS data is still pending (see ENABLE_VOLCANIC_SCORING). A small, easy-to-
+# extend constant; add a row here for any other volcano whose heat shows up as
+# false-positive wildfire detections.
+PH_ACTIVE_VOLCANO_SUMMITS: tuple[tuple[str, float, float], ...] = (
+    ("Mayon", 13.257, 123.686),
+    ("Taal", 14.002, 120.993),
+    ("Kanlaon", 10.412, 123.132),
+    ("Bulusan", 12.770, 124.050),
+    ("Pinatubo", 15.130, 120.350),
+    ("Hibok-Hibok", 9.203, 124.673),
+)
+VOLCANO_EXCLUSION_RADIUS_KM = 5.0
+
+
+def exclude_volcano_heat(nearby: Iterable[NearbyFire]) -> list[NearbyFire]:
+    """Drop detections within VOLCANO_EXCLUSION_RADIUS_KM of a known PH active volcano
+    summit: that heat is volcanic activity, not wildfire. A detection with the default
+    (0, 0) position (e.g. an older test fixture with no real coordinates) is never near
+    a volcano, so it is kept unfiltered."""
+    from .volcano_scoring import haversine_km
+
+    def near_a_volcano(fire: NearbyFire) -> bool:
+        return any(
+            haversine_km(fire.latitude, fire.longitude, vlat, vlng) <= VOLCANO_EXCLUSION_RADIUS_KM
+            for _, vlat, vlng in PH_ACTIVE_VOLCANO_SUMMITS
+        )
+
+    return [fire for fire in nearby if not near_a_volcano(fire)]
 
 
 def firms_covers(lat: float, lng: float, area: str) -> bool:
@@ -140,11 +185,11 @@ def assess_wildfire(ctx: FireContext | None, lat: float, lng: float, area: str,
         return {"score": None, "coverage_status": "unavailable", "reason_code": "fire_data_unavailable"}
     if not firms_covers(lat, lng, area):
         return {"score": None, "coverage_status": "out_of_coverage", "reason_code": "outside_firms_area"}
-    if ctx.latest_ingest is None or now - ctx.latest_ingest > timedelta(hours=MAX_DATA_AGE_HOURS):
+    if ctx.last_successful_sync_at is None or now - ctx.last_successful_sync_at > timedelta(hours=MAX_DATA_AGE_HOURS):
         return {"score": None, "coverage_status": "stale", "reason_code": "fire_data_stale"}
 
     weighted, count_7, count_30, nearest, last_seen = 0.0, 0, 0, None, None
-    for fire in ctx.nearby:
+    for fire in exclude_volcano_heat(ctx.nearby):
         age = (now - fire.acq_at).total_seconds() / 86_400
         if age < 0 or age > WINDOW_DAYS or fire.distance_km > RADIUS_KM:
             continue
@@ -154,7 +199,8 @@ def assess_wildfire(ctx: FireContext | None, lat: float, lng: float, area: str,
         nearest = fire.distance_km if nearest is None else min(nearest, fire.distance_km)
         last_seen = fire.acq_at if last_seen is None else max(last_seen, fire.acq_at)
 
-    history_days = None if ctx.earliest_acq is None else max(0.0, (now - ctx.earliest_acq).total_seconds() / 86_400)
+    history_days = (None if ctx.first_successful_sync_at is None
+                    else max(0.0, (now - ctx.first_successful_sync_at).total_seconds() / 86_400))
     evidence = {
         "radius_km": RADIUS_KM, "count_7d": count_7, "count_30d": count_30,
         "nearest_km": None if nearest is None else round(nearest, 1),

@@ -35,11 +35,16 @@ class InMemorySyncHealthRepo(SyncHealthRepo):
     def __init__(self) -> None:
         self._health: dict[str, dict] = {}
 
+    def clear(self) -> None:
+        self._health.clear()
+
     async def record_success(self, source_id: str, records_synced: int) -> None:
         now = datetime.now(timezone.utc)
+        prev = self._health.get(source_id, {})
         self._health[source_id] = {
             "last_sync_at": now.isoformat(),
             "last_successful_sync_at": now.isoformat(),
+            "first_successful_sync_at": prev.get("first_successful_sync_at") or now.isoformat(),
             "last_sync_status": "success",
             "records_synced": records_synced,
             "error": None,
@@ -52,6 +57,7 @@ class InMemorySyncHealthRepo(SyncHealthRepo):
         self._health[source_id] = {
             "last_sync_at": now.isoformat(),
             "last_successful_sync_at": prev.get("last_successful_sync_at"),
+            "first_successful_sync_at": prev.get("first_successful_sync_at"),
             "last_sync_status": "failed",
             "records_synced": prev.get("records_synced", 0),
             "error": error,
@@ -75,6 +81,8 @@ class PostgresSyncHealthRepo(SyncHealthRepo):
                 session.add(row)
             row.last_sync_at = now
             row.last_successful_sync_at = now
+            if row.first_successful_sync_at is None:
+                row.first_successful_sync_at = now
             row.last_sync_status = "success"
             row.records_synced = records_synced
             row.error = None
@@ -110,6 +118,9 @@ def _row_to_dict(row: SyncHealthRow) -> dict:
         "last_sync_at": row.last_sync_at.isoformat() if row.last_sync_at else None,
         "last_successful_sync_at": (
             row.last_successful_sync_at.isoformat() if row.last_successful_sync_at else None
+        ),
+        "first_successful_sync_at": (
+            row.first_successful_sync_at.isoformat() if row.first_successful_sync_at else None
         ),
         "last_sync_status": row.last_sync_status,
         "records_synced": row.records_synced,
