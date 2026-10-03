@@ -1,6 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { cn } from "@/lib/utils";
 
 export function ChartCard({
   title,
@@ -21,7 +22,7 @@ export function ChartCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.55, delay: index * 0.04, ease: [0.22, 1, 0.36, 1] }}
-      className={className}
+      className={cn("min-w-0", className)}
     >
       <GlassCard className="h-full p-4 sm:p-5">
         <h3 className="text-[14px] font-semibold">{title}</h3>
