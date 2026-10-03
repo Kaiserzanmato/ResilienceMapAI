@@ -116,7 +116,7 @@ export function LocationComparisonCard({
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={chartData} layout="vertical" barSize={18}>
             <XAxis type="number" {...axisProps} domain={[0, 100]} hide />

@@ -50,7 +50,7 @@ export default function DashboardPage() {
   if (isLoading || !data) {
     return (
       <div className="mx-auto max-w-[1500px] px-4 pb-16">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="glass h-32 animate-pulse rounded-2xl" />
           ))}
@@ -98,7 +98,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Critical charts above the fold */}
-      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <ChartCard title="Risk Distribution" sub="Monitored areas by risk level" index={0}>
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>
@@ -139,7 +139,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Lazy-load below-the-fold charts */}
-      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <DeferredCharts data={data} />
       </div>
 
