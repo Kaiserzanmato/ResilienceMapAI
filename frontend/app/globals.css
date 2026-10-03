@@ -140,6 +140,9 @@
   /* SF-like system stack; Inter is a web fallback only, never the primary face */
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* TopNav's icon-only -> icon+label switch for primary nav links. Named so the
+     threshold lives in one place instead of a magic arbitrary-value class. */
+  --breakpoint-nav-labels: 1440px;
   --breakpoint-3xl: 1920px;
 }
 

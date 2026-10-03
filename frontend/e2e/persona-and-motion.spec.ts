@@ -1,14 +1,9 @@
 import { expect, test } from "./fixtures";
 
-// TopNav's desktop nav links are shrink-0 and switch on at Tailwind's xl breakpoint
-// (1280px) — exactly Playwright's default desktop viewport. The full link set plus
-// logo, persona selector and theme toggle are wide enough that small font-metric
-// differences across environments (CI's Linux fallback fonts vs. a local machine's)
-// can tip the row from "fits" to "overflows", pushing trailing controls like the
-// theme toggle off the right edge entirely. These tests click those trailing header
-// controls, so they use a wider viewport to test their own behaviour rather than
-// trip on that unrelated, pre-existing layout edge case.
-test.use({ viewport: { width: 1440, height: 900 } });
+// The previous viewport workaround here (forcing 1440x900) is gone: it was
+// routing around TopNav overflowing at the default 1280x720 viewport, which
+// is now fixed at the source (see topnav-overflow.spec.ts). These tests use
+// the default viewport again.
 
 test.describe("Persona switch", () => {
   test("header menu switches persona and it persists across reload", async ({ app }) => {
