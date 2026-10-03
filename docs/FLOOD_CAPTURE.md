@@ -35,7 +35,7 @@ map draws them. Everything is off until `ENABLE_FLOOD_CAPTURE` (backend) and
 
 Jobs live in the database, so they survive the free Render instance sleeping. A
 lease that expires means the instance died mid-job; `GET /api/cron/flood-captures`
-(called by `.github/workflows/sync-sources.yml` every 6 hours) reclaims it.
+(called by `.github/workflows/sync-sources.yml` every 2 hours) reclaims it.
 
 ## API
 

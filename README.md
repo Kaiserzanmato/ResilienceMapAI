@@ -31,10 +31,14 @@ assessments, grounded AI explanations, and report/export workflows.
   official flood map. See [docs/FLOOD_CAPTURE.md](docs/FLOOD_CAPTURE.md).
 - **Wildfire and Volcanic scores:** the risk panel scores Wildfire from stored NASA FIRMS (VIIRS)
   active-fire detections within 10 km over the last 7 and 30 days (confidence and FRP weighted;
-  satellite-observed active fire, not an official hazard map, and it includes agricultural burning), and
-  Volcanic Activity from the distance to the nearest Philippine volcano (danger-zone-style bands; **off by
+  satellite-observed active fire, not an official hazard map, and it includes agricultural burning), excluding
+  any detection within 5 km of a known PH active volcano summit (Smithsonian GVP coordinates) as volcanic heat
+  rather than wildfire. Freshness and history length come from FIRMS sync health, not the stored detections, so
+  a pruned or recreated table can't reset either. Volcanic Activity scores the distance to the nearest
+  Philippine volcano (danger-zone-style bands; **off by
   default and no volcano list is shipped**, because the Smithsonian GVP terms do not allow redistribution). Both
-  feed the overall score when on; coverage gaps stay "No data". The PHIVOLCS alert level is not live (a link is shown). See [docs/WILDFIRE_VOLCANIC.md](docs/WILDFIRE_VOLCANIC.md).
+  feed the overall score when on; coverage gaps stay "No data" with a specific reason (not covered, no connected
+  source, pending PHIVOLCS permission, or stale — see below). The PHIVOLCS alert level is not live (a link is shown). See [docs/WILDFIRE_VOLCANIC.md](docs/WILDFIRE_VOLCANIC.md).
 - **Geocoding gateway:** Geoapify is the primary production provider,
   LocationIQ is the fallback, Photon is optional, and the local gazetteer is a
   degraded final fallback. Search candidates show their normalized addresses
@@ -71,9 +75,9 @@ FastAPI backend on Render
   +--> Geocoder gateway: Geoapify -> LocationIQ -> Photon (configured) -> local gazetteer
   +--> Hazard providers: global, national, and local source adapters
   +--> AI providers: Qwen -> Together -> DeepSeek -> OpenAI -> Gemini -> local fallback
-  +--> Neon PostgreSQL/PostGIS via DATABASE_URL (Alembic, head 0008); in-memory repositories otherwise
+  +--> Neon PostgreSQL/PostGIS via DATABASE_URL (Alembic, head 0009); in-memory repositories otherwise
   +--> Flood capture: Sentinel-1/2 scenes (Planetary Computer, Earth Search) + JRC permanent water
-  GitHub Actions (every 6 h) --> /api/cron/sync-sources and /api/cron/flood-captures
+  GitHub Actions (every 2 h) --> /api/cron/sync-sources and /api/cron/flood-captures
 ```
 
 ### Framework And Integration Stack
@@ -98,6 +102,12 @@ is available, not a low-risk result. See
 [`TECHNICAL_DOCUMENTATION.md`](TECHNICAL_DOCUMENTATION.md) and
 [`RELEASE_AUDIT_2026-08-07.md`](RELEASE_AUDIT_2026-08-07.md) for the live
 contract, deployment evidence, and release limitations.
+
+A hazard row with no score always says specifically why, never a generic "unavailable": **"Not covered by
+current sources"** (no provider is registered for this hazard/country at all), **"No connected source yet"**
+(a provider is registered but nothing is wired up to read it), **"Pending PHIVOLCS data permission"** (Volcanic
+specifically, while `ENABLE_VOLCANIC_SCORING` is off), or **"Data stale"** (a connector exists but its data is
+too old to score). See the reason-code table in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 The Flood row in the risk panel is **satellite-observed, not an official flood map**: it comes
 from a user-flagged Sentinel capture, is reduced for scene age, capped when permanent water could
@@ -145,7 +155,7 @@ Bring the local branch up to date with the latest schema:
 
 ```bash
 cd backend && .venv/bin/python -m alembic upgrade head   # uses ALEMBIC_DATABASE_URL from .env.local
-.venv/bin/python -m alembic current                      # should print "0008 (head)"
+.venv/bin/python -m alembic current                      # should print "0009 (head)"
 ```
 
 Production migrations are applied separately, out-of-band — see [docs/OPERATIONS.md](docs/OPERATIONS.md).
@@ -275,7 +285,7 @@ The registry (`sources_registry.py`) also lists other approved sources — most
 without a connector yet, registered for discoverability, not sync
 (`GET /api/source-registry`, `GET /api/sync-health`).
 
-- **Scheduling**: `.github/workflows/sync-sources.yml` runs every 6 hours
+- **Scheduling**: `.github/workflows/sync-sources.yml` runs every 2 hours
   (and on demand with `gh workflow run sync-sources.yml`). It calls
   `GET /api/cron/sync-sources` (only sources that are due are fetched) and
   `GET /api/cron/flood-captures` (finishes flood jobs left unfinished when the free
@@ -298,12 +308,15 @@ without a connector yet, registered for discoverability, not sync
   automatically by whether `DATABASE_URL` is set. Production uses **Neon Postgres
   with PostGIS**; with `ENVIRONMENT=production` the API refuses to start without
   `DATABASE_URL` unless `ALLOW_EPHEMERAL_STATE=true`.
-- **Migrations**: Alembic (`backend/alembic/`, head `0008`), applied out-of-band from a
+- **Migrations**: Alembic (`backend/alembic/`, head `0009`), applied out-of-band from a
   trusted machine against the direct, non-pooled connection string in
-  `ALEMBIC_DATABASE_URL` — never inside the API. The safe procedure and rollback are in
+  `ALEMBIC_DATABASE_URL` — never inside the API, never automatically on Render startup or as a build
+  step. The safe procedure and rollback are in
   [docs/OPERATIONS.md](docs/OPERATIONS.md). Revisions: `0001` base tables, `0002`
   `hazard_events`, `0004` dataset governance, `0005` PostGIS, `0006` flood capture, `0007`
-  total/flood hectares (permanent water excluded), `0008` FIRMS fire detections (the wildfire score).
+  total/flood hectares (permanent water excluded), `0008` FIRMS fire detections (the wildfire score),
+  `0009` `sync_health.first_successful_sync_at` (wildfire history/freshness, survives pruned or
+  recreated detection rows — must be applied before the code that reads it deploys).
 
 **Firecrawl advisory scraper** (`backend/app/data_sources/scrapers/firecrawl_worker.py`):
 scrapes unstructured hazard advisories (PAGASA/PHIVOLCS/JMA bulletins, etc.)

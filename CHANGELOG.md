@@ -9,6 +9,36 @@ the Aug 6–7 geocoding-gateway and dashboard/globe/weather work in detail.
 Format: `[commit] type: summary`, followed by what changed and why when it
 isn't obvious from the summary alone.
 
+## 2026-10-03 (wildfire history/freshness and honest no-data labels)
+
+- **[#42] fix: Wildfire stopped showing "Stale" everywhere except Mayon, and every no-data row got its
+  own reason.** Audit: freshness and history length were both read from `fire_detections` itself, so a
+  pruned or recreated table reset them even though FIRMS kept syncing; Mayon's own non-zero score was
+  volcanic heat 0.2 km from the summit, not wildfire. Elsewhere, Volcanic (pending PHIVOLCS permission)
+  and Cyclone/Landslide/Drought/Heat (no connector at all) all collapsed into the same "Temporarily
+  unavailable" label. Also audited whether `fire_detections` had lost rows (production sync logs once
+  showed 12,518 and 34,518 records): it never had — migration `0008` created the table and wired FIRMS
+  persistence in the same change (commit `7648238`, Oct 2); before that the sync counted downloaded rows
+  and discarded them, so those figures are old `sync_audit_log` counts, not rows that later vanished.
+  - FIRMS sync now fetches a 2-day window, not 1, so a run near UTC midnight can't miss a day.
+  - Self-healing backfill: when `sync_health.first_successful_sync_at` is younger than
+    `MIN_HISTORY_DAYS` (7), the sync also fetches FIRMS's own max 10-day range once (idempotent upserts).
+  - History and staleness now come from `sync_health` (`first_successful_sync_at`, new; `0009`;
+    `last_successful_sync_at`), never from the stored detections, so pruning or recreating the table can't
+    reset them. Zero fires with a fresh sync is a valid low score, not Stale.
+  - FIRMS detections within 5 km of a known PH active volcano summit (Smithsonian GVP coordinates, not
+    PHIVOLCS) are excluded before wildfire scoring.
+  - New honest reason codes in `global_assessment.py`: `licence_pending` (Volcanic while
+    `ENABLE_VOLCANIC_SCORING=false`), `no_connected_source` (a source is registered but nothing is wired
+    to it), `not_covered` (no source registered at all), `stale`. The frontend's label mapping moved to
+    its own pure module, `frontend/lib/hazard-status.ts`; the "Temporarily unavailable" catch-all is gone.
+  - `sync-sources.yml` now runs every 2 hours, not 6.
+  - Added Lucide icons for `active_fault`, `tsunami`, `land_subsidence`, `sinkhole`.
+  - **Migration `0009` must be applied before this code is deployed** — `record_success`/the wildfire
+    read path write/read `sync_health.first_successful_sync_at`, which does not exist before `0009` runs.
+    Same out-of-band procedure as every other migration (`docs/OPERATIONS.md`); nothing in this repo
+    applies it automatically.
+
 ## 2026-10-03 (map layering and responsive layout)
 
 - **fix: dialogs and map popups no longer open under the search bar and "Run AI Risk Assessment".** Root cause: the Insights dialog was

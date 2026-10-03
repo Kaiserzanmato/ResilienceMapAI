@@ -1,10 +1,10 @@
 # ResilienceMap AI - Complete Documentation Index
 
-**Last Updated**: October 2, 2026 (docs sync for PRs #22 to #30).
+**Last Updated**: October 3, 2026 (docs sync for PR #42: wildfire history/freshness, honest no-data reason codes).
 
 ## Current operating docs (start here)
 
-These describe production as of 2026-10-02 and are kept in step with `main`:
+These describe production as of 2026-10-03 and are kept in step with `main`:
 
 | Doc | What it covers |
 |---|---|
@@ -12,7 +12,7 @@ These describe production as of 2026-10-02 and are kept in step with `main`:
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Vercel + Render setup, `CORS_ORIGINS`, Neon + Alembic, the GitHub Actions sync |
 | [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md) | Every Render, Vercel and GitHub variable: purpose, secret vs config, default |
 | [`docs/OPERATIONS.md`](docs/OPERATIONS.md) | Safe production migrations, manual sync, rollback, known limits |
-| [`docs/WILDFIRE_VOLCANIC.md`](docs/WILDFIRE_VOLCANIC.md) | Wildfire (FIRMS) score and the (off-by-default, no-data-shipped) Volcanic score; no-data rules, licence decision |
+| [`docs/WILDFIRE_VOLCANIC.md`](docs/WILDFIRE_VOLCANIC.md) | Wildfire (FIRMS) score — 2-day fetch window, self-healing backfill, sync-health-based freshness/history, 5 km volcano-heat exclusion — and the (off-by-default, no-data-shipped) Volcanic score; honest no-data reason codes, licence decision |
 | [`docs/FLOOD_CAPTURE.md`](docs/FLOOD_CAPTURE.md) | Flood auto-capture: Sentinel-1/2, JRC permanent-water filter, `/api/flood/*`, the risk panel's Flood row |
 | [`TECHNICAL_DOCUMENTATION.md`](TECHNICAL_DOCUMENTATION.md) | API, geocoder and assessment contracts, configuration, limits |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | System diagram and data flows |

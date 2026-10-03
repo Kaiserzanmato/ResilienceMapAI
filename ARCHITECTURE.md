@@ -5,9 +5,9 @@
 ResilienceMap AI is a full-stack disaster risk intelligence platform combining:
 - **Frontend**: Next.js 16 with React 19, real-time interactive mapping
 - **Backend**: FastAPI with deterministic risk scoring engine
-- **Database**: Neon PostgreSQL with PostGIS in production (Alembic, head `0008`); in-memory fallback only without `DATABASE_URL`
+- **Database**: Neon PostgreSQL with PostGIS in production (Alembic, head `0009`); in-memory fallback only without `DATABASE_URL`
 - **Flood auto-capture**: user-flagged spots become Sentinel-1/2 water extents with permanent water removed (JRC), see `docs/FLOOD_CAPTURE.md`
-- **Scheduling**: GitHub Actions, every 6 hours
+- **Scheduling**: GitHub Actions, every 2 hours
 - **Deployment**: Vercel (frontend) + Render (backend); procedures in `docs/OPERATIONS.md`
 
 **Core Principle**: Hazard data → backend scoring → risk color → AI explanation
@@ -73,7 +73,7 @@ The AI explains calculated scores; it never invents them or overrides official a
 │  │  ├─ POST /api/data-sync          - Manual data refresh          │ │
 │  │  ├─ GET  /api/sync-health        - Sync status & timestamps     │ │
 │  │  ├─ GET  /api/source-registry    - Source metadata              │ │
-│  │  ├─ GET  /api/cron/sync-sources  - Scheduled sync (every 6 h)    │ │
+│  │  ├─ GET  /api/cron/sync-sources  - Scheduled sync (every 2 h)    │ │
 │  │  ├─ GET  /api/cron/flood-captures - Drain unfinished flood jobs  │ │
 │  │  ├─ POST /api/flood/flags        - Flag flooding (3/h per client) │ │
 │  │  ├─ GET  /api/flood/extents|jobs|flags|tiles - Flood capture API │ │
@@ -92,7 +92,7 @@ The AI explains calculated scores; it never invents them or overrides official a
 │  │         Data Sync Engine & Scheduling                              │ │
 │  ├────────────────────────────────────────────────────────────────────┤ │
 │  │                                                                    │ │
-│  │  Scheduled Sync (GitHub Actions - every 6 hours):                │ │
+│  │  Scheduled Sync (GitHub Actions - every 2 hours):                │ │
 │  │  ├─ GET /api/cron/sync-sources                                   │ │
 │  │  ├─ CRON_SECRET authentication                                   │ │
 │  │  └─ Dispatch to registered data sources                          │ │
@@ -451,9 +451,29 @@ GET /api/location-risk?lat=12.5&lng=121.0
 }
 ```
 
+#### 1a. Coverage status and reason codes
+
+`POST /api/assessments` never lets a hazard with no verified data carry a score — every no-data row gets a
+closed-vocabulary `reason_code`, chosen by `_coverage_state()` in `backend/app/services/global_assessment.py`
+and read by `frontend/lib/hazard-status.ts`'s `statusLabel()` for the panel label. There is no generic
+"temporarily unavailable" catch-all; each code names a specific, different reason:
+
+| `reason_code` | Meaning | When | Panel label |
+|---|---|---|---|
+| `licence_pending` | A source exists (Smithsonian GVP / PHIVOLCS) but its data isn't licensed for use yet | Volcanic, while `ENABLE_VOLCANIC_SCORING=false` | "Pending PHIVOLCS data permission" |
+| `no_connected_source` | A source is registered in the coverage registry but no production connector reads it | e.g. GloFAS (flood, outside a capture), IBTrACS (cyclone), landslide, drought, extreme heat | "No connected source yet" |
+| `not_covered` | No provider is registered for this hazard/country at all | e.g. active_fault, tsunami, land_subsidence, sinkhole | "Not covered by current sources" |
+| `stale` | A connector exists and is configured, but its data is too old to score | Wildfire, when `sync_health.last_successful_sync_at` for `nasa-firms` is unset or older than 48 h (`fire_data_stale`), or syncing has succeeded for under `MIN_HISTORY_DAYS` (`fire_history_too_short`) | "Data stale" |
+
+Flood's Flood row is the one exception to `_coverage_state()`: its score, when a satellite capture covers the
+clicked spot, is computed and overlaid entirely client-side by `frontend/lib/flood-indicator.ts`'s
+`applyFloodCapture()` — the backend's own `/api/assessments` response always carries `flood.score: null` with
+reason code `no_connected_source` (no production flood connector is registered), and the frontend's `satellite:
+true` override replaces it. See `docs/FLOOD_CAPTURE.md`.
+
 #### 2. Data Sync Flow
 ```
-Scheduled (GitHub Actions, every 6 h): GET /api/cron/sync-sources
+Scheduled (GitHub Actions, every 2 h): GET /api/cron/sync-sources
   ↓
 [Verify CRON_SECRET]
   ↓
@@ -751,12 +771,14 @@ FIRECRAWL_API_KEY=...                                       # Optional — power
 
 ### Database (Neon Postgres with PostGIS)
 - Required in production (`ENVIRONMENT=production` refuses to start without `DATABASE_URL`); in-memory fallback otherwise
-- Alembic migrations (head `0008`) applied out-of-band from a trusted machine against the direct, non-pooled string (never automatic); see `docs/OPERATIONS.md`
+- Alembic migrations (head `0009`) applied out-of-band from a trusted machine against the direct, non-pooled string (never automatic); see `docs/OPERATIONS.md`
 
 ### Scheduling (GitHub Actions)
-- `.github/workflows/sync-sources.yml`, every 6 hours and on demand
+- `.github/workflows/sync-sources.yml`, every 2 hours and on demand
 - Calls `GET /api/cron/sync-sources` and `GET /api/cron/flood-captures` (authenticated by the `CRON_SECRET` repo secret, same value as Render)
-- `render.yaml` (Render cron) and `vercel.json` (daily Vercel cron) are optional alternatives
+- `render.yaml` also declares its own 15-minute Render cron for the same routes; whether that Blueprint is actually applied/deployed
+  on Render is **unconfirmed** (not verifiable from a local checkout — check the Render dashboard). `vercel.json` (daily Vercel cron)
+  is a third, documented-but-unused alternative. GitHub Actions is the schedule verified to be running; see `docs/OPERATIONS.md`.
 
 ---
 
@@ -794,6 +816,12 @@ Returns:
   ]
 }
 ```
+
+`sync_health` also carries `last_successful_sync_at` (used for staleness) and `first_successful_sync_at`
+(Alembic `0009`; set once, on the source's first-ever success, and never moved afterward — not shown above
+for brevity). Wildfire scoring reads both for `nasa-firms`, instead of the `fire_detections` table's own
+timestamps, so pruning old rows or recreating the table can never reset freshness or history length back to
+nothing. See the reason-code table above and `docs/WILDFIRE_VOLCANIC.md`.
 
 ---
 

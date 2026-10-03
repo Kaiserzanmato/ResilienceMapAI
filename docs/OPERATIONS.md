@@ -1,6 +1,6 @@
 # Operations
 
-**Current as of:** 2026-10-02. Production is the Vercel frontend (`https://resiliencemapai.online`, also
+**Current as of:** 2026-10-03. Production is the Vercel frontend (`https://resiliencemapai.online`, also
 `www` and `https://resilience-map-ai.vercel.app`), the Render API (`https://resiliencemap-api.onrender.com`),
 Neon Postgres with PostGIS, and a GitHub Actions schedule. Variables are listed in
 [ENVIRONMENT.md](./ENVIRONMENT.md).
@@ -11,14 +11,17 @@ Neon Postgres with PostGIS, and a GitHub Actions schedule. Variables are listed 
 |---|---|---|
 | Frontend | Vercel, root `frontend`, auto-deploy from `main` | `NEXT_PUBLIC_*` values are inlined at build time |
 | API | Render web service `resiliencemap-api`, auto-deploy from `main` | Free tier: sleeps when idle |
-| Database | Neon Postgres with PostGIS | Schema managed only by Alembic, repo head `0008`; production is at `0007` until `0008` is applied |
-| Scheduler | GitHub Actions `.github/workflows/sync-sources.yml`, every 6 hours (`0 */6 * * *`) plus manual runs | Calls the two cron routes with `CRON_SECRET` |
+| Database | Neon Postgres with PostGIS | Schema managed only by Alembic, repo head `0009`; migrations are never applied automatically (not on Render startup, not as a build step) — always a manual, out-of-band run of the procedure below, from a trusted machine, by whoever holds the production `ALEMBIC_DATABASE_URL` |
+| Scheduler | GitHub Actions `.github/workflows/sync-sources.yml`, every 2 hours (`0 */2 * * *`) plus manual runs | Calls the two cron routes with `CRON_SECRET` |
 
 The scheduled workflow calls `GET /api/cron/sync-sources` (refreshes every source that is due) and
 `GET /api/cron/flood-captures` (finishes flood jobs left unfinished, for example when the instance slept
 mid-job). Each retries once after 60 s if it gets a 5xx or no answer, and it keeps the free instance from
-sitting asleep for long. `render.yaml` still declares an optional Render cron job (every 15 minutes) and
-`vercel.json` a daily Vercel cron; GitHub Actions is the schedule that is documented and verified here, so
+sitting asleep for long. `render.yaml` also declares its own Render cron job (every 15 minutes) for the same
+two routes; **whether that Blueprint is actually applied/deployed on Render is unconfirmed** — it cannot be
+checked from a local checkout or this repo's CI, only from the Render dashboard itself. `vercel.json` adds a
+daily Vercel cron as a third, documented-but-unused alternative. GitHub Actions is the schedule that is
+documented and verified here (its runs are visible in this repo's Actions tab), so
 do not enable a second scheduler without a reason (sources only fetch when due, so a duplicate is harmless
 but wasteful).
 
@@ -52,8 +55,12 @@ curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://resiliencemap-api.onre
 
 ## Run a production migration safely
 
-Migrations run **out of band from a trusted machine**, never inside the API process. Production was at `0007` when `0008` (FIRMS
-detections) was added; this is the procedure for any migration.
+Migrations run **out of band from a trusted machine**, never inside the API process — not automatically on
+Render startup, not as a build step. Production was at `0007` when `0008` (FIRMS detections) was added, and is
+expected to be at `0008` now that `0009` (`sync_health.first_successful_sync_at`) exists; this is the
+procedure for any migration. **`0009` must be applied before deploying the code that reads/writes it** (see
+"Deploy in a safe order" below and the Wildfire section) — `record_sync_success` and the wildfire read path
+touch that column on every sync and every assessment, and will error on a database that does not have it yet.
 
 1. **Read the migration first.** Look at the SQL it will run: `cd backend && alembic upgrade <from>:<to> --sql`
    (offline; connects to nothing). Prefer additive, nullable changes. Know its rollback before you start.
@@ -72,12 +79,17 @@ detections) was added; this is the procedure for any migration.
    ALEMBIC_DATABASE_URL="$(pbpaste)" alembic upgrade head
    ALEMBIC_DATABASE_URL="$(pbpaste)" alembic current          # expect the new head, shown as "(head)"
    ```
-6. **Deploy in a safe order.** Additive migrations (new nullable columns, as in 0007) are safe before or after the code
-   deploy. For anything that renames or drops, deploy code that works with both shapes first.
+6. **Deploy in a safe order.** Additive migrations that the current code doesn't yet read or write (new nullable
+   columns, as in 0007) are safe before or after the code deploy. **0009 is not one of those** — the code in
+   this PR reads and writes `first_successful_sync_at` on every sync and every assessment, so `0009` must be
+   applied *before* that code deploys, or those calls error on the missing column. For anything that renames
+   or drops, deploy code that works with both shapes first.
 7. **Clear the clipboard** (copy something harmless) and verify the app: `/health`, then the feature the migration is for.
 
 Rollback is `alembic downgrade <previous>`. Read the `downgrade()` first:
 
+* `0009 -> 0008` drops `sync_health.first_successful_sync_at`. Deploy the old code (or roll it back) first — the
+  running code must not still expect that column.
 * `0007 -> 0006` drops `flood_extents.total_water_ha` and `flood_ha` (the permanent-water numbers; nothing else is lost).
 * `0006 -> 0005` **drops the flood tables and every flag, job and extent in them.** Do not run it on production unless that is intended.
 
@@ -98,18 +110,30 @@ A deploy rollback does not touch the database. If the new code needs a migration
 
 ## Wildfire and Volcanic scores
 
-* **Migration 0008 first.** The FIRMS sync now stores detections in `fire_detections`; run `alembic upgrade head` (the procedure
-  above) **before** the code deploy that reads it. Until then the FIRMS source reports a failed sync and the Wildfire row stays "no data"
-  (an assessment never fails over it).
-* **History fills over time.** The 6-hourly sync stores each day it downloads, so the 7 and 30 day windows fill by themselves. To fill
-  them at once: `cd backend && NASA_FIRMS_MAP_KEY=... NASA_FIRMS_AREA=... .venv/bin/python scripts/backfill_firms.py --days 30`
+* **Migrations 0008, then 0009, before the code that reads them.** `0008` created `fire_detections`; `0009` added
+  `sync_health.first_successful_sync_at`, which the wildfire read path and every `record_sync_success` call now
+  touch. Run `alembic upgrade head` (the procedure above) **before** deploying code newer than this PR. Until a
+  migration is applied, the source it depends on reports a failed sync and the dependent row stays "no data" (an
+  assessment never fails over it).
+* **Self-healing history, not just fill-over-time.** The sync fetches a 2-day FIRMS window each run (not 1, so a
+  run near UTC midnight can't miss a day), and when `sync_health.first_successful_sync_at` for `nasa-firms` is
+  younger than `MIN_HISTORY_DAYS` (7) it *also* fetches FIRMS's own maximum 10-day range once that run —
+  idempotent, so this is safe on every sync while history is short. To fill history at once by hand regardless:
+  `cd backend && NASA_FIRMS_MAP_KEY=... NASA_FIRMS_AREA=... .venv/bin/python scripts/backfill_firms.py --days 30`
   (dry run), then add `DATABASE_URL=...` and `--apply`. Keep the key and URL out of shell history and logs.
 * **`NASA_FIRMS_AREA` is the wildfire coverage.** A point outside that box (or `world`) is "outside coverage", not "no fire". Use a
   box that includes the Philippines, e.g. `116,4,127,22`. Rows older than 35 days are pruned at each sync.
-* A Wildfire score of zero is shown only with at least 7 days of history; before that the row says so instead of reassuring.
+* **Freshness and history come from `sync_health`, not from `fire_detections`.** Staleness is
+  `sync_health.last_successful_sync_at` older than 48 hours; history length is time since
+  `sync_health.first_successful_sync_at`. Neither resets if the table is pruned, truncated or recreated — only a
+  real gap in successful syncing moves them. A Wildfire score of zero is shown only with at least 7 days of
+  recorded history; before that the row says so instead of reassuring.
+* **Volcano heat is excluded before scoring.** FIRMS detections within 5 km of a known PH active volcano summit
+  (`wildfire_scoring.PH_ACTIVE_VOLCANO_SUMMITS`, Smithsonian GVP coordinates) never count as wildfire — a
+  volcano's own heat signature used to show up as a false-positive score (Mayon, pre-fix).
 * Volcanic scoring is **off by default and ships no data**: GVP's terms allow non-commercial use only and the repo is public, so the list
-  was removed. The row stays "no data" until a list with usable terms is supplied via `VOLCANO_DATA_FILE` and
-  `ENABLE_VOLCANIC_SCORING=true`. Details: [WILDFIRE_VOLCANIC.md](./WILDFIRE_VOLCANIC.md).
+  was removed. The row stays "no data" (`reason_code: licence_pending`) until a list with usable terms is supplied via
+  `VOLCANO_DATA_FILE` and `ENABLE_VOLCANIC_SCORING=true`. Details: [WILDFIRE_VOLCANIC.md](./WILDFIRE_VOLCANIC.md).
 
 ## Flood capture, day to day
 
