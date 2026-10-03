@@ -131,6 +131,25 @@ cp .env.example .env          # optional: add AI provider keys
 Without AI keys the platform runs in **deterministic local mode** — fully functional,
 with template insights generated directly from engine output.
 
+### Local development (database)
+
+Local and CI runs use their own Neon branch (endpoint `ep-empty-dawn-b3d11zgg`), never the
+production one (`ep-orange-glitter-b3r4smzw`). Put its `DATABASE_URL` (pooled) and
+`ALEMBIC_DATABASE_URL` (direct/non-pooled — DDL should not go through a transaction pooler)
+in `backend/.env.local` (git-ignored; not `.env` — see `backend/.env.example`). `app/config.py`
+refuses to start whenever `ENVIRONMENT` isn't `production` and `DATABASE_URL` resolves to the
+production endpoint, so a stale copy-pasted connection string can't quietly point a local run at
+production data.
+
+Bring the local branch up to date with the latest schema:
+
+```bash
+cd backend && .venv/bin/python -m alembic upgrade head   # uses ALEMBIC_DATABASE_URL from .env.local
+.venv/bin/python -m alembic current                      # should print "0008 (head)"
+```
+
+Production migrations are applied separately, out-of-band — see [docs/OPERATIONS.md](docs/OPERATIONS.md).
+
 ### Frontend (port 3000)
 
 ```bash
