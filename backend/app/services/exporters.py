@@ -20,6 +20,13 @@ from reportlab.platypus import (HRFlowable, Image, Paragraph, SimpleDocTemplate,
 from ..data.sample_hazards import HAZARD_KEYS
 from ..repositories.report_repo import get_report_repo
 from .ai_router import DISCLAIMER, grounding_sources
+from .volcano_scoring import citation_source
+
+
+def _export_sources() -> List[Dict]:
+    """Grounding sources plus the PHIVOLCS citation when its volcano list is in use."""
+    extra = citation_source()
+    return [*grounding_sources(), *([extra] if extra else [])]
 
 CSV_COLUMNS = [
     "location_name", "latitude", "longitude", "overall_score", "overall_level",
@@ -57,7 +64,7 @@ def risks_to_csv(risks: List[Dict]) -> str:
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=CSV_COLUMNS)
     writer.writeheader()
-    sources = grounding_sources()
+    sources = _export_sources()
     for r in risks:
         row = {
             "location_name": r["location_name"],
@@ -194,10 +201,12 @@ def build_pdf_report(risk: Dict, persona: str, ai_summary: str,
             story.append(Paragraph(f"• {rec}", st["body"]))
 
     story.append(Paragraph("Source Metadata", st["h2"]))
-    for s in grounding_sources():
+    for s in _export_sources():
         story.append(Paragraph(
             f"• <b>{s['name']}</b> — {s['agency']} · updated {s['updated']} · "
             f"{s['confidence']} confidence", st["small"]))
+    if citation_source():
+        story.append(Paragraph(citation_source()["citation"], st["small"]))
 
     story += [Spacer(1, 14), HRFlowable(width="100%", color=colors.HexColor("#e2e8f0")),
               Spacer(1, 6), Paragraph(f"Disclaimer: {DISCLAIMER}", st["small"]),

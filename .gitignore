@@ -19,6 +19,8 @@ __pycache__/
 !.env.example
 
 # Secrets / local data
+# PHIVOLCS volcano list: DocypherLabs use only, never commit or redistribute
+backend/data/phivolcs_volcanoes.json
 *.pem
 *.key
 *.sqlite3

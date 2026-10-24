@@ -17,7 +17,7 @@ test("Wildfire and Volcanic scores feed Overall and the 'N of 13' count, with th
   const risk = toRiskAssessment(assessment({
     earthquake: hazard("Earthquake", 39),
     volcano: hazard("Volcanic Activity", 45, {
-      note: "Mayon is an active volcano 14.6 km away.", link: { label: "PHIVOLCS volcano bulletins", url: "https://www.phivolcs.dost.gov.ph/" },
+      note: "Mayon is an active volcano 14.6 km away. Source: DOST-PHIVOLCS, List of Philippine Volcanoes (used with permission, 15 Oct 2026).", link: { label: "PHIVOLCS volcano bulletins", url: "https://www.phivolcs.dost.gov.ph/volcanoes-of-the-philippines/" },
     }),
     wildfire: hazard("Wildfire", 15, { note: "1 detection within 10 km in the last 7 days." }),
     flood: hazard("Flood", null),
@@ -26,8 +26,8 @@ test("Wildfire and Volcanic scores feed Overall and the 'N of 13' count, with th
   assert.equal(risk.components_total, 4);
   assert.equal(risk.overall.score, Math.round((39 + 45 + 15) / 3));
   assert.equal(risk.hazards.volcano.score, 45);
-  assert.equal(risk.hazards.volcano.note, "Mayon is an active volcano 14.6 km away.");
-  assert.equal(risk.hazards.volcano.link.url, "https://www.phivolcs.dost.gov.ph/");
+  assert.match(risk.hazards.volcano.note, /Source: DOST-PHIVOLCS, List of Philippine Volcanoes \(used with permission, 15 Oct 2026\)/);
+  assert.equal(risk.hazards.volcano.link.url, "https://www.phivolcs.dost.gov.ph/volcanoes-of-the-philippines/");
   assert.equal(risk.hazards.wildfire.note, "1 detection within 10 km in the last 7 days.");
   assert.equal("note" in risk.hazards.earthquake, false);
 });

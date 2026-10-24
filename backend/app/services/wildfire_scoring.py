@@ -132,19 +132,9 @@ class FireContext:
     first_successful_sync_at: datetime | None  # history length
 
 
-# Summit coordinates of PH active volcanoes, Smithsonian Global Volcanism Program
-# (https://volcano.si.edu) — deliberately GVP, not PHIVOLCS: the licence for
-# PHIVOLCS data is still pending (see ENABLE_VOLCANIC_SCORING). A small, easy-to-
-# extend constant; add a row here for any other volcano whose heat shows up as
-# false-positive wildfire detections.
-PH_ACTIVE_VOLCANO_SUMMITS: tuple[tuple[str, float, float], ...] = (
-    ("Mayon", 13.257, 123.686),
-    ("Taal", 14.002, 120.993),
-    ("Kanlaon", 10.412, 123.132),
-    ("Bulusan", 12.770, 124.050),
-    ("Pinatubo", 15.130, 120.350),
-    ("Hibok-Hibok", 9.203, 124.673),
-)
+# Heat within this distance of a PHIVOLCS-listed active volcano is volcanic, not wildfire. The
+# summits come from the PHIVOLCS list (volcano_scoring.active_volcano_points); with no list
+# configured nothing is excluded.
 VOLCANO_EXCLUSION_RADIUS_KM = 5.0
 
 
@@ -153,12 +143,14 @@ def exclude_volcano_heat(nearby: Iterable[NearbyFire]) -> list[NearbyFire]:
     summit: that heat is volcanic activity, not wildfire. A detection with the default
     (0, 0) position (e.g. an older test fixture with no real coordinates) is never near
     a volcano, so it is kept unfiltered."""
-    from .volcano_scoring import haversine_km
+    from .volcano_scoring import active_volcano_points, haversine_km
+
+    summits = active_volcano_points()
 
     def near_a_volcano(fire: NearbyFire) -> bool:
         return any(
             haversine_km(fire.latitude, fire.longitude, vlat, vlng) <= VOLCANO_EXCLUSION_RADIUS_KM
-            for _, vlat, vlng in PH_ACTIVE_VOLCANO_SUMMITS
+            for _, vlat, vlng in summits
         )
 
     return [fire for fire in nearby if not near_a_volcano(fire)]

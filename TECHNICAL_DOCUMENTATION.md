@@ -26,9 +26,9 @@
 - Wildfire and Volcanic scores (`backend/app/services/wildfire_scoring.py`, `volcano_scoring.py`;
   [docs/WILDFIRE_VOLCANIC.md](docs/WILDFIRE_VOLCANIC.md)): the FIRMS sync stores detections in `fire_detections`
   (2-day fetch window, self-healing backfill while history is short) and `POST /api/assessments` scores a point
-  from those within 10 km, excluding any within 5 km of a known PH volcano summit (Smithsonian GVP coordinates);
+  from those within 10 km, excluding any within 5 km of a known PH volcano summit (PHIVOLCS list);
   freshness and history length come from `sync_health`, never from the stored detections. Volcanic (distance to
-  the nearest Philippine volcano) is off by default and ships no data (GVP's terms forbid redistribution). Both
+  the nearest Philippine volcano) is off by default and uses the PHIVOLCS list, supplied outside the repo with PHIVOLCS's permission and cited as DOST-PHIVOLCS. Both
   are indicators, not official hazard maps. No-data reasons are specific, not a generic catch-all — see the
   reason-code table in `ARCHITECTURE.md`.
 - Risk panel: the registry-driven assessment has no flood connector, so the frontend scores the Flood row from

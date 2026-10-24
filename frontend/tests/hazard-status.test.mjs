@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { statusLabel } from "../lib/hazard-status.ts";
 
 test("each reason code maps to its own honest label, not a generic catch-all", () => {
-  assert.equal(statusLabel("licence_pending", "unavailable"), "Pending PHIVOLCS data permission");
+  assert.equal(statusLabel("data_unavailable", "unavailable"), "Data not loaded");
   assert.equal(statusLabel("no_connected_source", "unavailable"), "No connected source yet");
   assert.equal(statusLabel("not_covered", "out_of_coverage"), "Not covered by current sources");
   assert.equal(statusLabel("stale", "stale"), "Data stale");

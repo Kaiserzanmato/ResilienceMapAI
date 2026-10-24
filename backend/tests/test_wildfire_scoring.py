@@ -1,12 +1,13 @@
 """Wildfire score from FIRMS detections: weights, windows, coverage and honest no-data."""
 import asyncio
+import json
 from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from app.config import get_settings
 from app.repositories.fire_repo import InMemoryFireRepo, get_fire_repo
-from app.services import wildfire_scoring as ws
+from app.services import volcano_scoring as vs, wildfire_scoring as ws
 from app.services.global_assessment import assess_location, load_fire_context
 
 NOW = datetime(2026, 10, 2, 6, 0, tzinfo=timezone.utc)
@@ -116,8 +117,25 @@ def test_history_length_comes_from_first_sync_not_from_stored_detections():
     assert short_history["score"] is None and short_history["reason_code"] == "fire_history_too_short"
 
 
-def test_volcano_heat_is_excluded_from_wildfire_scoring():
-    mayon_lat, mayon_lng = ws.PH_ACTIVE_VOLCANO_SUMMITS[0][1:]
+MAYON_SUMMIT = (13.25519, 123.68615)  # as listed by PHIVOLCS
+
+
+@pytest.fixture
+def volcano_list(tmp_path, monkeypatch):
+    """A PHIVOLCS-shaped list (synthetic file) holding Mayon, active, and one potentially active volcano."""
+    path = tmp_path / "volcanoes.json"
+    path.write_text(json.dumps({
+        "source": {"name": "Synthetic test list", "url": "https://example.test/v", "retrieved": "2026-10-25", "licence_note": "test data"},
+        "volcanoes": [{"name": "Mayon", "latitude": MAYON_SUMMIT[0], "longitude": MAYON_SUMMIT[1], "status": "active", "last_eruption_year": None}]}),
+        encoding="utf-8")
+    monkeypatch.setattr(get_settings(), "volcano_data_file", str(path))
+    vs._load.cache_clear()
+    yield
+    vs._load.cache_clear()
+
+
+def test_volcano_heat_is_excluded_from_wildfire_scoring(volcano_list):
+    mayon_lat, mayon_lng = MAYON_SUMMIT
     from app.services.volcano_scoring import haversine_km
 
     # 0.2 km from the summit (bearing barely matters at this distance; a tiny lat offset).
@@ -133,13 +151,20 @@ def test_volcano_heat_is_excluded_from_wildfire_scoring():
     assert both["count_30d"] == 1 and both["nearest_km"] == far_away.distance_km  # only the far one counts
 
 
-def test_volcano_exclusion_is_a_pure_filter():
-    mayon_lat, mayon_lng = ws.PH_ACTIVE_VOLCANO_SUMMITS[0][1:]
+def test_volcano_exclusion_is_a_pure_filter(volcano_list):
+    mayon_lat, mayon_lng = MAYON_SUMMIT
     near = ws.NearbyFire(1.0, NOW, "h", 10.0, mayon_lat, mayon_lng)
     far = ws.NearbyFire(1.0, NOW, "h", 10.0, mayon_lat + 1.0, mayon_lng)
     assert ws.exclude_volcano_heat([near, far]) == [far]
     # A detection with the dataclass default (0, 0) position is never near a volcano.
     assert ws.exclude_volcano_heat([ws.NearbyFire(1.0, NOW, "h", 10.0)]) != []
+
+
+def test_no_volcano_exclusion_without_a_volcano_list(monkeypatch):
+    monkeypatch.setattr(get_settings(), "volcano_data_file", "")
+    vs._load.cache_clear()
+    near = ws.NearbyFire(1.0, NOW, "h", 10.0, *MAYON_SUMMIT)
+    assert ws.exclude_volcano_heat([near]) == [near]
 
 
 def test_area_parsing():

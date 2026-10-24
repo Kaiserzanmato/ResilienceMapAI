@@ -8,7 +8,7 @@
 The assessment only gives a score to hazards with a verified source, and only earthquake had one (the legacy zone model is
 allowed to score nothing else). Wildfire had a configured connector (NASA FIRMS) but the sync **counted the rows it downloaded
 and discarded them**: `nasa-firms` had no normalizer, so nothing was stored in Postgres. Volcano had no data at all, only a
-metadata-only registry entry (Smithsonian GVP, PHIVOLCS), and still has none in the repo (see below).
+metadata-only registry entry (Smithsonian GVP, PHIVOLCS). It is now scored from the PHIVOLCS list, which is kept out of the repo (see below).
 
 ## Wildfire (`backend/app/services/wildfire_scoring.py`)
 
@@ -21,10 +21,9 @@ metadata-only registry entry (Smithsonian GVP, PHIVOLCS), and still has none in 
   — the same range `scripts/backfill_firms.py` uses for a manual backfill (see [OPERATIONS.md](./OPERATIONS.md)) — so a fresh deploy or
   a long gap in syncing does not take a week to recover. Upserts are idempotent, so this is safe to run on every sync while short.
 * **Query:** `ST_DWithin(geog, point::geography, 10000)` over the last 30 days (`app/repositories/fire_repo.py`).
-* **Volcano heat filter:** detections within 5 km (`VOLCANO_EXCLUSION_RADIUS_KM`) of a known PH active volcano summit are excluded
-  before scoring — `wildfire_scoring.PH_ACTIVE_VOLCANO_SUMMITS`, a small hardcoded list from the Smithsonian Global Volcanism Program
-  (volcano.si.edu), deliberately **not** PHIVOLCS (whose data is still pending permission — see Volcanic Activity below). Without
-  this, a volcano's own heat signature reads as a false-positive wildfire (Mayon showed a non-zero score from detections 0.2 km from
+* **Volcano heat filter:** detections within 5 km (`VOLCANO_EXCLUSION_RADIUS_KM`) of a PH active volcano summit are excluded
+  before scoring. The summits come from the PHIVOLCS list (`volcano_scoring.active_volcano_points`, see Volcanic Activity below);
+  with no list configured nothing is excluded. Without this, a volcano's own heat signature reads as a false-positive wildfire (Mayon showed a non-zero score from detections 0.2 km from
   its summit before this filter existed).
 * **Score:** each surviving detection within 10 km counts with weight `recency x confidence x FRP`. Recency is 1.0 for the last 7 days
   and 0.4 for days 8 to 30. Confidence is `l/n/h = 0.3/0.7/1.0` (a 0 to 100 value is divided by 100; unknown 0.5). The FRP weight is
@@ -43,34 +42,36 @@ metadata-only registry entry (Smithsonian GVP, PHIVOLCS), and still has none in 
   (`first_successful_sync_at`) applied — `0009` must be applied before this code is deployed, since the sync-success and wildfire-read
   paths write/read that column.
 
-## Volcanic Activity (`backend/app/services/volcano_scoring.py`) — off by default, no data shipped
+## Volcanic Activity (`backend/app/services/volcano_scoring.py`) — PHIVOLCS list, used with permission
 
-**Decision (2026-10-02): no volcano list is committed, and `ENABLE_VOLCANIC_SCORING` defaults to `false`.**
-The Smithsonian Global Volcanism Program list was the first candidate. Its terms (Smithsonian Terms of Use, via
-volcano.si.edu/gvp_termsofuse.cfm) allow personal, educational and non-commercial use with citation and require prior written
-permission for commercial use or publication, and this repository is public. The project's coverage registry also lists both GVP
-and PHIVOLCS as `license_status: review-required`, and the Sprint 1 docs require an approved evidence package before volcano scoring.
-So the extract that an earlier draft of this work contained was removed, and the feature waits for a list whose terms allow it.
+PHIVOLCS approved use of its List of Philippine Volcanoes (https://www.phivolcs.dost.gov.ph/volcanoes-of-the-philippines/) in a letter
+dated 15 Oct 2026. Conditions: **DocypherLabs use only (no redistribution), no changes to the information, full citation of PHIVOLCS.**
+The repo is public, so the list is **not committed**: it is generated into a gitignored file and supplied via `VOLCANO_DATA_FILE`.
+No API route, export or share link returns volcano coordinates or the full list (`test_global_assessment.py` asserts this). Every
+place the data appears carries "Source: DOST-PHIVOLCS, List of Philippine Volcanoes (used with permission, 15 Oct 2026)": the
+evidence note, the hazard panel row, the PDF and CSV exports, and Resources. The earlier Smithsonian GVP list was rejected (terms).
 
-* **What exists:** the scoring code and a loader. `VOLCANO_DATA_FILE` points at a JSON file outside the repo; if it is unset, missing or
-  invalid (wrong shape, bad status, out-of-range coordinates) the hazard stays **no-data**, never zero and never an error. While
-  `ENABLE_VOLCANIC_SCORING` is `false`, the row's `reason_code` is `licence_pending` (panel label: "Pending PHIVOLCS data permission")
-  — distinct from a hazard with no source registered at all, or one with a source but no connector wired up yet; see
-  [ARCHITECTURE.md](../ARCHITECTURE.md)'s reason-code table and `global_assessment.py`'s `_coverage_state`.
-* **Expected file (a PHIVOLCS-sourced list, once PHIVOLCS permits it):**
+* **What exists:** the scoring code, a loader, and `backend/scripts/build_phivolcs_volcanoes.py`. If `VOLCANO_DATA_FILE` is unset,
+  missing or invalid (wrong shape, bad status, out-of-range coordinates) the hazard stays **no-data**, never zero and never an error.
+  While `ENABLE_VOLCANIC_SCORING` is `false` or the file is missing, the row's `reason_code` is `data_unavailable` (panel label: "Data
+  not loaded") — distinct from a hazard with no source registered, or one with a source but no connector; see
+  [ARCHITECTURE.md](../ARCHITECTURE.md)'s reason-code table and `global_assessment.py`.
+* **File format (written verbatim by the builder):**
   ```json
-  {"source": {"name": "...", "url": "https://...", "retrieved": "YYYY-MM-DD", "licence_note": "..."},
-   "volcanoes": [{"name": "...", "latitude": 13.257, "longitude": 123.685,
-                  "status": "active" | "potentially active", "last_eruption_year": 2026}]}
+  {"source": {"name": "DOST-PHIVOLCS, List of Philippine Volcanoes", "url": "https://www.phivolcs.dost.gov.ph/volcanoes-of-the-philippines/",
+              "retrieved": "YYYY-MM-DD", "licence_note": "Used with written permission from PHIVOLCS dated 15 Oct 2026; DocypherLabs use only"},
+   "volcanoes": [{"name": "Mayon", "latitude": 13.25519, "longitude": 123.68615,
+                  "status": "active", "last_eruption_year": null}]}
   ```
-  `last_eruption_year` may be null. The `source` block is shown as the row's evidence source.
+  The published page lists the 24 active volcanoes with no per-row status or eruption year, so each is `active` with a null
+  `last_eruption_year`. (The loader still accepts `potentially active`, which counts for half, should PHIVOLCS publish that list.)
 * **Score (when enabled with a valid file):** distance to each volcano, danger-zone-style bands: within 6 km 90, within 10 km 75,
-  within 30 km 45, within 100 km 15, beyond 0. A potentially active volcano counts for half; the highest band wins. Philippines only;
-  elsewhere no-data. The bands follow the shape of PHIVOLCS danger zones, not their legal boundaries.
+  within 30 km 45, within 100 km 15, beyond 0. The highest band wins. Philippines only; elsewhere no-data. The bands follow the
+  shape of PHIVOLCS danger zones, not their legal boundaries.
 * **Alert level:** the current PHIVOLCS alert level is **not live**: PHIVOLCS publishes bulletins, not a reliable machine-readable feed,
   so the row says so and links to PHIVOLCS.
-* **To turn it on:** obtain a list with usable terms (PHIVOLCS permission, or written Smithsonian permission), put it on the Render
-  instance (a secret file or a path baked into your deploy, not this repo), set `VOLCANO_DATA_FILE` and `ENABLE_VOLCANIC_SCORING=true`.
+* **To turn it on:** generate the file and upload it to Render as a secret file, then set `VOLCANO_DATA_FILE` and
+  `ENABLE_VOLCANIC_SCORING=true` — steps in [OPERATIONS.md](./OPERATIONS.md).
 
 ## In the panel
 
@@ -79,8 +80,8 @@ So the extract that an earlier draft of this work contained was removed, and the
 
 ## External dependencies
 
-* **Volcanic scoring is blocked on PHIVOLCS permission** (requested 2026-10-02; PHIVOLCS then asks for a request form and a Data User
-  Agreement). Nothing is built beyond the loader and tests, and `ENABLE_VOLCANIC_SCORING` stays `false`. Status and the checklist for
-  switching it on: [issue #34](https://github.com/Kaiserzanmato/ResilienceMapAI/issues/34).
+* **Volcanic scoring is permitted by PHIVOLCS** (letter dated 15 Oct 2026). It is live once the secret file and env vars are set on
+  Render; PHIVOLCS also asked for photos or screenshots of where the information is shown (contact in
+  [issue #34](https://github.com/Kaiserzanmato/ResilienceMapAI/issues/34)).
 * Wildfire depends on NASA FIRMS (live, Philippines box). Flood capture depends on Copernicus Sentinel scenes and the JRC Global Surface
   Water layer. Their status is in the issue's table.

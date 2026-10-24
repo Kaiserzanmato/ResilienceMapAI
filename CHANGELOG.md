@@ -9,6 +9,21 @@ the Aug 6–7 geocoding-gateway and dashboard/globe/weather work in detail.
 Format: `[commit] type: summary`, followed by what changed and why when it
 isn't obvious from the summary alone.
 
+## 2026-10-25 (PHIVOLCS volcanic scoring)
+
+- feat: Volcanic Activity scored from the PHIVOLCS "List of Philippine Volcanoes", used with PHIVOLCS's written
+  permission (letter dated 15 Oct 2026). Closes #34.
+  - Conditions honoured: DocypherLabs use only (the list is generated into a gitignored file, never committed, and no API
+    route, export or share link returns volcano coordinates or the full list), no changes to the information (names and
+    coordinates are written verbatim by `backend/scripts/build_phivolcs_volcanoes.py`), and full citation
+    ("Source: DOST-PHIVOLCS, List of Philippine Volcanoes (used with permission, 15 Oct 2026)") in the volcanic evidence, the
+    hazard panel row, the PDF and CSV exports, and Resources.
+  - Wildfire's volcano-heat filter now takes the active volcanoes from the same PHIVOLCS file instead of six hard-coded
+    Smithsonian GVP summits; with no file configured nothing is excluded.
+  - `licence_pending` is removed. A Volcanic row with scoring off or no data file now reports `data_unavailable`
+    ("Data not loaded"). `phivolcs-volcano` is `configured` in the coverage registry.
+  - `PHIVOLCS_URL` is the exact list page.
+
 ## 2026-10-03 (wildfire history/freshness and honest no-data labels)
 
 - **[#42] fix: Wildfire stopped showing "Stale" everywhere except Mayon, and every no-data row got its
@@ -26,8 +41,8 @@ isn't obvious from the summary alone.
   - History and staleness now come from `sync_health` (`first_successful_sync_at`, new; `0009`;
     `last_successful_sync_at`), never from the stored detections, so pruning or recreating the table can't
     reset them. Zero fires with a fresh sync is a valid low score, not Stale.
-  - FIRMS detections within 5 km of a known PH active volcano summit (Smithsonian GVP coordinates, not
-    PHIVOLCS) are excluded before wildfire scoring.
+  - FIRMS detections within 5 km of a known PH active volcano summit are excluded before wildfire scoring
+    (originally six Smithsonian GVP coordinates; since 2026-10-25 the PHIVOLCS list).
   - New honest reason codes in `global_assessment.py`: `licence_pending` (Volcanic while
     `ENABLE_VOLCANIC_SCORING=false`), `no_connected_source` (a source is registered but nothing is wired
     to it), `not_covered` (no source registered at all), `stale`. The frontend's label mapping moved to

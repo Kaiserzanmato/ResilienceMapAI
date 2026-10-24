@@ -15,7 +15,7 @@
   "countries": {
     "PH": {
       "earthquake": [{"id": "phivolcs-earthquake", "name": "PHIVOLCS", "scope": "national", "priority": 2, "coverage": "partial", "resolution_m": null, "publication_date": "2026-01-01", "update_frequency": "near-real-time", "license_status": "review-required", "attribution": "PHIVOLCS", "commercial_use": false, "redistribution_allowed": false, "reliability": "high", "status": "metadata-only"}],
-      "volcano": [{"id": "phivolcs-volcano", "name": "PHIVOLCS", "scope": "national", "priority": 2, "coverage": "partial", "resolution_m": null, "publication_date": "2026-01-01", "update_frequency": "daily", "license_status": "review-required", "attribution": "PHIVOLCS", "commercial_use": false, "redistribution_allowed": false, "reliability": "high", "status": "metadata-only"}]
+      "volcano": [{"id": "phivolcs-volcano", "name": "DOST-PHIVOLCS, List of Philippine Volcanoes", "scope": "national", "priority": 2, "coverage": "partial", "resolution_m": null, "publication_date": "2026-10-15", "update_frequency": "periodic", "license_status": "approved", "attribution": "DOST-PHIVOLCS (used with permission, 15 Oct 2026; DocypherLabs use only)", "commercial_use": false, "redistribution_allowed": false, "reliability": "high", "status": "configured"}]
     },
     "JP": {"earthquake": [{"id": "jma-earthquake", "name": "Japan Meteorological Agency", "scope": "national", "priority": 2, "coverage": "complete", "resolution_m": null, "publication_date": "2026-01-01", "update_frequency": "near-real-time", "license_status": "review-required", "attribution": "Japan Meteorological Agency", "commercial_use": false, "redistribution_allowed": false, "reliability": "high", "status": "metadata-only"}]}
   }
