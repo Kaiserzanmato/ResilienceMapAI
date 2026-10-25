@@ -32,7 +32,7 @@ from .services.insights_generator import generate_insights
 from .services.ai_router import DISCLAIMER, generate_insight
 from .services.exporters import (build_pdf_report, get_report, list_reports,
                                  risks_to_csv, store_report)
-from .services.risk_scoring import compare_locations, score_location
+from .services.risk_scoring import compare_locations, level_for_score, score_location
 from .services.global_assessment import assess_location, load_fire_context
 from .services.providers import build_providers, pick_provider
 from .services import usage_quota
@@ -96,9 +96,23 @@ async def live_risk(lat: float, lng: float, name: str | None = None, country_cod
     """The legacy risk shape with Wildfire (FIRMS) and Volcanic (PHIVOLCS) taken from the assessment
     engine, so the risk panel, the PDF, the AI summary and share links all show the same numbers."""
     fire = await load_fire_context(lat, lng)
-    hazards = assess_location(lat, lng, name, country_code, fire=fire)["hazards"]
-    return score_location(lat, lng, name, country_code,
+    assessment = assess_location(lat, lng, name, country_code, fire=fire)
+    hazards = assessment["hazards"]
+    risk = score_location(lat, lng, name, country_code,
                           overrides={key: hazards[key]["score"] for key in ("wildfire", "volcano")})
+    # The per-hazard rows keep the zone model's indicative scores, but the headline matches the
+    # risk panel (frontend/lib/assessment-adapter.ts): the mean of only the hazards with verified
+    # data, with the same drivers and confidence. Missing hazards are excluded, never counted as zero.
+    verified = [h["score"] for h in hazards.values() if h["score"] is not None]
+    overall = round(sum(verified) / len(verified)) if verified else None
+    coverage = assessment["multi_hazard_summary"]["coverage_score"]
+    risk["overall"] = {"score": overall, **level_for_score(overall)}
+    risk["components_available"] = len(verified)
+    risk["components_total"] = len(hazards)
+    risk["main_drivers"] = [hazards[k]["label"] for k in assessment["multi_hazard_summary"]["highest_priority_hazards"] if k in hazards]
+    risk["data_coverage"] = "covered" if coverage >= 70 else "regional" if coverage >= 30 else "limited"
+    risk["confidence"] = "High" if coverage >= 70 else "Medium" if coverage >= 30 else "Low"
+    return risk
 
 
 async def live_compare(locations: list[dict]) -> list[dict]:

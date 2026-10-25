@@ -155,3 +155,16 @@ def test_csv_and_compare_use_the_same_volcanic_score_as_the_panel(tmp_path, monk
         assert row.split(",")[header.split(",").index("volcano_score")] == "90"
     finally:
         vs._load.cache_clear()
+
+
+@pytest.mark.parametrize("place", [MAYON, TOKYO])
+def test_overall_matches_the_panel_but_hazard_rows_keep_their_modelled_scores(place):
+    """PDF/CSV/AI overall = mean of the hazards with verified data (the panel's rule); rows are unchanged."""
+    panel = assessment(place)["hazards"]
+    scores = [h["score"] for h in panel.values() if h["score"] is not None]
+    old = legacy(place).json()
+    assert old["overall"]["score"] == (round(sum(scores) / len(scores)) if scores else None)
+    assert old["components_available"] == len(scores)
+    zone = score_location(place["lat"], place["lng"], place["name"], place["country_code"])["hazards"]
+    for key in ("flood", "tropical_cyclone", "landslide"):
+        assert old["hazards"][key]["score"] == zone[key]["score"]

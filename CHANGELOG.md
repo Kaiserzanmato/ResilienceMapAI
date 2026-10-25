@@ -17,6 +17,13 @@ isn't obvious from the summary alone.
   hazard table, the AI summary/report/chat/insights prompts and shared reports use the assessment engine's Volcanic and Wildfire
   scores. The CSV export and `POST /api/compare-locations` now do the same (`live_compare`, five locations at a time).
 
+## 2026-10-25 (PDF, CSV and AI overall score match the risk panel)
+
+- **fix: the PDF, CSV and AI prompts reported a different overall score from the risk panel** (62 High against Medium 32 for Legazpi).
+  `live_risk()` now sets the overall to the mean of only the hazards with verified data (the panel's rule in
+  `frontend/lib/assessment-adapter.ts`), with the panel's drivers, confidence and coverage. The per-hazard rows still show the
+  zone model's modelled scores, so the breakdown is unchanged.
+
 ## 2026-10-25 (PHIVOLCS volcanic scoring)
 
 - feat: Volcanic Activity scored from the PHIVOLCS "List of Philippine Volcanoes", used with PHIVOLCS's written
