@@ -43,13 +43,12 @@ def test_honest_no_data_reason_codes():
     result = assess_location(14.5995, 120.9842, "Metro Manila", "PH")
     hazards = result["hazards"]
 
-    # Volcanic scoring is off (ENABLE_VOLCANIC_SCORING=false by default — PHIVOLCS
-    # permission is pending, not "no source": volcano_scoring.py's GVP data already
-    # locates the volcano, see memory/docs/sprint1-phivolcs-fault-data).
+    # Volcanic scoring is off by default (ENABLE_VOLCANIC_SCORING=false), or on without a data
+    # file: either way the row says the data is not loaded (PHIVOLCS permission is granted).
     assert not get_settings().enable_volcanic_scoring
     assert hazards["volcano"]["score"] is None
     assert hazards["volcano"]["coverage_status"] == "unavailable"
-    assert hazards["volcano"]["reason_code"] == "licence_pending"
+    assert hazards["volcano"]["reason_code"] == "data_unavailable"
 
     # Metadata-only registered sources (no production connector configured yet).
     for key in ("tropical_cyclone", "landslide", "drought", "extreme_heat", "flood"):
@@ -67,7 +66,49 @@ def test_honest_no_data_reason_codes():
     assert "no_registered_source" not in all_reason_codes
 
 
-def test_volcanic_reason_code_is_not_licence_pending_once_scoring_is_enabled(tmp_path, monkeypatch):
+def test_volcanic_without_a_data_file_is_data_unavailable_even_when_enabled(tmp_path, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "volcano_data_file", str(tmp_path / "missing.json"))
+    monkeypatch.setattr(settings, "enable_volcanic_scoring", True)
+    vs._load.cache_clear()
+    try:
+        volcano = assess_location(13.0, 123.0, "Teston", "PH")["hazards"]["volcano"]
+        assert volcano["score"] is None and volcano["reason_code"] == "data_unavailable"
+    finally:
+        vs._load.cache_clear()
+
+
+def test_volcanic_row_is_cited_and_never_exposes_coordinates_or_the_list(tmp_path, monkeypatch):
+    path = tmp_path / "volcanoes.json"
+    path.write_text(json.dumps({
+        "source": {"name": "DOST-PHIVOLCS, List of Philippine Volcanoes", "url": vs.PHIVOLCS_URL, "retrieved": "2026-10-25",
+                   "licence_note": "test data"},
+        "volcanoes": [{"name": "Teston", "latitude": 13.0, "longitude": 123.0, "status": "active", "last_eruption_year": None},
+                      {"name": "Otherton", "latitude": 14.5, "longitude": 121.5, "status": "active", "last_eruption_year": None}],
+    }), encoding="utf-8")
+    settings = get_settings()
+    monkeypatch.setattr(settings, "volcano_data_file", str(path))
+    monkeypatch.setattr(settings, "enable_volcanic_scoring", True)
+    vs._load.cache_clear()
+    try:
+        volcano = assess_location(13.001, 123.0, "Teston", "PH")["hazards"]["volcano"]
+        assert volcano["link"]["url"] == "https://www.phivolcs.dost.gov.ph/volcanoes-of-the-philippines/"
+        assert vs.CITATION in volcano["note"] and vs.CITATION in volcano["limitations"]
+        text = json.dumps(volcano)
+        assert "Otherton" not in text  # the full list is never returned
+        for coordinate in ("13.0,", "123.0,", "14.5", "121.5"):
+            assert f'"latitude": {coordinate}' not in text and f'"longitude": {coordinate}' not in text
+        assert "latitude" not in text and "longitude" not in text
+        # Exports carry the citation, not the list.
+        from app.services.exporters import risks_to_csv
+        from app.services.risk_scoring import score_location
+        csv_text = risks_to_csv([score_location(13.0, 123.0, "Teston")])
+        assert "DOST-PHIVOLCS" in csv_text and "Otherton" not in csv_text and "14.5" not in csv_text
+    finally:
+        vs._load.cache_clear()
+
+
+def test_volcanic_reason_code_is_not_data_unavailable_once_scoring_is_enabled(tmp_path, monkeypatch):
     # Synthetic data (not a real list) — same pattern as test_volcano_scoring.py's volcano_file fixture.
     path = tmp_path / "volcanoes.json"
     path.write_text(json.dumps({
@@ -82,6 +123,6 @@ def test_volcanic_reason_code_is_not_licence_pending_once_scoring_is_enabled(tmp
     try:
         volcano = assess_location(13.0, 123.0, "Teston", "PH")["hazards"]["volcano"]  # on the summit
         assert volcano["score"] is not None
-        assert volcano["reason_code"] != "licence_pending"
+        assert volcano["reason_code"] == "volcano_distance_band"
     finally:
         vs._load.cache_clear()

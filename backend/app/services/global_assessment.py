@@ -11,7 +11,7 @@ from ..data.sample_hazards import HAZARD_LABELS
 from .country_lookup import country_for_point
 from .coverage_registry import providers_for, registry, supported_hazards
 from .risk_scoring import ENGINE_VERSION, level_for_score, score_location
-from .volcano_scoring import LABEL as VOLCANO_LABEL, PHIVOLCS_URL, score_volcano, volcano_data, volcano_note
+from .volcano_scoring import LABEL as VOLCANO_LABEL, CITATION as VOLCANO_CITATION, PHIVOLCS_URL, score_volcano, volcano_data, volcano_note
 from .wildfire_scoring import FireContext, assess_wildfire, wildfire_note, LABEL as WILDFIRE_LABEL
 
 LEGACY_TO_GLOBAL = {"storm_surge": "coastal_exposure"}
@@ -112,7 +112,8 @@ def _volcanic(volcano: dict[str, Any]) -> dict[str, Any]:
         "score": volcano["score"], "coverage_status": "available", "reason_code": "volcano_distance_band", "confidence": "medium",
         "note": volcano_note(volcano),
         "link": {"label": "PHIVOLCS volcano bulletins (alert level not live here)", "url": PHIVOLCS_URL},
-        "limitations": [f"Scored from {VOLCANO_LABEL}. The current PHIVOLCS alert level is not included: no reliable machine-readable source."],
+        "limitations": [f"Scored from {VOLCANO_LABEL}. The current PHIVOLCS alert level is not included: no reliable machine-readable source.",
+                        VOLCANO_CITATION],
         "evidence": [{"source": source["name"], "source_type": "static-reference", "timestamp": source.get("retrieved"),
                       "raw_value": round(volcano["driver"]["distance_km"], 1), "normalized_value": volcano["score"],
                       "cache_policy": "static", "uncertainty": "Distance to the nearest volcano; not a forecast.",
@@ -149,11 +150,9 @@ def assess_location(lat: float, lng: float, name: str | None = None, country_cod
         else:
             score, evidence, confidence = None, [], "none"
         coverage_status, reason_code = _coverage_state(score, providers, selected, country_code, legacy["data_coverage"])
-        if hazard == "volcano" and score is None and not get_settings().enable_volcanic_scoring:
-            # PHIVOLCS data permission is pending, not "no connected source" — GVP alone
-            # (volcano_scoring.py) already locates volcanoes; the live alert feed is what's
-            # blocked. See memory: keep this off until written PHIVOLCS permission.
-            coverage_status, reason_code = "unavailable", "licence_pending"
+        if hazard == "volcano" and score is None and (not get_settings().enable_volcanic_scoring or volcano_data() is None):
+            # Permission is granted (PHIVOLCS letter, 15 Oct 2026); the row is simply off.
+            coverage_status, reason_code = "unavailable", "data_unavailable"
         # Satellite- and distance-based rows that do not go through the legacy zone model.
         observed: dict[str, Any] = {}
         if hazard == "wildfire" and get_settings().enable_wildfire_scoring and selected is not None and fire is not None:

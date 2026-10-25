@@ -6,7 +6,7 @@
  * its own honest line. */
 
 const REASON_LABELS: Record<string, string> = {
-  licence_pending: "Pending PHIVOLCS data permission",
+  data_unavailable: "Data not loaded",
   no_connected_source: "No connected source yet",
   not_covered: "Not covered by current sources",
   stale: "Data stale",

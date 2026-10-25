@@ -65,8 +65,8 @@ def test_legacy_wildfire_shows_a_stored_detection(monkeypatch):
     from app.services import wildfire_scoring as ws
     monkeypatch.setattr(get_settings(), "nasa_firms_area", "116,4,127,22")
     now = datetime.now(timezone.utc)
-    # MAYON itself is within VOLCANO_EXCLUSION_RADIUS_KM (5) of the real Mayon summit (see
-    # PH_ACTIVE_VOLCANO_SUMMITS), so the detection must sit clear of that — but still inside
+    # MAYON itself is within VOLCANO_EXCLUSION_RADIUS_KM (5) of the real Mayon summit (which the
+    # exclusion takes from the PHIVOLCS list), so the detection must sit clear of that — but still inside
     # RADIUS_KM (10) of MAYON, the query point. This test is about the legacy/assessment
     # routes agreeing, not about the volcano exclusion itself (covered separately in
     # test_wildfire_scoring.py). 0.06 degrees north is about 6.7 km.

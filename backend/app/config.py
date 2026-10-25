@@ -100,9 +100,9 @@ class Settings(BaseSettings):
 
     # Observed/distance-based scores for the risk panel. Wildfire reads FIRMS detections
     # stored by the sync (needs migration 0008); Volcanic scores distance to Philippine
-    # volcanoes from a data file that is NOT in the repo (see docs/WILDFIRE_VOLCANIC.md): the
-    # Smithsonian GVP terms do not allow redistribution, so it is off until a PHIVOLCS-sourced
-    # file with usable terms is supplied via VOLCANO_DATA_FILE.
+    # volcanoes from the PHIVOLCS list, a data file that is NOT in the repo (see
+    # docs/WILDFIRE_VOLCANIC.md): PHIVOLCS allows DocypherLabs use only, so it is off until the
+    # file built by scripts/build_phivolcs_volcanoes.py is supplied via VOLCANO_DATA_FILE.
     enable_wildfire_scoring: bool = os.getenv("ENABLE_WILDFIRE_SCORING", "true").lower() == "true"
     enable_volcanic_scoring: bool = os.getenv("ENABLE_VOLCANIC_SCORING", "false").lower() == "true"
     volcano_data_file: str = os.getenv("VOLCANO_DATA_FILE", "")

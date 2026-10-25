@@ -7,6 +7,7 @@ import {
   Map,
   Zap,
   Globe,
+  Mountain,
   ArrowRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -94,6 +95,14 @@ export default function ResourcesPage() {
       subtitle: "Active Watchlist",
       description:
         "Curated global watchlist of 22 active events and 5 structural climate layers — typhoons, earthquakes, heatwaves, epidemics, conflict, and famine risk — sourced from WMO, WHO, OCHA, PHIVOLCS, USGS, and IPC (revision 2026-07-06).",
+    },
+    {
+      icon: Mountain,
+      title: "Philippine Volcanoes",
+      subtitle: "Volcanic Distance",
+      description:
+        "Volcanic Activity is scored from the distance to the nearest active volcano. Source: DOST-PHIVOLCS, List of Philippine Volcanoes (used with permission, 15 Oct 2026).",
+      href: "https://www.phivolcs.dost.gov.ph/volcanoes-of-the-philippines/",
     },
   ];
 
@@ -208,6 +217,16 @@ export default function ResourcesPage() {
                     <p className="mt-2 text-sm text-[var(--fg-muted)] leading-relaxed">
                       {dataset.description}
                     </p>
+                    {"href" in dataset && dataset.href && (
+                      <a
+                        href={dataset.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-block text-sm font-medium text-[var(--accent)] underline-offset-2 hover:underline"
+                      >
+                        DOST-PHIVOLCS
+                      </a>
+                    )}
                   </div>
                 </div>
               </GlassCard>

@@ -129,11 +129,15 @@ A deploy rollback does not touch the database. If the new code needs a migration
   real gap in successful syncing moves them. A Wildfire score of zero is shown only with at least 7 days of
   recorded history; before that the row says so instead of reassuring.
 * **Volcano heat is excluded before scoring.** FIRMS detections within 5 km of a known PH active volcano summit
-  (`wildfire_scoring.PH_ACTIVE_VOLCANO_SUMMITS`, Smithsonian GVP coordinates) never count as wildfire — a
+  (taken from the PHIVOLCS list, `volcano_scoring.active_volcano_points`) never count as wildfire — a
   volcano's own heat signature used to show up as a false-positive score (Mayon, pre-fix).
-* Volcanic scoring is **off by default and ships no data**: GVP's terms allow non-commercial use only and the repo is public, so the list
-  was removed. The row stays "no data" (`reason_code: licence_pending`) until a list with usable terms is supplied via
-  `VOLCANO_DATA_FILE` and `ENABLE_VOLCANIC_SCORING=true`. Details: [WILDFIRE_VOLCANIC.md](./WILDFIRE_VOLCANIC.md).
+* Volcanic scoring uses the PHIVOLCS list, which is **never in the repo** (DocypherLabs use only). Without the file the row shows
+  "no data" (`reason_code: data_unavailable`). To regenerate and deploy it:
+  1. `python backend/scripts/build_phivolcs_volcanoes.py` writes `backend/data/phivolcs_volcanoes.json` (gitignored). The script
+     refuses to write if the page no longer parses to the 24 listed volcanoes: check the page by hand then.
+  2. In the Render dashboard, add that file as a **secret file** (it is mounted at `/etc/secrets/<filename>`).
+  3. Set `VOLCANO_DATA_FILE=/etc/secrets/phivolcs_volcanoes.json` and `ENABLE_VOLCANIC_SCORING=true`, then redeploy.
+  Details: [WILDFIRE_VOLCANIC.md](./WILDFIRE_VOLCANIC.md).
 
 ## Flood capture, day to day
 

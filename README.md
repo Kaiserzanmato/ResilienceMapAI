@@ -32,13 +32,13 @@ assessments, grounded AI explanations, and report/export workflows.
 - **Wildfire and Volcanic scores:** the risk panel scores Wildfire from stored NASA FIRMS (VIIRS)
   active-fire detections within 10 km over the last 7 and 30 days (confidence and FRP weighted;
   satellite-observed active fire, not an official hazard map, and it includes agricultural burning), excluding
-  any detection within 5 km of a known PH active volcano summit (Smithsonian GVP coordinates) as volcanic heat
+  any detection within 5 km of a known PH active volcano summit (from the PHIVOLCS list) as volcanic heat
   rather than wildfire. Freshness and history length come from FIRMS sync health, not the stored detections, so
   a pruned or recreated table can't reset either. Volcanic Activity scores the distance to the nearest
   Philippine volcano (danger-zone-style bands; **off by
-  default and no volcano list is shipped**, because the Smithsonian GVP terms do not allow redistribution). Both
+  default**, using the PHIVOLCS list with its written permission; the list is generated outside the repo and never redistributed). Both
   feed the overall score when on; coverage gaps stay "No data" with a specific reason (not covered, no connected
-  source, pending PHIVOLCS permission, or stale — see below). The PHIVOLCS alert level is not live (a link is shown). See [docs/WILDFIRE_VOLCANIC.md](docs/WILDFIRE_VOLCANIC.md).
+  source, data not loaded, or stale — see below). The PHIVOLCS alert level is not live (a link is shown). See [docs/WILDFIRE_VOLCANIC.md](docs/WILDFIRE_VOLCANIC.md).
 - **Geocoding gateway:** Geoapify is the primary production provider,
   LocationIQ is the fallback, Photon is optional, and the local gazetteer is a
   degraded final fallback. Search candidates show their normalized addresses
@@ -105,8 +105,8 @@ contract, deployment evidence, and release limitations.
 
 A hazard row with no score always says specifically why, never a generic "unavailable": **"Not covered by
 current sources"** (no provider is registered for this hazard/country at all), **"No connected source yet"**
-(a provider is registered but nothing is wired up to read it), **"Pending PHIVOLCS data permission"** (Volcanic
-specifically, while `ENABLE_VOLCANIC_SCORING` is off), or **"Data stale"** (a connector exists but its data is
+(a provider is registered but nothing is wired up to read it), **"Data not loaded"** (Volcanic
+specifically, while `ENABLE_VOLCANIC_SCORING` is off or the PHIVOLCS file is missing), or **"Data stale"** (a connector exists but its data is
 too old to score). See the reason-code table in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 The Flood row in the risk panel is **satellite-observed, not an official flood map**: it comes
@@ -339,7 +339,7 @@ editing the Python registry. Never hand-edit the `.ts` file.
 
 ## External dependencies
 
-Volcanic Activity shows "No data" until PHIVOLCS grants permission to use its volcano data; `ENABLE_VOLCANIC_SCORING` stays `false`.
+Volcanic Activity uses the PHIVOLCS List of Philippine Volcanoes, with PHIVOLCS's written permission (15 Oct 2026; DocypherLabs use only, no redistribution, cited as DOST-PHIVOLCS). The list is not in this repo: generate it with `backend/scripts/build_phivolcs_volcanoes.py` and set `VOLCANO_DATA_FILE` and `ENABLE_VOLCANIC_SCORING=true` (see `docs/OPERATIONS.md`). Without the file the row shows "Data not loaded".
 Tracked in [issue #34](https://github.com/Kaiserzanmato/ResilienceMapAI/issues/34) with the status of the other external sources (ReliefWeb, NASA FIRMS, Sentinel, JRC). Details:
 [docs/WILDFIRE_VOLCANIC.md](./docs/WILDFIRE_VOLCANIC.md).
 

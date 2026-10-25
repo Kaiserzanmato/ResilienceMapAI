@@ -460,7 +460,7 @@ and read by `frontend/lib/hazard-status.ts`'s `statusLabel()` for the panel labe
 
 | `reason_code` | Meaning | When | Panel label |
 |---|---|---|---|
-| `licence_pending` | A source exists (Smithsonian GVP / PHIVOLCS) but its data isn't licensed for use yet | Volcanic, while `ENABLE_VOLCANIC_SCORING=false` | "Pending PHIVOLCS data permission" |
+| `data_unavailable` | The PHIVOLCS volcano list (used with permission) is not loaded | Volcanic, while `ENABLE_VOLCANIC_SCORING=false` or `VOLCANO_DATA_FILE` is unset, missing or invalid | "Data not loaded" |
 | `no_connected_source` | A source is registered in the coverage registry but no production connector reads it | e.g. GloFAS (flood, outside a capture), IBTrACS (cyclone), landslide, drought, extreme heat | "No connected source yet" |
 | `not_covered` | No provider is registered for this hazard/country at all | e.g. active_fault, tsunami, land_subsidence, sinkhole | "Not covered by current sources" |
 | `stale` | A connector exists and is configured, but its data is too old to score | Wildfire, when `sync_health.last_successful_sync_at` for `nasa-firms` is unset or older than 48 h (`fire_data_stale`), or syncing has succeeded for under `MIN_HISTORY_DAYS` (`fire_history_too_short`) | "Data stale" |
