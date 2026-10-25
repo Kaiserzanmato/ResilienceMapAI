@@ -15,7 +15,7 @@ isn't obvious from the summary alone.
   Those routes called the zone model directly, which leaves Volcanic unscored (and used the zone model for Wildfire instead of
   FIRMS). They now go through `live_risk()` in `backend/app/main.py`, the same path as `GET /api/location-risk`, so the PDF
   hazard table, the AI summary/report/chat/insights prompts and shared reports use the assessment engine's Volcanic and Wildfire
-  scores. Not changed: the CSV export and `POST /api/compare-locations`, which still use the zone model.
+  scores. The CSV export and `POST /api/compare-locations` now do the same (`live_compare`, five locations at a time).
 
 ## 2026-10-25 (PHIVOLCS volcanic scoring)
 

@@ -3,6 +3,7 @@
 All AI calls are server-side; risk scoring is deterministic; every /api route
 is rate-limited and audit-logged.
 """
+import asyncio
 from datetime import datetime, timezone, timedelta
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response
@@ -100,6 +101,17 @@ async def live_risk(lat: float, lng: float, name: str | None = None, country_cod
                           overrides={key: hazards[key]["score"] for key in ("wildfire", "volcano")})
 
 
+async def live_compare(locations: list[dict]) -> list[dict]:
+    """live_risk for each location, a few at a time so a 50-row export stays gentle on the database."""
+    gate = asyncio.Semaphore(5)
+
+    async def one(loc: dict) -> dict:
+        async with gate:
+            return await live_risk(loc["lat"], loc["lng"], loc.get("name"))
+
+    return list(await asyncio.gather(*(one(loc) for loc in locations)))
+
+
 @app.get("/api/location-risk", deprecated=True)
 async def location_risk(lat: float = Query(..., ge=-90, le=90),
                         lng: float = Query(..., ge=-180, le=180),
@@ -112,8 +124,8 @@ async def location_risk(lat: float = Query(..., ge=-90, le=90),
 
 
 @app.post("/api/compare-locations")
-def compare(req: CompareRequest):
-    return {"results": compare_locations([l.model_dump() for l in req.locations])}
+async def compare(req: CompareRequest):
+    return {"results": await live_compare([l.model_dump() for l in req.locations])}
 
 
 @app.get("/api/geocode")
@@ -448,8 +460,8 @@ async def export_pdf(req: ExportPDFRequest, request: Request):
 
 
 @app.post("/api/export/csv")
-def export_csv(req: ExportCSVRequest):
-    risks = compare_locations([l.model_dump() for l in req.locations])
+async def export_csv(req: ExportCSVRequest):
+    risks = await live_compare([l.model_dump() for l in req.locations])
     csv_text = risks_to_csv(risks)
     return Response(content=csv_text, media_type="text/csv",
                     headers={"Content-Disposition": 'attachment; filename="resiliencemap-export.csv"'})

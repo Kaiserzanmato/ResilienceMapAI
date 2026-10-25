@@ -133,3 +133,25 @@ def test_pdf_and_ai_summary_use_the_same_volcanic_score_as_the_panel(tmp_path, m
         assert "Volcanic Activity" in seen["pdf_risk"]["main_drivers"]
     finally:
         vs._load.cache_clear()
+
+
+def test_csv_and_compare_use_the_same_volcanic_score_as_the_panel(tmp_path, monkeypatch):
+    path = tmp_path / "v.json"
+    path.write_text(json.dumps({
+        "source": {"name": "Synthetic test list", "url": "https://example.test/v", "retrieved": "2026-10-02", "licence_note": "test data"},
+        "volcanoes": [{"name": "Teston", "latitude": MAYON["lat"], "longitude": MAYON["lng"], "status": "active"}]}), encoding="utf-8")
+    settings = get_settings()
+    monkeypatch.setattr(settings, "volcano_data_file", str(path))
+    monkeypatch.setattr(settings, "enable_volcanic_scoring", True)
+    vs._load.cache_clear()
+    place = {"lat": MAYON["lat"], "lng": MAYON["lng"], "name": "Mayon"}
+    try:
+        panel = assessment(MAYON)["hazards"]["volcano"]["score"]
+        assert panel == 90
+        compared = client.post("/api/compare-locations", json={"locations": [place, place]}).json()["results"]
+        assert [r["hazards"]["volcano"]["score"] for r in compared] == [90, 90]
+        csv_text = client.post("/api/export/csv", json={"locations": [place]}).text
+        header, row = csv_text.strip().splitlines()[:2]
+        assert row.split(",")[header.split(",").index("volcano_score")] == "90"
+    finally:
+        vs._load.cache_clear()
