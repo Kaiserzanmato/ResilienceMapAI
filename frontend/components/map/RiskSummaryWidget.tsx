@@ -1,6 +1,6 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
-import { Download, FileDown, FileSpreadsheet, FileText, FileCode2, Link2, Loader2, Maximize2, Sparkles, Zap, X, ChevronUp, ChevronDown } from "lucide-react";
+import { Download, FileDown, FileSpreadsheet, FileText, FileCode2, Link2, Loader2, Maximize2, Sparkles, Minimize2, Zap, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, downloadExport, type UsageStatus } from "@/lib/api";
@@ -26,7 +26,10 @@ import { FloodFlagButton } from "./FloodFlagButton";
 import { InsightsPanel } from "./InsightsPanel";
 import type { InsightResponse } from "@/lib/types";
 
-export function RiskSummaryWidget() {
+/** `panel`: floating card on tablets and desktop (can minimize to a chip). `sheet`: the body of the phone
+ * bottom sheet, which supplies its own chrome and height. */
+export function RiskSummaryWidget({ variant = "panel", onMinimize }: { variant?: "panel" | "sheet"; onMinimize?: () => void }) {
+  const isSheet = variant === "sheet";
   const {
     selected, setSelected, setRisk, persona, setAiOpen, activeTarget, personaMenuOpen, activeLayer, focusFloodCapture,
   } = useAppStore();
@@ -70,8 +73,6 @@ export function RiskSummaryWidget() {
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const [insightsData, setInsightsData] = useState<InsightResponse | null>(null);
   const [insightsUsage, setInsightsUsage] = useState<UsageStatus | null>(null);
-  // Phones: the panel is a bottom sheet that starts as a peek (header + actions) so the map stays usable.
-  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     api.usageStatus().then((s) => setInsightsUsage(s.insights)).catch(() => {});
@@ -249,61 +250,69 @@ export function RiskSummaryWidget() {
     { key: "csv", label: "CSV Data", desc: "Structured records for analysis", icon: FileSpreadsheet, onClick: () => exportSnapshotFormat("csv") },
   ];
 
-  return (
-    <AnimatePresence>
-      <motion.div
-        key={risk.location_name}
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 24 }}
-        transition={{ type: "spring", damping: 26, stiffness: 300 }}
-      >
-        <GlassCard
-          strong
-          className="flex w-full flex-col p-4 max-md:max-h-[62dvh] max-md:rounded-b-none md:w-[340px] md:max-h-[min(640px,calc(100dvh-var(--nav-h)-var(--banner-h)-var(--footer-h)-32px))]"
-        >
-          <div className="flex shrink-0 items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <h2 className="truncate text-[15px] font-semibold">{risk.location_name}</h2>
-              <p className="text-[11px] text-[var(--fg-muted)]">
-                {risk.latitude.toFixed(3)}, {risk.longitude.toFixed(3)} ·{" "}
-                {risk.confidence} confidence
-              </p>
-              {risk.components_total ? (
-                <p className="text-[11px] text-[var(--fg-muted)]">
-                  {risk.components_available
-                    ? `Overall from ${risk.components_available} of ${risk.components_total} hazards with available data`
-                    : `No hazard has verified data here yet (0 of ${risk.components_total})`}
-                </p>
-              ) : null}
-            </div>
-            <div className="flex flex-col items-end gap-0.5">
+  const detailLines = (
+    <>
+      <p className="text-[11px] text-[var(--fg-muted)]">
+        {risk.latitude.toFixed(3)}, {risk.longitude.toFixed(3)} · {risk.confidence} confidence
+      </p>
+      {risk.components_total ? (
+        <p className="text-[11px] text-[var(--fg-muted)]">
+          {risk.components_available
+            ? `Overall from ${risk.components_available} of ${risk.components_total} hazards with available data`
+            : `No hazard has verified data here yet (0 of ${risk.components_total})`}
+        </p>
+      ) : null}
+    </>
+  );
+
+  const closeButton = (
+    <button
+      aria-label="Close risk summary"
+      onClick={() => {
+        setSelected(null);
+        setRisk(null);
+      }}
+      className="focus-ring -mr-1 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--fg-muted)] hover:text-[var(--fg)]"
+    >
+      <X size={15} />
+    </button>
+  );
+
+  const content = (
+    <>
+          {isSheet ? (
+            <div className="flex shrink-0 items-center gap-2">
+              <h2 className="line-clamp-1 min-w-0 flex-1 break-words text-[15px] font-semibold">{risk.location_name}</h2>
               <RiskBadge risk={risk.overall} />
-              <span className="text-[9.5px] uppercase tracking-wide text-[var(--fg-muted)]">Overall</span>
+              {closeButton}
             </div>
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              aria-expanded={expanded}
-              aria-label={expanded ? "Hide hazard details" : "Show hazard details"}
-              className="focus-ring -my-1 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--fg-muted)] hover:text-[var(--fg)] md:hidden"
-            >
-              {expanded ? <ChevronDown size={18} aria-hidden="true" /> : <ChevronUp size={18} aria-hidden="true" />}
-            </button>
-            <button
-              aria-label="Close risk summary"
-              onClick={() => {
-                setSelected(null);
-                setRisk(null);
-              }}
-              className="focus-ring -mr-1 cursor-pointer rounded-lg p-1.5 text-[var(--fg-muted)] hover:text-[var(--fg)]"
-            >
-              <X size={15} />
-            </button>
-          </div>
+          ) : (
+            <div className="flex shrink-0 items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <h2 className="line-clamp-2 break-words text-[15px] font-semibold leading-snug">{risk.location_name}</h2>
+                {detailLines}
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-0.5">
+                <RiskBadge risk={risk.overall} />
+                <span className="text-[9.5px] uppercase tracking-wide text-[var(--fg-muted)]">Overall</span>
+              </div>
+              {onMinimize && (
+                <button
+                  type="button"
+                  onClick={onMinimize}
+                  aria-label="Minimize risk summary"
+                  className="focus-ring -my-1 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--fg-muted)] hover:text-[var(--fg)]"
+                >
+                  <Minimize2 size={15} aria-hidden="true" />
+                </button>
+              )}
+              {closeButton}
+            </div>
+          )}
 
           {/* Scrollable hazard data — header and actions stay pinned outside this region */}
-          <div className={cn("scroll-visible mt-3 min-h-0 flex-1 overflow-y-auto pr-2 -mr-2", !expanded && "max-md:hidden")}>
+          <div className="scroll-visible mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2 -mr-2">
+            {isSheet && <div className="mb-2">{detailLines}</div>}
             {activeLayer !== "overall" && ordered[0]?.active && (
               <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--accent)]">
                 Selected layer: {ordered[0].hazard.label}
@@ -410,7 +419,7 @@ export function RiskSummaryWidget() {
           </div>
 
           {FLAGS.FLOOD_CAPTURE && (
-            <div className={cn(!expanded && "max-md:hidden")}>
+            <div>
               <FloodFlagButton key={`${selected.lat},${selected.lng}`} lat={selected.lat} lng={selected.lng} capture={spotCapture?.properties} />
             </div>
           )}
@@ -473,15 +482,36 @@ export function RiskSummaryWidget() {
             unitLabel="insights"
             status={insightsUsage}
             onExpire={() => api.usageStatus().then((s) => setInsightsUsage(s.insights)).catch(() => {})}
-            className={cn("mt-3 shrink-0", !expanded && "max-md:hidden")}
+            className="mt-3 shrink-0"
           />
 
-          <p className={cn("mt-3 shrink-0 text-[10px] leading-snug text-[var(--fg-muted)]", !expanded && "max-md:hidden")}>
+          <p className="mt-3 shrink-0 text-[10px] leading-snug text-[var(--fg-muted)]">
             Indicative scores from official datasets — not an official advisory.
             Updated {new Date(risk.generated_at).toLocaleDateString()}.
           </p>
-        </GlassCard>
-      </motion.div>
+    </>
+  );
+
+  return (
+    <AnimatePresence>
+      {isSheet ? (
+        <div key="sheet" className="flex min-h-0 flex-1 flex-col">{content}</div>
+      ) : (
+        <motion.div
+          key={risk.location_name}
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 24 }}
+          transition={{ type: "spring", damping: 26, stiffness: 300 }}
+        >
+          <GlassCard
+            strong
+            className="flex w-full flex-col p-4 md:w-[340px] md:max-h-[min(640px,calc(var(--vh100)-var(--nav-h)-var(--banner-h)-var(--footer-h)-32px))]"
+          >
+            {content}
+          </GlassCard>
+        </motion.div>
+      )}
 
       <InsightsPanel
         isOpen={insightsOpen}

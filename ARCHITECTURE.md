@@ -947,3 +947,22 @@ cd backend
 * **Tests:** `cd frontend && npm run test:e2e` (Playwright, backend mocked). It fails if any floating control covers a dialog header or overlaps
   a popup at 360 to 1920 px.
 
+
+## Responsive map overlays
+
+* **Viewport units:** `--vh100` in `globals.css` is `100vh`, upgraded to `100dvh` under `@supports`, so mobile browser chrome cannot clip
+  the map. `--safe-top/right/bottom/left` wrap `env(safe-area-inset-*)`; the header, footer, top nav, dock, button and sheet pad with them.
+* **Breakpoints:** 1024px and up is a docked Map Layers panel (`MapLayersDock`) that slides off with `-translate-x-full` and leaves a
+  floating button; 768-1023px and below 768px use the same panel as an off-canvas flyout with a backdrop button, Esc and focus return.
+  The risk panel (`RiskSummaryWidget`) minimizes to `RiskSummaryChip` at 768px and up; below 768px it renders in `BottomSheet`
+  (snaps in `lib/sheet-snap.ts`: peek 70px, 45dvh, full capped by the measured top obstructions).
+* **Pointer-events layering:** overlay containers are `pointer-events: none`; each card, chip, button and the sheet set `pointer-events: auto`,
+  so the map stays pannable around them. Z-order follows the existing token scale (map 0, controls 10, panels 20, popups 30, top bar 40).
+  Closed drawers use `visibility: hidden` after the transition so they leave the tab order.
+* **Obstruction registry:** every floating control keeps `data-map-obstruction="top|left|right|bottom"`; `lib/map-layout.ts` builds the free
+  rectangle for popups and the evacuation card from them.
+* **Map resize sync:** `RiskMap` runs a `ResizeObserver` on the map container and listens for `transitionend` on `[data-map-overlay]`
+  elements, calling MapLibre `map.resize()` so tiles and centering stay correct while drawers animate. (The map is MapLibre; there is no
+  Leaflet `invalidateSize` path.)
+* **Tests:** `frontend/e2e/responsive-overlays.spec.ts` (390x844, 768x1024, 820x1180, 1280x720, 1920x1080), `layering.spec.ts`,
+  and `frontend/tests/sheet-snap.test.mjs`.

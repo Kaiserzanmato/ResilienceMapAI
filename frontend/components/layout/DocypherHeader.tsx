@@ -7,7 +7,7 @@
 export function DocypherHeader() {
   return (
     <header className="glass-strong fixed inset-x-0 top-0 z-[var(--z-top-bar)] shadow-[var(--elevation-1)]">
-      <div className="mx-auto flex items-center justify-center px-4 py-2 text-center">
+      <div className="mx-auto flex items-center justify-center px-4 py-2 text-center" style={{ paddingTop: "max(0.5rem, var(--safe-top))", paddingLeft: "max(1rem, var(--safe-left))", paddingRight: "max(1rem, var(--safe-right))" }}>
         <span className="text-[10px] tracking-widest text-[var(--fg-muted)]">
           •&nbsp;&nbsp;<span className="font-medium text-[var(--fg)]">
             POWERED BY{" "}

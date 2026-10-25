@@ -448,6 +448,18 @@ Stakeholders open link, see:
 - Alt text on all meaningful images
 - Semantic HTML (`<button>`, `<nav>`, `<main>`)
 
+### Collapsible Map Overlays (`/map`)
+- **Desktop (1024px+):** Map Layers is a docked left panel with a collapse chevron. Collapsed, it slides off-screen and a floating
+  "Map Layers" button reopens it. The risk panel (right) has a minimize button next to close and becomes a chip such as
+  `Tacloban • 23 Low`; clicking the chip reopens it.
+- **Tablet / unfolded foldable (768-1023px):** Map Layers is an off-canvas flyout with an accessible backdrop; Esc, the close button
+  or a backdrop tap dismisses it. The risk panel minimizes to the chip as on desktop.
+- **Phone (<768px):** Map Layers is the same flyout. The risk panel is a bottom sheet with three snaps: peek (70px, score pill),
+  45dvh (summary) and full (scrollable deep dive, citations, export), the last capped to the space below the nav and search bar.
+  The handle is draggable and a keyboard slider (arrow keys; double-click cycles).
+- Long place names wrap rather than clip. Overlays never block the map: containers ignore pointer events and only cards receive them.
+- Floating bars, drawers and headers respect device safe areas (notch, dynamic island, home bar).
+
 ### Responsiveness
 - **Mobile** (320px): Single-column, bottom navigation
 - **Tablet** (768px): Two-column, top navigation

@@ -76,7 +76,7 @@ export async function isUncovered(page: Page, selector: string) {
     const el = document.querySelector<HTMLElement>(sel);
     if (!el) return false;
     const r = el.getBoundingClientRect();
-    const points = [[0.5, 0.5], [0.1, 0.2], [0.9, 0.2], [0.1, 0.8], [0.9, 0.8]];
+    const points = [[0.5, 0.5], [0.3, 0.3], [0.7, 0.3], [0.3, 0.7], [0.7, 0.7]];
     return points.every(([x, y]) => {
       const hit = document.elementFromPoint(r.left + r.width * x, r.top + r.height * y);
       return !!hit && el.contains(hit);

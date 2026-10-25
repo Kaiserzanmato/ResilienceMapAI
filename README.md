@@ -177,12 +177,23 @@ cd backend && .venv/bin/python -m pytest tests/ -q
 cd frontend && npm test && npx tsc --noEmit && npm run lint
 ```
 
+Frontend end-to-end (Playwright, backend mocked): `cd frontend && npm run test:e2e`.
+Last full run on Chromium, WebKit, iPhone 14, Pixel 7 and iPad: 175 passed, 75 skipped
+(device-conditional), 0 failed; 46 frontend unit tests. Firefox needs a local browser install.
+
 ## Features
 
 - **Landing** (`/`) — premium Apple/Gemini-inspired marketing page
 - **Map** (`/map`) — 6 map views (standard/satellite/terrain/hybrid/dark/light),
   hazard layers, heatmap, risk zones, active alerts, historical events, floating
   widgets, animated zoom-to-location, click-to-assess
+  - **Collapsible overlays** — Map Layers is a docked panel at 1024px and up
+    (collapse to a floating "Map Layers" button) and an off-canvas flyout with a
+    backdrop below that (Esc, close button or backdrop dismisses). The risk panel
+    minimizes to a status chip on tablet and desktop; below 768px it is a
+    draggable bottom sheet (peek 70px / 45dvh / full, capped below the nav and
+    search bar). Heights use `100vh` then `100dvh`, and bars respect
+    `env(safe-area-inset-*)`. See ARCHITECTURE.md, "Responsive map overlays".
   - **Hover telemetry** — a debounced (40ms) card following pointer position,
     reading whatever risk-zone/heatmap features are already rendered under the
     cursor (no extra network calls): coordinates, zone name/country, hazard
