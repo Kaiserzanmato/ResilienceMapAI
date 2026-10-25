@@ -393,18 +393,14 @@ Build Target:     Vercel Serverless Functions (Node.js runtime)
 Vercel Configuration (vercel.json):
   {
     "name": "resilience-map-ai",
-    "experimentalServices": {
-      "frontend": {
-        "root": "frontend",
-        "routePrefix": "/",
-        "framework": "nextjs"
-      },
-      "backend": {
-        "root": "backend",
-        "entrypoint": "app.main:app",
-        "routePrefix": "/_/backend"
-      }
-    }
+    "services": {
+      "frontend": { "root": "frontend", "framework": "nextjs" },
+      "backend": { "root": "backend", "entrypoint": "app.main:app" }
+    },
+    "rewrites": [
+      { "source": "/_/backend/:path(.*)?", "destination": { "service": "backend" } },
+      { "source": "/(.*)", "destination": { "service": "frontend" } }
+    ]
   }
   
   NOTE: Explicit "name" field required to avoid invalid characters 

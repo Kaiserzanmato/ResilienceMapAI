@@ -1,17 +1,19 @@
 {
   "name": "resilience-map-ai",
-  "experimentalServices": {
+  "services": {
     "frontend": {
       "root": "frontend",
-      "routePrefix": "/",
       "framework": "nextjs"
     },
     "backend": {
       "root": "backend",
-      "entrypoint": "app.main:app",
-      "routePrefix": "/_/backend"
+      "entrypoint": "app.main:app"
     }
   },
+  "rewrites": [
+    { "source": "/_/backend/:path(.*)?", "destination": { "service": "backend" } },
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
+  ],
   "crons": [
     {
       "path": "/_/backend/api/cron/sync-sources",
