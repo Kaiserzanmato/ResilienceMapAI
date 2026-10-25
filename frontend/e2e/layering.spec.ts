@@ -25,9 +25,12 @@ async function openEvacCard(app: import("@playwright/test").Page) {
   const hasWebGL2 = await app.evaluate(() => !!document.createElement("canvas").getContext("webgl2"));
   test.skip(!hasWebGL2, "WebGL2 is not available in this browser build, so the map cannot start");
   const toggle = app.getByText(/Show Nearest Evacuation Centers/i).first();
-  // On phones the Map Layers card starts collapsed.
-  if (!(await toggle.isVisible())) await app.getByRole("button", { name: /Map Layers/ }).click();
+  // Below 1024px the layers are a flyout behind the "Map Layers" button.
+  if (!(await toggle.isVisible())) await app.getByTestId("layers-fab").click();
   await toggle.click();
+  // Close the flyout to see the map; the docked desktop stack stays and is a floating control the card avoids.
+  const closeFlyout = app.getByTestId("layers-dock").getByRole("button", { name: "Close Map Layers" });
+  if (await closeFlyout.isVisible()) await closeFlyout.click();
   await expect(app.getByTestId("evac-card")).toBeVisible({ timeout: 30_000 });
   await app.waitForTimeout(2200); // let the fly-to finish so the card has settled
 }

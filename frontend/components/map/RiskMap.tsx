@@ -106,7 +106,7 @@ export default function RiskMap() {
   } = useAppStore();
 
   const webgl2 = useSyncExternalStore(subscribeNever, supportsWebGL2, () => true);
-  const [evacCardPos, setEvacCardPos] = useState<{ x: number; top: number; maxHeight: number } | null>(null);
+  const [evacCardPos, setEvacCardPos] = useState<{ x: number; top: number; maxHeight: number; width: number } | null>(null);
 
   const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(null);
   // Mirrors telemetry into a ref so the hover handler (registered once, on
@@ -499,7 +499,21 @@ export default function RiskMap() {
     }
 
     mapRef.current = map;
+
+    // Keep the canvas matched to its container: the container itself resizes with the dynamic viewport
+    // (mobile browser toolbars, rotation, foldable posture), and the sliding drawers and sheets finish
+    // their CSS transitions over it. Without this the tiles stretch or the centre jitters.
+    const container = containerRef.current;
+    const resizeObserver = new ResizeObserver(() => map.resize());
+    resizeObserver.observe(container);
+    const onTransitionEnd = (e: TransitionEvent) => {
+      if ((e.target as Element | null)?.closest?.("[data-map-overlay]")) map.resize();
+    };
+    document.addEventListener("transitionend", onTransitionEnd);
+
     return () => {
+      resizeObserver.disconnect();
+      document.removeEventListener("transitionend", onTransitionEnd);
       detachTelemetry();
       clearTimeout(floodBboxTimer);
       map.remove();
@@ -704,7 +718,7 @@ export default function RiskMap() {
 
       const half = cardWidth / 2;
       const x = Math.min(Math.max(point.x, area.left + half), area.right - half);
-      setEvacCardPos({ x, top, maxHeight: available });
+      setEvacCardPos({ x, top, maxHeight: available, width: cardWidth });
     };
     update();
     map.on("move", update);
@@ -757,6 +771,7 @@ export default function RiskMap() {
             transform: "translateX(-50%)",
             maxWidth: "calc(100% - 24px)",
             maxHeight: evacCardPos.maxHeight,
+            width: evacCardPos.width,
             overflowY: "auto",
             zIndex: "var(--z-popups)",
           }}
@@ -813,7 +828,7 @@ export default function RiskMap() {
           transform: translateX(-50%);
           z-index: var(--z-popups);
           max-width: 260px;
-          max-height: calc(100vh - var(--banner-h, 0px) - var(--nav-h, 0px) - 140px);
+          max-height: calc(var(--vh100, 100vh) - var(--banner-h, 0px) - var(--nav-h, 0px) - 140px);
           overflow-y: auto;
           padding: 10px 28px 10px 12px;
           border-radius: 10px;

@@ -7,7 +7,7 @@
 export function DocypherFooter() {
   return (
     <footer className="glass-strong fixed inset-x-0 bottom-0 z-[var(--z-top-bar)] shadow-[var(--elevation-1)]">
-      <div className="mx-auto flex items-center justify-center px-4 py-3 text-center">
+      <div className="mx-auto flex items-center justify-center px-4 py-3 text-center" style={{ paddingBottom: "max(0.75rem, var(--safe-bottom))", paddingLeft: "max(1rem, var(--safe-left))", paddingRight: "max(1rem, var(--safe-right))" }}>
         <span className="text-[11px] tracking-widest text-[var(--fg-muted)]">
           •&nbsp;&nbsp;<span className="font-medium text-[var(--fg)]">
             POWERED BY{" "}

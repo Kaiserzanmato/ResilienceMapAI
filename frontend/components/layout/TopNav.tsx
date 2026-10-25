@@ -81,7 +81,10 @@ export function TopNav() {
   const [moreOpen, setMoreOpen] = useState(false);
 
   return (
-    <header data-map-obstruction="top" className="fixed inset-x-0 top-[var(--banner-h)] z-[var(--z-top-bar)] px-3 pt-3 sm:px-4">
+    <header
+      data-map-obstruction="top"
+      className="pad-x-safe fixed inset-x-0 top-[var(--banner-h)] z-[var(--z-top-bar)] pt-3"
+    >
       <nav
         aria-label="Primary"
         className="glass-strong mx-auto flex h-[var(--nav-h)] max-w-[1800px] items-center gap-2 rounded-2xl px-3 sm:px-4"

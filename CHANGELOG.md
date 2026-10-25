@@ -24,6 +24,14 @@ isn't obvious from the summary alone.
     ("Data not loaded"). `phivolcs-volcano` is `configured` in the coverage registry.
   - `PHIVOLCS_URL` is the exact list page.
 
+## 2026-10-25 (responsive map overlays)
+
+- **feat(ui): add cross-device collapsible overlays and responsive bottom sheet.** Map Layers docks at 1024px and up with a collapse
+  button and floating reopen button, and is a backdrop flyout below that. The risk panel minimizes to a chip (768px and up) or becomes a
+  3-snap bottom sheet on phones; the title no longer clips. `100vh`/`100dvh` cascade and `env(safe-area-inset-*)` on bars and drawers;
+  `ResizeObserver` and `transitionend` call `map.resize()`. Added `responsive-overlays.spec.ts` and `sheet-snap.test.mjs`; fixed a
+  duplicate React key in the sheet and the evacuation card overlapping the new button on phones.
+
 ## 2026-10-03 (wildfire history/freshness and honest no-data labels)
 
 - **[#42] fix: Wildfire stopped showing "Stale" everywhere except Mayon, and every no-data row got its

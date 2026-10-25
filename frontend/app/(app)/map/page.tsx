@@ -1,13 +1,13 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
-import { useEffect } from "react";
-import { DataSourceWidget } from "@/components/map/DataSourceWidget";
-import { IntelligenceMarkersWidget } from "@/components/map/IntelligenceMarkersWidget";
-import { LayerControlWidget } from "@/components/map/LayerControlWidget";
-import { RiskLegend } from "@/components/map/RiskLegend";
+import { useEffect, useState } from "react";
+import { BottomSheet, type SheetSnap } from "@/components/map/BottomSheet";
+import { MapLayersDock } from "@/components/map/MapLayersDock";
+import { RiskSummaryChip } from "@/components/map/RiskSummaryChip";
 import { RiskSummaryWidget } from "@/components/map/RiskSummaryWidget";
 import { MapCommandBar } from "@/components/map/MapCommandBar";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import { useAppStore } from "@/lib/store";
 import { buildMapTarget, getOfficialSourcesByCountry } from "@/lib/map-target-builder";
 import { assessmentQueryKey, fetchAssessment } from "@/lib/queries/assessment";
@@ -23,7 +23,16 @@ const RiskMap = dynamic(() => import("@/components/map/RiskMap"), {
 });
 
 export default function MapPage() {
-  const { selected, setRisk, setActiveTarget, aiOpen, aiPanelWidth } = useAppStore();
+  const { selected, setRisk, setActiveTarget, aiOpen, aiPanelWidth, personaMenuOpen } = useAppStore();
+  const isPhone = !useMediaQuery("(min-width: 768px)", false);
+  const isXl = useMediaQuery("(min-width: 1280px)", false);
+  // Minimize and snap state belong to one selection: a new location opens the panel fresh, so they are
+  // keyed by it rather than reset from an effect.
+  const selectionKey = selected ? `${selected.lat},${selected.lng}` : null;
+  const [minimizedFor, setMinimizedFor] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<{ key: string | null; snap: SheetSnap }>({ key: null, snap: "mid" });
+  const minimized = selectionKey !== null && minimizedFor === selectionKey;
+  const snap = sheet.key === selectionKey ? sheet.snap : "mid";
   // Fetch risk whenever a location is selected (click or search)
   const { data: risk } = useQuery({
     queryKey: assessmentQueryKey(selected),
@@ -51,9 +60,14 @@ export default function MapPage() {
     }
   }, [risk, selected, setRisk, setActiveTarget]);
 
+  // The persona menu and, below xl, the AI panel take the space the summary uses.
+  const showSummary = !!selected && !personaMenuOpen && (isXl || !aiOpen);
+  // Below xl the summary sits under the search row (it would collide with the "Run AI Risk Assessment" button).
+  const rightTop = isXl ? "calc(var(--banner-h) + var(--nav-h) + 36px)" : "calc(var(--banner-h) + var(--nav-h) + 96px)";
+
   return (
     <div
-      className="fixed inset-0 top-0"
+      className="h-viewport fixed inset-x-0 top-0"
       style={{ "--ai-panel-w": `${aiPanelWidth}px` } as React.CSSProperties}
     >
       {/* Map fills the entire viewport beneath all overlays */}
@@ -65,89 +79,43 @@ export default function MapPage() {
           searches for or sees the current location. */}
       <MapCommandBar />
 
-      {/* Desktop risk summary, top right. Mobile/tablet summary renders
-          separately near the footer below. */}
-      <div
-        data-map-obstruction="right"
-        className="pointer-events-none absolute top-[calc(var(--banner-h)+var(--nav-h)+36px)] z-[var(--z-panels)] hidden xl:block"
-        style={{ right: aiOpen ? "calc(var(--ai-panel-w) + 1.5rem)" : "4rem" }}
-      >
-        <div className="pointer-events-auto">
-          <RiskSummaryWidget />
-        </div>
-      </div>
+      {/* Left overlay: docked stack on desktop, off-canvas flyout below 1024px. */}
+      <MapLayersDock />
 
-      {/* Left widget stack (desktop/tablet). All sidebar cards, including the
-          legend, share one bounded scroll region so short viewports cannot
-          make cards overlap or leave a card unusable behind the legend. */}
-      <div
-        data-map-obstruction="left"
-        className="pointer-events-none absolute left-3 z-[var(--z-panels)] hidden flex-col gap-3 overflow-y-auto overscroll-contain pr-2 md:flex"
-        style={{
-          // Keep controls below the search/summary row so the grid can shrink
-          // safely when the desktop AI panel is widened.
-          top: "calc(var(--banner-h) + var(--nav-h) + 96px)",
-          maxHeight: "calc(100vh - var(--banner-h) - var(--nav-h) - var(--footer-h) - 180px)",
-          paddingBottom: "12px",
-        }}
-      >
-        <div className="pointer-events-auto shrink-0">
-          <LayerControlWidget />
-        </div>
-        <div className="pointer-events-auto shrink-0">
-          <IntelligenceMarkersWidget />
-        </div>
-        <div className="pointer-events-auto shrink-0">
-          <DataSourceWidget />
-        </div>
-        <div className="pointer-events-auto">
-          <RiskLegend />
-        </div>
-      </div>
-
-      {/* Risk summary — desktop: top right; mobile: above footer */}
-      <div
-        data-map-obstruction="bottom"
-        className="pointer-events-none absolute inset-x-0 z-[var(--z-panels)] px-3 md:inset-x-auto md:right-3 md:px-0"
-        style={{
-          bottom: "calc(var(--footer-h) + env(safe-area-inset-bottom, 0px))",
-          top: "auto",
-        }}
-      >
+      {/* Right overlay (tablet and desktop): the full panel, or a chip once minimized. */}
+      {showSummary && !isPhone && (
         <div
-          className={`pointer-events-auto md:hidden ${aiOpen ? "hidden" : "block"}`}
-          style={{ paddingBottom: "0" }}
+          data-map-overlay
+          data-map-obstruction="right"
+          className="pointer-events-none absolute z-[var(--z-panels)]"
+          style={{ top: rightTop, right: aiOpen ? "calc(var(--ai-panel-w) + 1.5rem)" : "max(1rem, var(--safe-right))" }}
         >
-          <RiskSummaryWidget />
+          <div className="pointer-events-auto">
+            {minimized && risk ? (
+              <RiskSummaryChip
+                name={risk.location_name}
+                score={risk.overall.score}
+                level={risk.overall.level}
+                color={risk.overall.color}
+                onExpand={() => setMinimizedFor(null)}
+              />
+            ) : (
+              <RiskSummaryWidget onMinimize={() => setMinimizedFor(selectionKey)} />
+            )}
+          </div>
         </div>
-      </div>
-      {/* Tablet: AI and full summary are mutually exclusive. Desktop summary
-          is rendered by the header grid above. */}
-      <div
-        className={`pointer-events-none absolute z-[var(--z-panels)] hidden xl:hidden ${aiOpen ? "md:hidden" : "md:block"}`}
-        style={{
-          top: "calc(var(--banner-h) + var(--nav-h) + 36px)",
-          right: "4rem",
-        }}
-      >
-        <div className="pointer-events-auto">
-          <RiskSummaryWidget />
-        </div>
-      </div>
+      )}
 
-      {/* Mobile: compact layer controls */}
-      <div
-        className="pointer-events-none absolute left-3 z-[var(--z-panels)] overflow-y-auto overscroll-contain md:hidden"
-        style={{
-          top: "calc(var(--banner-h) + var(--nav-h) + 96px)",
-          // Bounded so an expanded card scrolls inside itself instead of running under the footer.
-          maxHeight: "calc(100dvh - var(--banner-h) - var(--nav-h) - 96px - var(--footer-h) - 16px)",
-        }}
-      >
-        <div className="pointer-events-auto">
-          <LayerControlWidget />
-        </div>
-      </div>
+      {/* Phones and folded screens: a draggable bottom sheet (peek, 45dvh, 90dvh). */}
+      {showSummary && isPhone && (
+        <BottomSheet
+          snap={snap}
+          onSnapChange={(next) => setSheet({ key: selectionKey, snap: next })}
+          label="Hazard risk assessment"
+        >
+          <RiskSummaryWidget variant="sheet" />
+        </BottomSheet>
+      )}
     </div>
   );
 }

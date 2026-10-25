@@ -23,6 +23,15 @@
   --banner-h: 44px;
   --footer-h: 44px;
 
+  /* Dynamic viewport height: 100vh first as the fallback, 100dvh where supported (it follows the
+     mobile browser toolbars, so nothing hides under them). Use var(--vh100) in calc(). */
+  --vh100: 100vh;
+  /* Hardware safe areas (notch, dynamic island, rounded corners, home bar). Needs viewport-fit=cover. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
   /* One layering scale for the whole app. Use these (z-[var(--z-...)]) and never a bare
      number: floating controls sit below dialogs by construction. A dialog must render through
      a portal at <body> (components/ui/Modal.tsx), because an ancestor with its own z-index,
@@ -310,4 +319,26 @@ body {
 /* Minimum tap targets on touch devices */
 @media (pointer: coarse) {
   button, a, [role="button"], input, select { min-height: 44px; }
+}
+
+@supports (height: 100dvh) {
+  :root { --vh100: 100dvh; }
+}
+
+/* Full-height wrapper with the 100vh fallback cascade. */
+.h-viewport {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Horizontal padding that keeps the 12px / 16px gutter but never sits under a notch or rounded corner. */
+.pad-x-safe {
+  padding-left: max(0.75rem, var(--safe-left));
+  padding-right: max(0.75rem, var(--safe-right));
+}
+@media (min-width: 640px) {
+  .pad-x-safe {
+    padding-left: max(1rem, var(--safe-left));
+    padding-right: max(1rem, var(--safe-right));
+  }
 }

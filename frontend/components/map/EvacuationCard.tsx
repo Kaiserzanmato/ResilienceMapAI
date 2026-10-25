@@ -29,7 +29,7 @@ export function EvacuationCard({
     <GlassCard
       strong
       style={{
-        maxHeight: "calc(100vh - var(--banner-h, 0px) - var(--nav-h, 0px) - var(--footer-h, 0px) - 48px)",
+        maxHeight: "calc(var(--vh100, 100vh) - var(--banner-h, 0px) - var(--nav-h, 0px) - var(--footer-h, 0px) - 48px)",
         overflowY: "auto",
         ...style,
       }}
