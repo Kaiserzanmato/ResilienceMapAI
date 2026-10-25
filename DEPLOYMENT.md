@@ -76,8 +76,7 @@ has elapsed) are fetched.
   instead of pretending it synced.
 - **Other schedulers (optional, not needed):** `render.yaml` declares a Render cron job (`*/15 * * * *`) for the same
   endpoint — **whether that Blueprint is actually applied/deployed on Render is unconfirmed**, checkable only from
-  the Render dashboard — and `vercel.json` a daily Vercel cron at `/_/backend/api/cron/sync-sources` (sub-daily needs Vercel
-  Pro; `/_/backend/*` currently 404s on the production domain, so it does nothing today). Running more than one is
+  the Render dashboard — (`vercel.json` no longer has a cron; the backend runs on Render). Running more than one is
   harmless, since only due sources fetch.
 - **Durable state: Neon Postgres with PostGIS.** Set `DATABASE_URL` and apply the schema with Alembic
   (`alembic upgrade head`, repo head `0009`: `0009` must run before deploying the code that reads/writes

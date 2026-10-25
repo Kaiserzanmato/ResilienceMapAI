@@ -19,8 +19,8 @@ The scheduled workflow calls `GET /api/cron/sync-sources` (refreshes every sourc
 mid-job). Each retries once after 60 s if it gets a 5xx or no answer, and it keeps the free instance from
 sitting asleep for long. `render.yaml` also declares its own Render cron job (every 15 minutes) for the same
 two routes; **whether that Blueprint is actually applied/deployed on Render is unconfirmed** — it cannot be
-checked from a local checkout or this repo's CI, only from the Render dashboard itself. `vercel.json` adds a
-daily Vercel cron as a third, documented-but-unused alternative. GitHub Actions is the schedule that is
+checked from a local checkout or this repo's CI, only from the Render dashboard itself. `vercel.json` has no cron
+(removed; the API runs on Render, not Vercel). GitHub Actions is the schedule that is
 documented and verified here (its runs are visible in this repo's Actions tab), so
 do not enable a second scheduler without a reason (sources only fetch when due, so a duplicate is harmless
 but wasteful).

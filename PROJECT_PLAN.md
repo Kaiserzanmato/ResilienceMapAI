@@ -394,11 +394,9 @@ Vercel Configuration (vercel.json):
   {
     "name": "resilience-map-ai",
     "services": {
-      "frontend": { "root": "frontend", "framework": "nextjs" },
-      "backend": { "root": "backend", "entrypoint": "app.main:app" }
+      "frontend": { "root": "frontend", "framework": "nextjs" }
     },
     "rewrites": [
-      { "source": "/_/backend/:path(.*)?", "destination": { "service": "backend" } },
       { "source": "/(.*)", "destination": { "service": "frontend" } }
     ]
   }
@@ -568,7 +566,7 @@ Response Validation (output sanitization)
 | `engine_version` | ✅ | Added to the risk-scoring payload (metadata only; scoring formula unchanged), flows through CSV/PDF/shared-report footer |
 | Persistence layer | ✅ | SQLAlchemy models + Alembic scaffold + repository interfaces (`backend/app/repositories/`) for sync health, audit log, uploaded datasets, reports — in-memory by default, Postgres-backed when `DATABASE_URL` is set (not yet provisioned) |
 | Live sync wiring | ✅ | GDACS/NASA EONET/USGS Earthquake/ReliefWeb connectors wired to real dispatch via `WIRED_SOURCE_IDS`; `POST /api/data-sync` and `GET /api/data-status` now reflect real state instead of hardcoded MVP responses |
-| Scheduled sync | ✅ | `GET /api/cron/sync-sources`, secured by `CRON_SECRET`, triggered daily via `vercel.json`'s `crons` entry (Vercel Hobby plan only allows daily cron; upgrade to Pro for a shorter interval) |
+| Scheduled sync | ✅ | `GET /api/cron/sync-sources`, secured by `CRON_SECRET`, triggered by the GitHub Actions schedule (`.github/workflows/sync-sources.yml`); the Vercel cron was removed |
 | RBAC stopgap | ✅ | `ADMIN_SHARED_SECRET` now required alongside the client-controlled `X-Role` header for elevated roles — closes a previously live exploit where any visitor could reach admin endpoints; frontend calls proxy through a server-side Next.js route so the secret never reaches the browser. **Not real authentication** — see §11 |
 | Registry reconciliation | ✅ | Backend `sources_registry.py` is now the single source of truth (45 sources); `frontend/data-sources/registry/sources.registry.ts` is a generated file (`backend/scripts/export_ts_registry.py`) |
 

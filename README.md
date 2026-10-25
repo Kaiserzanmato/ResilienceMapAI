@@ -303,8 +303,7 @@ without a connector yet, registered for discoverability, not sync
   Render instance slept), authenticated by the `CRON_SECRET` repository secret, which
   must equal the Render `CRON_SECRET`. The run reports each source's status and record
   count; a source whose credential is missing reports `not_configured` rather than
-  pretending it synced. `render.yaml` (Render cron) and `vercel.json` (daily Vercel cron)
-  are optional alternatives and not needed. `POST /api/data-sync` (RBAC-gated) triggers the
+  pretending it synced. `render.yaml` (Render cron) is an optional alternative and not needed; `vercel.json` has no cron. `POST /api/data-sync` (RBAC-gated) triggers the
   same dispatch manually. If `CRON_SECRET` isn't set the app still starts (it logs a
   warning) but the cron routes return 403 (the earlier crash-on-missing-secret outage:
   commit `b18f89b`, whose real cause was `sqlalchemy==2.0.36` on Python 3.14, fixed in

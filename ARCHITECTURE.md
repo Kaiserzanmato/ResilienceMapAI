@@ -777,8 +777,8 @@ FIRECRAWL_API_KEY=...                                       # Optional — power
 - `.github/workflows/sync-sources.yml`, every 2 hours and on demand
 - Calls `GET /api/cron/sync-sources` and `GET /api/cron/flood-captures` (authenticated by the `CRON_SECRET` repo secret, same value as Render)
 - `render.yaml` also declares its own 15-minute Render cron for the same routes; whether that Blueprint is actually applied/deployed
-  on Render is **unconfirmed** (not verifiable from a local checkout — check the Render dashboard). `vercel.json` (daily Vercel cron)
-  is a third, documented-but-unused alternative. GitHub Actions is the schedule verified to be running; see `docs/OPERATIONS.md`.
+  on Render is **unconfirmed** (not verifiable from a local checkout — check the Render dashboard). `vercel.json` no longer has a cron (removed; the
+  backend runs on Render, not Vercel). GitHub Actions is the schedule verified to be running; see `docs/OPERATIONS.md`.
 
 ---
 
