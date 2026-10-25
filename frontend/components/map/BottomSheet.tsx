@@ -44,7 +44,7 @@ export function BottomSheet({
     window.addEventListener("resize", update);
     window.visualViewport?.addEventListener("resize", update);
     // The nav and search bar can change height after mount (fonts, wrapping), which moves the cap.
-    const observer = new ResizeObserver(update);
+    const observer = new ResizeObserver(() => requestAnimationFrame(update));
     document.querySelectorAll('[data-map-obstruction="top"]').forEach((el) => observer.observe(el));
     return () => {
       observer.disconnect();

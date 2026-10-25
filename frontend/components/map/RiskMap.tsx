@@ -725,7 +725,7 @@ export default function RiskMap() {
     window.addEventListener("resize", update);
     // The free area changes when a floating control resizes (the bottom sheet snapping or loading
     // its content, the risk panel minimizing), so re-place the card then too.
-    const obstructionObserver = new ResizeObserver(update);
+    const obstructionObserver = new ResizeObserver(() => requestAnimationFrame(update));
     document.querySelectorAll("[data-map-obstruction]").forEach((el) => obstructionObserver.observe(el));
     const onTransitionEnd = (e: TransitionEvent) => {
       if ((e.target as Element | null)?.closest?.("[data-map-obstruction]")) update();
