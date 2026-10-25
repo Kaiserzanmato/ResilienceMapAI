@@ -56,7 +56,13 @@ for (const size of SIZES) {
       const box = { left: card!.x, top: card!.y, right: card!.x + card!.width, bottom: card!.y + card!.height };
       for (const obstruction of await obstructionBoxes(app)) expect(intersects(box, obstruction), JSON.stringify({ box, obstruction })).toBe(false);
       expect(await isUncovered(app, '[data-testid="evac-card"] h3')).toBe(true);
-      expect(await isUncovered(app, '[data-testid="evac-card"] button[aria-label*="lose"]')).toBe(true);
+      const closeSel = '[data-testid="evac-card"] button[aria-label*="lose"]';
+      const covering = await app.evaluate((sel) => {
+        const r = document.querySelector(sel)!.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return `${hit?.tagName}.${String(hit?.className).slice(0, 80)} [${hit?.getAttribute("aria-label")}] button@${JSON.stringify(r)}`;
+      }, closeSel);
+      expect(await isUncovered(app, closeSel), covering).toBe(true);
     });
   });
 }

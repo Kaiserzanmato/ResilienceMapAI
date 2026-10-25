@@ -7,8 +7,10 @@ export const SNAP_LABEL: Record<SheetSnap, string> = { min: "peek", mid: "half h
 /** Pixel height of a snap point: a ~70px peek, then 45% and 90% of the (dynamic) viewport height. `cap` is
  * the room actually left under the top controls, so a tall sheet never slides beneath the nav or search bar. */
 export function snapHeight(snap: SheetSnap, viewportHeight: number, cap = Infinity): number {
-  const raw = snap === "min" ? PEEK_PX : snap === "mid" ? viewportHeight * 0.45 : viewportHeight * 0.9;
-  return snap === "min" ? raw : Math.max(PEEK_PX, Math.min(raw, cap));
+  const fit = (raw: number) => Math.max(PEEK_PX, Math.min(raw, cap));
+  if (snap === "min") return PEEK_PX;
+  // Full is never shorter than half height, however tight the cap is.
+  return snap === "mid" ? fit(viewportHeight * 0.45) : Math.max(fit(viewportHeight * 0.9), fit(viewportHeight * 0.45));
 }
 
 /** The snap point closest to a dragged height. */

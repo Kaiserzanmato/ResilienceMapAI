@@ -11,6 +11,10 @@ const SIZES = [
 ];
 
 /** True when the topmost element at this fraction of the viewport belongs to the map canvas. */
+async function hasWebGL2(page: import("@playwright/test").Page) {
+  return page.evaluate(() => !!document.createElement("canvas").getContext("webgl2"));
+}
+
 async function mapIsUnderPoint(page: import("@playwright/test").Page, x: number, y: number) {
   return page.evaluate(([fx, fy]) => {
     const hit = document.elementFromPoint(window.innerWidth * fx, window.innerHeight * fy);
@@ -48,7 +52,7 @@ for (const size of SIZES) {
         await expect(dock).toHaveAttribute("data-mode", "flyout");
         await expect(dock).toBeHidden();
         await expect(fab).toBeVisible();
-        expect(await mapIsUnderPoint(app, 0.5, 0.6)).toBe(true);
+        if (await hasWebGL2(app)) expect(await mapIsUnderPoint(app, 0.5, 0.6)).toBe(true);
         await fab.click();
         await expect(dock).toBeVisible();
         await expect(dock.getByRole("heading", { name: "Map Layers" })).toBeVisible();
@@ -63,8 +67,8 @@ for (const size of SIZES) {
         await expect(dock).toBeHidden();
       }
       // The overlay container is click-through: the map is directly touchable beside the cards.
-      const nobody = await mapIsUnderPoint(app, 0.5, 0.6);
-      expect(nobody).toBe(true);
+      // Without WebGL2 (headless Firefox on a GPU-less runner) the page shows a notice instead of a map.
+      if (await hasWebGL2(app)) expect(await mapIsUnderPoint(app, 0.5, 0.6)).toBe(true);
       expect(await app.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(size.width);
     });
 
