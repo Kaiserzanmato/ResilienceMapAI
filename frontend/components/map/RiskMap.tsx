@@ -723,9 +723,19 @@ export default function RiskMap() {
     update();
     map.on("move", update);
     window.addEventListener("resize", update);
+    // The free area changes when a floating control resizes (the bottom sheet snapping or loading
+    // its content, the risk panel minimizing), so re-place the card then too.
+    const obstructionObserver = new ResizeObserver(update);
+    document.querySelectorAll("[data-map-obstruction]").forEach((el) => obstructionObserver.observe(el));
+    const onTransitionEnd = (e: TransitionEvent) => {
+      if ((e.target as Element | null)?.closest?.("[data-map-obstruction]")) update();
+    };
+    document.addEventListener("transitionend", onTransitionEnd);
     return () => {
       map.off("move", update);
       window.removeEventListener("resize", update);
+      obstructionObserver.disconnect();
+      document.removeEventListener("transitionend", onTransitionEnd);
     };
   }, [selectedEvacuationCenter]);
 
