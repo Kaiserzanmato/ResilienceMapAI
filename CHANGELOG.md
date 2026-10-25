@@ -9,6 +9,12 @@ the Aug 6–7 geocoding-gateway and dashboard/globe/weather work in detail.
 Format: `[commit] type: summary`, followed by what changed and why when it
 isn't obvious from the summary alone.
 
+## 2026-10-25 (PDF caption explains the overall score)
+
+- `fix:` the PDF now has a one-line caption under the hazard table: "Overall
+  counts only hazards with verified data; modelled rows are indicative." The
+  overall matches the panel, so modelled High rows can sit under a Medium overall.
+
 ## 2026-10-25 (exports and AI prompts show the live Volcanic and Wildfire scores)
 
 - **fix: the PDF, share links and every AI prompt showed Volcanic Activity as "No Data" while the risk panel showed a score.**

@@ -175,6 +175,9 @@ def build_pdf_report(risk: Dict, persona: str, ai_summary: str,
     story.append(Paragraph(
         "Risk legend: 0–25 Low (green) · 26–60 Medium (yellow) · 61–100 High (red) · "
         "No data (gray)", st["small"]))
+    story.append(Paragraph(
+        "Overall counts only hazards with verified data; modelled rows are indicative.",
+        st["small"]))
 
     if risk.get("main_drivers"):
         story.append(Paragraph("Main Risk Drivers", st["h2"]))
