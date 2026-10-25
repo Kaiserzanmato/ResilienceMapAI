@@ -116,7 +116,7 @@ for (const size of SIZES) {
         await expect.poll(async () => (await height()) <= size.height * 0.9 + 1).toBe(true);
         await expect.poll(async () => (await sheet.boundingBox())!.y).toBeGreaterThan(100);
         // Full is never shorter than half height (on a tight screen the cap can make them nearly equal).
-        expect(await height()).toBeGreaterThanOrEqual(size.height * 0.45 - 4);
+        await expect.poll(height).toBeGreaterThanOrEqual(size.height * 0.45 - 4); // the height animates
         // The handle is on screen and not covered.
         expect(await app.evaluate(() => {
           const el = document.querySelector('[role="slider"]')!;
