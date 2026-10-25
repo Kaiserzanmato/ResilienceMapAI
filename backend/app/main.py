@@ -91,6 +91,15 @@ def ai_provider_info():
 
 
 # ---------------------------------------------------------------- risk
+async def live_risk(lat: float, lng: float, name: str | None = None, country_code: str | None = None) -> dict:
+    """The legacy risk shape with Wildfire (FIRMS) and Volcanic (PHIVOLCS) taken from the assessment
+    engine, so the risk panel, the PDF, the AI summary and share links all show the same numbers."""
+    fire = await load_fire_context(lat, lng)
+    hazards = assess_location(lat, lng, name, country_code, fire=fire)["hazards"]
+    return score_location(lat, lng, name, country_code,
+                          overrides={key: hazards[key]["score"] for key in ("wildfire", "volcano")})
+
+
 @app.get("/api/location-risk", deprecated=True)
 async def location_risk(lat: float = Query(..., ge=-90, le=90),
                         lng: float = Query(..., ge=-180, le=180),
@@ -99,10 +108,7 @@ async def location_risk(lat: float = Query(..., ge=-90, le=90),
     """Deprecated: use POST /api/assessments. Kept for existing integrations in the legacy
     shape, but Wildfire (FIRMS) and Volcanic (null unless licensed data is on) come from the
     same engine as the assessment, so this route can never show a number that one withholds."""
-    fire = await load_fire_context(lat, lng)
-    hazards = assess_location(lat, lng, name, country_code, fire=fire)["hazards"]
-    return score_location(lat, lng, name, country_code,
-                          overrides={key: hazards[key]["score"] for key in ("wildfire", "volcano")})
+    return await live_risk(lat, lng, name, country_code)
 
 
 @app.post("/api/compare-locations")
@@ -188,7 +194,7 @@ async def current_events(
 # ---------------------------------------------------------------- AI
 @app.post("/api/ai/summary")
 async def ai_summary(req: AISummaryRequest):
-    risk = score_location(req.lat, req.lng, req.name)
+    risk = await live_risk(req.lat, req.lng, req.name)
     result = await generate_insight("summary", risk,
                                     "Summarize the risk profile for this location.",
                                     req.persona, req.provider)
@@ -197,7 +203,7 @@ async def ai_summary(req: AISummaryRequest):
 
 @app.post("/api/ai/report")
 async def ai_report(req: AIReportRequest):
-    risk = score_location(req.lat, req.lng, req.name)
+    risk = await live_risk(req.lat, req.lng, req.name)
     result = await generate_insight(
         "report", risk,
         "Write an executive risk briefing for this location: overview, hazard "
@@ -225,7 +231,7 @@ async def agent_query(req: AgentQueryRequest, request: Request):
 
     risk = None
     if req.lat is not None and req.lng is not None:
-        risk = score_location(req.lat, req.lng, req.location_name)
+        risk = await live_risk(req.lat, req.lng, req.location_name)
 
     # Classify the user's query intent
     intent, params = classify_query(req.message)
@@ -340,7 +346,7 @@ async def generate_insights_endpoint(
     All sources are cited. Unsupported claims are blocked.
     """
     usage_quota.consume("insights", usage_quota.client_key(request))
-    risk = score_location(lat, lng, name)
+    risk = await live_risk(lat, lng, name)
     providers = build_providers()
     insight = await generate_insights(
         risk_data=risk,
@@ -431,7 +437,7 @@ async def cron_sync_sources(request: Request):
 # ---------------------------------------------------------------- export
 @app.post("/api/export/pdf")
 async def export_pdf(req: ExportPDFRequest, request: Request):
-    risk = score_location(req.lat, req.lng, req.name)
+    risk = await live_risk(req.lat, req.lng, req.name)
     summary = await generate_insight("report", risk,
                                      "Write a concise risk summary for a PDF report.",
                                      req.persona)
@@ -451,7 +457,7 @@ def export_csv(req: ExportCSVRequest):
 
 @app.post("/api/export/share-link")
 async def share_link(req: ShareLinkRequest):
-    risk = score_location(req.lat, req.lng, req.name)
+    risk = await live_risk(req.lat, req.lng, req.name)
     summary = await generate_insight("summary", risk,
                                      "Summarize the risk profile for this location.",
                                      req.persona)

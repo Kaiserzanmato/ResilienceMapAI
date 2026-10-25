@@ -9,6 +9,14 @@ the Aug 6–7 geocoding-gateway and dashboard/globe/weather work in detail.
 Format: `[commit] type: summary`, followed by what changed and why when it
 isn't obvious from the summary alone.
 
+## 2026-10-25 (exports and AI prompts show the live Volcanic and Wildfire scores)
+
+- **fix: the PDF, share links and every AI prompt showed Volcanic Activity as "No Data" while the risk panel showed a score.**
+  Those routes called the zone model directly, which leaves Volcanic unscored (and used the zone model for Wildfire instead of
+  FIRMS). They now go through `live_risk()` in `backend/app/main.py`, the same path as `GET /api/location-risk`, so the PDF
+  hazard table, the AI summary/report/chat/insights prompts and shared reports use the assessment engine's Volcanic and Wildfire
+  scores. Not changed: the CSV export and `POST /api/compare-locations`, which still use the zone model.
+
 ## 2026-10-25 (PHIVOLCS volcanic scoring)
 
 - feat: Volcanic Activity scored from the PHIVOLCS "List of Philippine Volcanoes", used with PHIVOLCS's written

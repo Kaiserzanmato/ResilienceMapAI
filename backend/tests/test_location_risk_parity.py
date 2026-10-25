@@ -96,3 +96,40 @@ def test_legacy_volcanic_agrees_with_the_assessment_when_scoring_is_on(tmp_path,
         assert legacy(MAYON).json()["hazards"]["volcano"]["score"] == 90
     finally:
         vs._load.cache_clear()
+
+
+def test_pdf_and_ai_summary_use_the_same_volcanic_score_as_the_panel(tmp_path, monkeypatch):
+    """The PDF table and the AI prompt were built from the zone model, which leaves Volcanic unscored ("No Data")."""
+    import app.main as main
+
+    path = tmp_path / "v.json"
+    path.write_text(json.dumps({
+        "source": {"name": "Synthetic test list", "url": "https://example.test/v", "retrieved": "2026-10-02", "licence_note": "test data"},
+        "volcanoes": [{"name": "Teston", "latitude": MAYON["lat"], "longitude": MAYON["lng"], "status": "active"}]}), encoding="utf-8")
+    settings = get_settings()
+    monkeypatch.setattr(settings, "volcano_data_file", str(path))
+    monkeypatch.setattr(settings, "enable_volcanic_scoring", True)
+    vs._load.cache_clear()
+    seen = {}
+
+    async def fake_insight(kind, risk, prompt, persona, *args, **kwargs):
+        seen["prompt_risk"] = risk
+        return {"answer": "ok", "sources": []}
+
+    def fake_pdf(risk, persona, answer, map_image=None):
+        seen["pdf_risk"] = risk
+        return b"%PDF-1.4 fake"
+
+    monkeypatch.setattr(main, "generate_insight", fake_insight)
+    monkeypatch.setattr(main, "build_pdf_report", fake_pdf)
+    try:
+        panel = assessment(MAYON)["hazards"]["volcano"]
+        assert panel["score"] == 90
+        response = client.post("/api/export/pdf", json={"lat": MAYON["lat"], "lng": MAYON["lng"], "name": "Mayon"})
+        assert response.status_code == 200
+        for key in ("pdf_risk", "prompt_risk"):
+            volcano = seen[key]["hazards"]["volcano"]
+            assert volcano["score"] == panel["score"] and volcano["level"] != "No Data"
+        assert "Volcanic Activity" in seen["pdf_risk"]["main_drivers"]
+    finally:
+        vs._load.cache_clear()
